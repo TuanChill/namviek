@@ -1,54 +1,138 @@
-import { createBrowserRouter, redirect, type ActionFunctionArgs } from 'react-router';
-import Layout from './pages/Layout.tsx';
-import Home from './pages/Home.tsx';
-import Test from './pages/Test.tsx';
-import NotFound from './pages/NotFound.tsx';
-import ErrorBoundary from './pages/ErrorBoundary.tsx';
+import { createBrowserRouter, redirect, type LoaderFunctionArgs } from 'react-router';
+import { isAuthenticated } from '@/lib/auth-store';
+
+// Pages
+import LoginPage from './pages/LoginPage';
+import SetupPage from './pages/SetupPage';
+import TenantDashboard from './pages/TenantDashboard';
+import KanbanView from './pages/KanbanView';
+import TableView from './pages/TableView';
+import CalendarView from './pages/CalendarView';
+import TenantSettingsPage from './pages/TenantSettingsPage';
+import UsersPage from './pages/UsersPage';
+import IntegrationsPage from './pages/IntegrationsPage';
+import WebhooksPage from './pages/WebhooksPage';
+import ProjectSettingsPage from './pages/ProjectSettingsPage';
+import AdminDashboard from './pages/AdminDashboard';
+import NotFound from './pages/NotFound';
+import InboxPage from './pages/InboxPage';
+import ProfilePage from './pages/ProfilePage';
+import AssignedToMePage from './pages/AssignedToMePage';
+
+// Auth guard: redirect to login if not authenticated
+function requireAuth(): null | Response {
+  if (!isAuthenticated()) {
+    return redirect('/login') as unknown as Response;
+  }
+  return null;
+}
 
 export const router = createBrowserRouter([
-    {
-        path: '/',
-        Component: Layout,
-        ErrorBoundary: ErrorBoundary,
-        children: [
-            {
-                index: true,
-                Component: Home,
-            },
-            {
-                path: 'test',
-                Component: Test,
-                ErrorBoundary: ErrorBoundary,
-                // Loader: Fetch all test data from API before rendering the page
-                // This runs on navigation to /test and provides data via useLoaderData()
-                loader: async () => {
-                    const response = await fetch('/api/tests');
-                    if (!response.ok) {
-                        throw new Error('Forget to start API server => pnpm dev:api');
-                    }
-                    return response.json();
-                },
-                // Action: Handle form submissions to create new test entries
-                // This runs when a form is submitted to /test and redirects back after success
-                action: async ({ request }: ActionFunctionArgs) => {
-                    const formData = await request.json();
-                    const response = await fetch('/api/tests', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(formData),
-                    });
-                    if (!response.ok) {
-                        throw new Error('Failed to create test');
-                    }
-                    return redirect('/test');
-                },
-            },
-        ],
+  // Public routes
+  {
+    path: '/login',
+    Component: LoginPage,
+    loader: () => {
+      if (isAuthenticated()) return redirect('/t/acme');
+      return null;
     },
-    {
-        path: '*',
-        Component: NotFound,
+  },
+  {
+    path: '/setup',
+    Component: SetupPage,
+  },
+
+  // Tenant routes (require auth)
+  {
+    path: '/t/:slug',
+    Component: TenantDashboard,
+    loader: () => requireAuth(),
+  },
+  {
+    path: '/t/:slug/projects/:projectId',
+    loader: ({ params }: LoaderFunctionArgs) => {
+      const guard = requireAuth();
+      if (guard) return guard;
+      return redirect(`/t/${params.slug}/projects/${params.projectId}/kanban`);
     },
+    Component: () => null,
+  },
+  {
+    path: '/t/:slug/projects/:projectId/kanban',
+    Component: KanbanView,
+    loader: () => requireAuth(),
+  },
+  {
+    path: '/t/:slug/projects/:projectId/table',
+    Component: TableView,
+    loader: () => requireAuth(),
+  },
+  {
+    path: '/t/:slug/projects/:projectId/calendar',
+    Component: CalendarView,
+    loader: () => requireAuth(),
+  },
+  {
+    path: '/t/:slug/projects/:projectId/settings',
+    Component: ProjectSettingsPage,
+    loader: () => requireAuth(),
+  },
+  {
+    path: '/t/:slug/settings',
+    Component: TenantSettingsPage,
+    loader: () => requireAuth(),
+  },
+  {
+    path: '/t/:slug/settings/users',
+    Component: UsersPage,
+    loader: () => requireAuth(),
+  },
+  {
+    path: '/t/:slug/settings/profile',
+    Component: ProfilePage,
+    loader: () => requireAuth(),
+  },
+  {
+    path: '/t/:slug/inbox',
+    Component: InboxPage,
+    loader: () => requireAuth(),
+  },
+  {
+    path: '/t/:slug/assigned',
+    Component: AssignedToMePage,
+    loader: () => requireAuth(),
+  },
+  {
+    path: '/t/:slug/settings/integrations',
+    Component: IntegrationsPage,
+    loader: () => requireAuth(),
+  },
+  {
+    path: '/t/:slug/settings/webhooks',
+    Component: WebhooksPage,
+    loader: () => requireAuth(),
+  },
+
+  // Admin routes
+  {
+    path: '/admin',
+    Component: AdminDashboard,
+    loader: () => requireAuth(),
+  },
+
+  // Root redirect
+  {
+    path: '/',
+    loader: () => {
+      if (isAuthenticated()) return redirect('/t/acme');
+      return redirect('/login');
+    },
+    Component: () => null,
+  },
+
+  // 404
+  {
+    path: '*',
+    Component: NotFound,
+  },
 ]);
