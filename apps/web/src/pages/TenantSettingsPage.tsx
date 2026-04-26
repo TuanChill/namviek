@@ -25,11 +25,10 @@ export default function TenantSettingsPage() {
   };
 
   return (
-    <AppSidebar>
+    <AppSidebar header={<h1 className="text-sm font-semibold">Workspace Settings</h1>}>
       <div className="flex flex-col flex-1 overflow-auto">
         <div className="p-6 max-w-3xl flex flex-col gap-6">
           <div>
-            <h1 className="text-xl font-bold">Workspace Settings</h1>
             <p className="text-sm text-muted-foreground mt-1">Manage your workspace configuration and authentication</p>
           </div>
 

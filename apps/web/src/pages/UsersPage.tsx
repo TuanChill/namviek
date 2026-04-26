@@ -41,12 +41,11 @@ export default function UsersPage() {
   };
 
   return (
-    <AppSidebar>
+    <AppSidebar header={<h1 className="text-sm font-semibold">Members</h1>}>
       <div className="flex flex-col flex-1 overflow-auto">
         <div className="p-6 max-w-3xl flex flex-col gap-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-xl font-bold">Members</h1>
               <p className="text-sm text-muted-foreground mt-1">{tenantUsers.length} members in {tenant.name}</p>
             </div>
             <Dialog open={open} onOpenChange={setOpen}>

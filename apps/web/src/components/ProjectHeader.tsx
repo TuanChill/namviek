@@ -12,11 +12,11 @@ import {
   DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent,
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Kanban, Table2, Calendar, Filter, SlidersHorizontal, Search, Settings } from 'lucide-react';
+import { Kanban, Table2, Calendar, Filter, SlidersHorizontal, Search, Settings, Clock4 } from 'lucide-react';
 import { tenants, projects, users } from '@/lib/dummy-data';
 
 interface ProjectHeaderProps {
-  activeView: 'kanban' | 'table' | 'calendar';
+  activeView: 'kanban' | 'table' | 'calendar' | 'timeline';
 }
 
 /**
@@ -125,13 +125,20 @@ export function ProjectToolbar({ activeView }: ProjectHeaderProps) {
               Calendar
             </Link>
           </TabsTrigger>
+          <TabsTrigger value="timeline" asChild>
+            <Link to={`/t/${tenant.slug}/projects/${project.id}/timeline`} className="flex items-center gap-1.5">
+              <Clock4 className="size-3.5" />
+              Timeline
+            </Link>
+          </TabsTrigger>
         </TabsList>
       </Tabs>
 
       <div className="h-5 w-px bg-border mx-1" />
 
-      {/* Search */}
-      <div className="relative">
+      <div className="ml-auto flex items-center gap-2">
+        {/* Search */}
+        <div className="relative">
         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
         <Input className="pl-8 h-8 w-48 text-sm" placeholder="Search tasks…" />
       </div>
@@ -171,6 +178,7 @@ export function ProjectToolbar({ activeView }: ProjectHeaderProps) {
           <DropdownMenuCheckboxItem>Assignee</DropdownMenuCheckboxItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      </div>
     </div>
   );
 }

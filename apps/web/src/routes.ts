@@ -4,10 +4,10 @@ import { isAuthenticated } from '@/lib/auth-store';
 // Pages
 import LoginPage from './pages/LoginPage';
 import SetupPage from './pages/SetupPage';
-import TenantDashboard from './pages/TenantDashboard';
 import KanbanView from './pages/KanbanView';
 import TableView from './pages/TableView';
 import CalendarView from './pages/CalendarView';
+import TimelineView from './pages/TimelineView';
 import TenantSettingsPage from './pages/TenantSettingsPage';
 import UsersPage from './pages/UsersPage';
 import IntegrationsPage from './pages/IntegrationsPage';
@@ -45,8 +45,12 @@ export const router = createBrowserRouter([
   // Tenant routes (require auth)
   {
     path: '/t/:slug',
-    Component: TenantDashboard,
-    loader: () => requireAuth(),
+    loader: ({ params }: LoaderFunctionArgs) => {
+      const guard = requireAuth();
+      if (guard) return guard;
+      return redirect(`/t/${params.slug}/inbox`);
+    },
+    Component: () => null,
   },
   {
     path: '/t/:slug/projects/:projectId',
@@ -70,6 +74,11 @@ export const router = createBrowserRouter([
   {
     path: '/t/:slug/projects/:projectId/calendar',
     Component: CalendarView,
+    loader: () => requireAuth(),
+  },
+  {
+    path: '/t/:slug/projects/:projectId/timeline',
+    Component: TimelineView,
     loader: () => requireAuth(),
   },
   {

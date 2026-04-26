@@ -12,11 +12,10 @@ const ASSIGNED_TASKS = [
 
 export default function AssignedToMePage() {
   return (
-    <AppSidebar>
-      <div className="flex flex-col flex-1 overflow-auto bg-muted/20">
+    <AppSidebar header={<h1 className="text-sm font-semibold">Assigned to me</h1>}>
+      <div className="flex flex-col flex-1 overflow-auto">
         <div className="flex flex-col gap-6 p-8 max-w-5xl mx-auto w-full">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight mb-2">Assigned to me</h1>
             <p className="text-muted-foreground">Keep track of all tasks assigned to you across all projects.</p>
           </div>
 

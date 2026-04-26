@@ -104,7 +104,6 @@ function WeekView({
 }: {
   year: number; month: number; weekOffset: number; tasks: Task[]; pid: string; onTaskClick: (t: Task) => void;
 }) {
-  // Compute week start (Sunday) from weekOffset relative to current week
   const today = new Date();
   const weekStart = new Date(today);
   weekStart.setDate(today.getDate() - today.getDay() + weekOffset * 7);
@@ -118,141 +117,106 @@ function WeekView({
   const fmt = (d: Date) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-  const weekStart_ts = weekStart.getTime();
-  const weekEnd_ts = days[6].getTime();
-
   const isToday = (d: Date) => fmt(d) === fmt(today);
 
-  // Tasks that have a dueDate in this week
-  const weekTasks = tasks.filter(t => {
-    if (!t.dueDate) return false;
-    const ts = new Date(t.dueDate).getTime();
-    return ts >= weekStart_ts && ts <= weekEnd_ts + 86400000;
-  });
+  const hours = Array.from({ length: 24 }, (_, i) => i);
+  const HOUR_H = 48; // height of one hour block
 
-  // Compute bar width/offset for a task (treat dueDate as single-day, with 1-day width)
-  const totalMs = 7 * 86400000;
+  const getTasksForDay = (day: Date) => {
+    const dateStr = fmt(day);
+    return tasks.filter(t => t.dueDate?.startsWith(dateStr));
+  };
 
-  const getBar = (task: Task) => {
-    const due = new Date(task.dueDate!);
-    const startTs = Math.max(due.getTime(), weekStart_ts);
-    const endTs = Math.min(due.getTime() + 86400000, weekEnd_ts + 86400000);
-    const left = ((startTs - weekStart_ts) / totalMs) * 100;
-    const width = ((endTs - startTs) / totalMs) * 100;
-    return { left: `${left.toFixed(1)}%`, width: `${Math.max(width, 12).toFixed(1)}%` };
+  const getMockHours = (taskId: string) => {
+    // Generate a pseudo-random start hour between 8 and 16
+    const startHour = 8 + (taskId.charCodeAt(taskId.length - 1) % 9);
+    // Duration 1 or 2 hours
+    const duration = 1 + (taskId.charCodeAt(0) % 2);
+    return { startHour, duration };
   };
 
   return (
-    <div className="flex flex-1 overflow-hidden gap-0">
-      {/* Left: task list */}
-      <div className="w-64 shrink-0 border-r flex flex-col overflow-hidden">
-        {/* Header row — same height as right day-header */}
-        <div className="h-10 border-b flex items-center px-3 shrink-0">
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tasks</span>
-          <Badge variant="secondary" className="ml-auto text-xs">{weekTasks.length}</Badge>
-        </div>
-        {/* Task rows — each exactly ROW_H px */}
-        <div className="flex flex-col overflow-auto">
-          {weekTasks.length === 0 ? (
-            <div className="flex items-center justify-center text-sm text-muted-foreground" style={{ height: ROW_H * 3 }}>
-              No tasks this week
-            </div>
-          ) : (
-            weekTasks.map(task => {
-              const color = getOptionColor(pid, 'Status', task.status);
-              const priorityColor = getOptionColor(pid, 'Priority', task.priority);
-              return (
-                <button
-                  key={task.id}
-                  className="flex flex-col justify-center gap-0.5 px-3 border-b hover:bg-accent/30 transition-colors text-left shrink-0"
-                  style={{ height: ROW_H }}
-                  onClick={() => onTaskClick(task)}
-                >
-                  <span className="text-xs font-medium line-clamp-1 leading-snug">{task.title}</span>
-                  <div className="flex items-center gap-1.5">
-                    <div className="size-1.5 rounded-full" style={{ backgroundColor: color }} />
-                    <span className="text-[10px] text-muted-foreground">{task.status}</span>
-                    <Badge
-                      variant="secondary"
-                      className="text-[9px] px-1 py-0 ml-auto"
-                      style={{ backgroundColor: priorityColor + '20', color: priorityColor }}
-                    >
-                      {task.priority}
-                    </Badge>
-                  </div>
-                </button>
-              );
-            })
-          )}
-        </div>
+    <div className="flex flex-1 overflow-hidden flex-col bg-background border rounded-lg">
+      {/* Header: Days */}
+      <div className="flex border-b shrink-0 ml-12">
+        {days.map(d => (
+          <div
+            key={d.toISOString()}
+            className={`flex-1 flex flex-col items-center justify-center py-2 border-r last:border-r-0 ${
+              isToday(d) ? 'bg-primary/5' : ''
+            }`}
+          >
+            <span className="text-[10px] text-muted-foreground uppercase">{DAY_NAMES[d.getDay()]}</span>
+            <span className={`text-sm font-semibold ${isToday(d) ? 'text-primary' : 'text-foreground'}`}>
+              {d.getDate()}
+            </span>
+          </div>
+        ))}
       </div>
 
-      {/* Right: Gantt-style day columns */}
-      <div className="flex flex-col flex-1 overflow-auto min-w-0">
-        {/* Day header row — h-10, same as left header */}
-        <div className="grid grid-cols-7 border-b h-10 shrink-0">
-          {days.map(d => (
-            <div
-              key={d.toISOString()}
-              className={`flex flex-col items-center justify-center border-r last:border-r-0 ${
-                isToday(d) ? 'bg-primary/5' : ''
-              }`}
-            >
-              <span className="text-[10px] text-muted-foreground">{DAY_NAMES[d.getDay()]}</span>
-              <span className={`text-sm font-semibold ${isToday(d) ? 'text-primary' : 'text-foreground'}`}>
-                {d.getDate()}
-              </span>
+      {/* Grid */}
+      <div className="flex flex-1 overflow-auto relative">
+        {/* Y-axis: Hours */}
+        <div className="w-12 shrink-0 border-r flex flex-col bg-muted/10">
+          {hours.map(h => (
+            <div key={h} className="border-b text-[10px] text-muted-foreground text-right pr-2 pt-1" style={{ height: HOUR_H }}>
+              {h === 0 ? '12 AM' : h < 12 ? `${h} AM` : h === 12 ? '12 PM' : `${h - 12} PM`}
             </div>
           ))}
         </div>
 
-        {/* Task bar rows — each exactly ROW_H px, aligning with left list */}
-        <div className="relative flex flex-col overflow-auto">
-          {/* Column shade overlay */}
-          <div className="absolute inset-0 grid grid-cols-7 pointer-events-none z-0">
-            {days.map(d => (
+        {/* X-axis: Day Columns */}
+        <div className="flex flex-1 relative">
+          {days.map(d => {
+            const dayTasks = getTasksForDay(d);
+            return (
               <div
                 key={d.toISOString()}
-                className={`border-r last:border-r-0 ${isToday(d) ? 'bg-primary/5' : ''}`}
-              />
-            ))}
-          </div>
+                className={`flex-1 border-r last:border-r-0 relative ${isToday(d) ? 'bg-primary/5' : ''}`}
+              >
+                {/* Hour grid lines */}
+                {hours.map(h => (
+                  <div key={h} className="border-b w-full pointer-events-none" style={{ height: HOUR_H }} />
+                ))}
 
-          {weekTasks.length === 0 ? (
-            <div className="flex items-center justify-center text-sm text-muted-foreground relative z-10" style={{ height: ROW_H * 3 }}>
-              No tasks to display
-            </div>
-          ) : (
-            weekTasks.map((task, i) => {
-              const color = getOptionColor(pid, 'Status', task.status);
-              const bar = getBar(task);
-              return (
-                <div
-                  key={task.id}
-                  className={`relative border-b flex items-center shrink-0 z-10 ${
-                    i % 2 === 1 ? 'bg-muted/20' : ''
-                  }`}
-                  style={{ height: ROW_H }}
-                >
-                  <button
-                    className="absolute flex items-center gap-1.5 rounded px-2 h-6 text-[10px] font-medium truncate hover:brightness-95 transition-all"
-                    style={{
-                      left: bar.left,
-                      width: bar.width,
-                      backgroundColor: color + '33',
-                      color,
-                      border: `1px solid ${color}66`,
-                    }}
-                    onClick={() => onTaskClick(task)}
-                    title={task.title}
-                  >
-                    <div className="size-1.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
-                    <span className="truncate">{task.title}</span>
-                  </button>
-                </div>
-              );
-            })
-          )}
+                {/* Tasks for this day */}
+                {dayTasks.map((task, idx) => {
+                  const { startHour, duration } = getMockHours(task.id);
+                  const color = getOptionColor(pid, 'Status', task.status);
+                  
+                  // Handle overlapping slightly if they share the same hour (simple mock)
+                  const leftOffset = (idx % 3) * 5; 
+                  
+                  return (
+                    <button
+                      key={task.id}
+                      className="absolute rounded-md p-1 text-left flex flex-col hover:brightness-95 transition-all overflow-hidden shadow-sm border"
+                      style={{
+                        top: startHour * HOUR_H + 2,
+                        height: duration * HOUR_H - 4,
+                        left: `${2 + leftOffset}%`,
+                        width: `${96 - leftOffset}%`,
+                        backgroundColor: color + '15',
+                        borderColor: color + '40',
+                        borderLeftWidth: '3px',
+                        borderLeftColor: color,
+                      }}
+                      onClick={() => onTaskClick(task)}
+                    >
+                      <span className="text-[10px] font-semibold leading-tight line-clamp-1" style={{ color: color }}>
+                        {task.title}
+                      </span>
+                      {duration > 1 && (
+                        <span className="text-[9px] text-muted-foreground line-clamp-1 mt-0.5">
+                          {startHour}:00 - {startHour + duration}:00
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

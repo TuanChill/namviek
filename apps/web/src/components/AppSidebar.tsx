@@ -102,17 +102,6 @@ export default function AppSidebar({ children, header }: AppSidebarProps) {
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={location.pathname === `/t/${currentTenant.slug}`}
-                  >
-                    <Link to={`/t/${currentTenant.slug}`}>
-                      <Home />
-                      <span>Dashboard</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
                   <SidebarMenuButton asChild isActive={isActive(`/t/${currentTenant.slug}/inbox`)}>
                     <Link to={`/t/${currentTenant.slug}/inbox`}>
                       <Inbox />
@@ -157,22 +146,19 @@ export default function AppSidebar({ children, header }: AppSidebarProps) {
               <CollapsibleContent>
                 <SidebarGroupContent>
                   <SidebarMenu>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton asChild>
-                        <Link to={`#`}>
-                          <span>🌟</span>
-                          <span>Marketing Q3</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton asChild>
-                        <Link to={`#`}>
-                          <span>🚀</span>
-                          <span>Product Launch</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
+                    {projects.slice(0, 2).map(p => {
+                      const projectBase = `/t/${currentTenant.slug}/projects/${p.id}`;
+                      return (
+                        <SidebarMenuItem key={`fav-${p.id}`}>
+                          <SidebarMenuButton asChild isActive={isActive(projectBase)}>
+                            <Link to={`${projectBase}/kanban`}>
+                              <span>{p.icon}</span>
+                              <span>{p.name}</span>
+                            </Link>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      );
+                    })}
                   </SidebarMenu>
                 </SidebarGroupContent>
               </CollapsibleContent>

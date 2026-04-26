@@ -13,8 +13,8 @@ export default function ProfilePage() {
     name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 
   return (
-    <AppSidebar>
-      <div className="flex flex-col flex-1 overflow-auto bg-muted/20">
+    <AppSidebar header={<h1 className="text-sm font-semibold">{user?.name || 'User Profile'}</h1>}>
+      <div className="flex flex-col flex-1 overflow-auto">
         <div className="flex flex-col gap-8 p-8 max-w-5xl mx-auto w-full">
           
           {/* Profile Header */}
@@ -25,7 +25,6 @@ export default function ProfilePage() {
             <div className="flex-1 space-y-1.5">
               <div className="flex justify-between items-start">
                 <div>
-                  <h1 className="text-3xl font-bold tracking-tight">{user?.name || 'User Profile'}</h1>
                   <p className="text-muted-foreground text-lg">{user?.role === 'SUPER_ADMIN' ? 'Super Administrator' : 'Project Member'}</p>
                 </div>
                 <Button variant="outline">Edit Profile</Button>
