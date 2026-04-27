@@ -24,7 +24,12 @@ export function useRecords() {
       fieldValues = results.map((fv, i) => ({ ...fv, field: idFields[i] }));
     }
 
-    setRecords(prev => [...prev, { ...record, fieldValues }]);
+    setRecords(prev => {
+      if (prev.some(r => r.id === record.id)) {
+        return prev.map(r => r.id === record.id ? { ...record, fieldValues } : r);
+      }
+      return [...prev, { ...record, fieldValues }];
+    });
     return record;
   }, []);
 

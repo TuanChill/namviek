@@ -5,6 +5,29 @@ import { Input } from '@/components/ui/input';
 import { api } from '../api';
 import type { DynUser, Field, FieldValue, FieldValuePayload } from '../types';
 
+let cachedUsers: DynUser[] | null = null;
+let cacheTime = 0;
+const CACHE_TTL = 10000; // 10 seconds
+let usersPromise: Promise<DynUser[]> | null = null;
+
+function getUsersCached(): Promise<DynUser[]> {
+  if (cachedUsers && Date.now() - cacheTime < CACHE_TTL) {
+    return Promise.resolve(cachedUsers);
+  }
+  if (!usersPromise) {
+    usersPromise = api.users.list().then(users => {
+      cachedUsers = users;
+      cacheTime = Date.now();
+      usersPromise = null;
+      return users;
+    }).catch(err => {
+      usersPromise = null;
+      throw err;
+    });
+  }
+  return usersPromise;
+}
+
 // ─── Avatar ──────────────────────────────────────────────────────────────────
 
 function UserAvatar({ user, size = 22 }: { user: DynUser; size?: number }) {
@@ -59,9 +82,9 @@ export function PersonCell({ field, value, onSave }: CellProps) {
   const allowMultiple = field.config?.allowMultiple ?? false;
   const selectedIds = value?.personValue ?? [];
 
-  // Load all users once on mount
+  // Load all users once on mount with caching
   useEffect(() => {
-    api.users.list().then(users => {
+    getUsersCached().then(users => {
       setAllUsers(users);
       setFiltered(users);
     }).catch(console.error);

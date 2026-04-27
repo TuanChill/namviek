@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router';
 import {
   Plus, Database, Loader2,
   ChevronLeft, ChevronRight, Copy, Trash2, Pencil, Smile, Settings2
@@ -38,6 +39,9 @@ export default function DynamicFieldPage() {
   const { databases, selectedDb, setSelectedDb, createDatabase } = useDatabase();
   const { fields, setFields, loadFields, addField, renameField, deleteField, moveField, duplicateField, changeIcon, updateField } = useFields();
   const { records, setRecords, loadRecords, addRecord, setValue, removeFieldValues, reloadRecords, deleteRecords } = useRecords();
+
+  const { databaseId } = useParams();
+  const navigate = useNavigate();
 
   const [loading, setLoading] = useState(false);
   const [selectedRecords, setSelectedRecords] = useState<Set<string>>(new Set());
@@ -114,17 +118,27 @@ export default function DynamicFieldPage() {
   });
 
   // ── Load DB ───────────────────────────────────────────────────────────────
-  const loadDb = useCallback(async (db: DynDatabase) => {
+  const loadDb = useCallback(async (db: DynDatabase, updateUrl = true) => {
     setSelectedDb(db);
     setActiveCell(null);
     setSelectedRecords(new Set());
     setLoading(true);
     try {
       await Promise.all([loadFields(db.id), loadRecords(db.id)]);
+      if (updateUrl && databaseId !== db.id) navigate(`/test/${db.id}`);
     } finally {
       setLoading(false);
     }
-  }, [setSelectedDb, loadFields, loadRecords]);
+  }, [setSelectedDb, loadFields, loadRecords, databaseId, navigate]);
+
+  // Initial load from URL
+  useEffect(() => {
+    if (databases.length === 0 || !databaseId) return;
+    if (selectedDb?.id !== databaseId) {
+      const db = databases.find(d => d.id === databaseId);
+      if (db) loadDb(db, false);
+    }
+  }, [databaseId, databases, selectedDb?.id, loadDb]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleCreateDb = async () => {

@@ -27,7 +27,12 @@ export function useFields() {
       await api.fields.backfill(field.id, dbId);
     }
 
-    setFields(prev => [...prev, newField]);
+    setFields(prev => {
+      if (prev.some(f => f.id === newField.id)) {
+        return prev.map(f => f.id === newField.id ? newField : f).sort((a, b) => a.position - b.position);
+      }
+      return [...prev, newField].sort((a, b) => a.position - b.position);
+    });
     return newField;
   }, []);
 

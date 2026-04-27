@@ -317,6 +317,16 @@ sequenceDiagram
 > [!NOTE]
 > The current `PubSub` implementation is in-memory. If deploying multiple API instances (e.g., horizontally scaled containers), this should be replaced with a distributed message broker like Redis Pub/Sub to ensure events broadcasted from one instance reach clients connected to another.
 
+### Testing Real-time Sync (Postman Examples)
+
+You can trigger SSE broadcasts by interacting with the API directly. Ensure you include the `databaseId` in the body so the backend routes the event to the correct stream.
+
+| Action | Method | URL | Body (Raw JSON) | Notes |
+| :--- | :---: | :--- | :--- | :--- |
+| **New Row Request** | `POST` | `http://localhost:4001/api/databases/:databaseId/records` | *(None required)* | Creates a new empty row. Returns the new record object. |
+| **Update Request** (Cell Value) | `PUT` | `http://localhost:4001/api/records/:recordId/values/:fieldId` | `{ "databaseId": "db-uuid", "textValue": "Hello!" }` | Replaces `textValue` with `numberValue`, `selectValue`, `dateValue`, etc., depending on the field type. `databaseId` is required to trigger SSE broadcast. |
+| **Delete Row Request** | `DELETE` | `http://localhost:4001/api/records` | `{ "databaseId": "db-uuid", "ids": ["record-uuid-1"] }` | Deletes the specified records. `databaseId` is required to trigger SSE broadcast. |
+
 ---
 
 ## 10. Data Flow Examples

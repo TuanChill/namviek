@@ -46,6 +46,10 @@ export const router = createBrowserRouter([
     path: '/test',
     Component: DynamicFieldPage,
   },
+  {
+    path: '/test/:databaseId',
+    Component: DynamicFieldPage,
+  },
 
   // Tenant routes (require auth)
   {
