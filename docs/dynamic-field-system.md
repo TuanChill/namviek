@@ -14,11 +14,20 @@ Browser (/test)
         │   ├── useDatabase.ts        ← DB list, create, select
         │   ├── useFields.ts          ← field CRUD (rename, delete, move, duplicate, icon, backfill)
         │   └── useRecords.ts         ← record create (with ID auto-fill), value set
-        ├── components/
-        │   └── PersonCell.tsx        ← avatar list picker with search
+        ├── cells/                    ← one file per cell type
+        │   ├── index.tsx             ← CellEditor dispatcher + barrel exports
+        │   ├── shared.tsx            ← CellProps, ActiveProps, OptionChip, CellTrigger
+        │   ├── TextCell.tsx
+        │   ├── NumberCell.tsx
+        │   ├── DateCell.tsx
+        │   ├── SelectCell.tsx
+        │   ├── MultiSelectCell.tsx
+        │   ├── CheckboxCell.tsx
+        │   ├── ComputedCell.tsx
+        │   └── PersonCell.tsx
+        ├── CellEditors.tsx           ← thin re-export shim → cells/index.tsx
         ├── AddFieldDrawer.tsx        ← Sheet panel for creating fields
         ├── EditFieldDrawer.tsx       ← Sheet panel for editing existing fields
-        ├── CellEditors.tsx           ← per-type cell editors (active-cell aware)
         ├── api.ts                    ← typed fetch client
         ├── constants.tsx             ← field type metadata, formatters
         └── types.ts                  ← shared TypeScript interfaces
@@ -28,6 +37,7 @@ Hono API (localhost:4001)
 
 Database package
   ├── prisma/schema.prisma            ← Prisma models
+  ├── prisma/seed.ts                  ← seeds test data + 10 DynUsers (Dicebear avatars)
   ├── queries.ts                      ← all DB query functions
   └── client.ts                       ← Prisma client singleton
 ```
@@ -85,7 +95,7 @@ model DynUser {
 | `date` | `{ dateFormat, includeTime }` |
 | `number` | `{ numberFormat, precision, currency }` |
 | `text` | `{ richText }` |
-| `person` | `{ allowMultiple }` |
+| `person` | `{ allowMultiple, allowedUserIds? }` — `allowedUserIds` restricts the picker to specific user IDs |
 | `select` / `multi_select` | _(options stored in `FieldOption` table)_ |
 | any | `{ customIcon }` — Lucide icon name override |
 
@@ -228,10 +238,10 @@ Managed in `DynamicFieldPage`:
 const [activeCell, setActiveCell] = useState<{ recordId: string; fieldId: string } | null>(null);
 ```
 
-- Clicking a `<td>` activates it → ring highlight (`ring-2 ring-inset ring-primary/60`)
+- Clicking a `<td>` activates it → **border-color changes to primary** (no background change)
 - Clicking outside the table clears it
 - `ESC` anywhere clears it (global keydown listener)
-- `TextCell` watches `isActive` to enter/exit inline editing mode
+- `TextCell` watches `isActive` to enter/exit inline editing mode and **auto-focuses** via `requestAnimationFrame`
 
 ---
 
@@ -239,15 +249,21 @@ const [activeCell, setActiveCell] = useState<{ recordId: string; fieldId: string
 
 The `person` field stores an array of `DynUser.id` in `personValue[]`.
 
-**PersonCell** (`components/PersonCell.tsx`):
+**PersonCell** (`cells/PersonCell.tsx`):
 - Loads all users on mount via `api.users.list()`
+- If `field.config.allowedUserIds` is set and non-empty, the list is pre-filtered to those IDs only
 - Client-side filters by name/email as user types
 - Toggle: if `allowMultiple = false`, selecting a user closes the popover immediately
-- Displays selected users as chips (`PersonChip`) with avatar initials or image
+- Displays selected users as chips (`PersonChip`) with Dicebear avatar image
 - Shows a "Clear" button when selection is non-empty
+- Shows a badge counting allowed members when the pool is restricted
 
 **Config:**
-- `field.config.allowMultiple: boolean` — controls single vs multi select
+- `field.config.allowMultiple: boolean` — single vs multi select
+- `field.config.allowedUserIds?: string[]` — when set, only these users appear in the picker; configurable via **Add/Edit Field drawer** with a checkbox list
+
+**Seed:**  
+Run `pnpm --filter @local/database run db:seed` to populate 10 `DynUser` rows with Dicebear `avataaars/png` avatars (unique per name, pastel backgrounds).
 
 ---
 

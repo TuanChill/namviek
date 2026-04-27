@@ -48,34 +48,36 @@ export function PersonChip({ user }: { user: DynUser }) {
 export function PersonCell({ field, value, onSave }: CellProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const [allUsers, setAllUsers] = useState<DynUser[]>([]);
+  const [rawUsers, setRawUsers] = useState<DynUser[]>([]);  // all users from API
   const [filtered, setFiltered] = useState<DynUser[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const allowMultiple   = field.config?.allowMultiple ?? false;
-  const allowedUserIds  = field.config?.allowedUserIds;   // undefined / empty = everyone
-  const selectedIds     = value?.personValue ?? [];
+  const allowMultiple  = field.config?.allowMultiple ?? false;
+  const allowedUserIds = field.config?.allowedUserIds;   // undefined / empty = everyone
+  const selectedIds    = value?.personValue ?? [];
+
+  // Derive pool — only IDs in allowedUserIds when restriction is active
+  const allowedKey = allowedUserIds?.join(',') ?? '';
+  const allUsers = (allowedUserIds && allowedUserIds.length > 0)
+    ? rawUsers.filter(u => allowedUserIds.includes(u.id))
+    : rawUsers;
 
   // Load all users once on mount
   useEffect(() => {
     api.users.list().then(users => {
-      // Restrict list to allowedUserIds when the config is non-empty
-      const base = (allowedUserIds && allowedUserIds.length > 0)
-        ? users.filter(u => allowedUserIds.includes(u.id))
-        : users;
-      setAllUsers(base);
-      setFiltered(base);
+      setRawUsers(users);
     }).catch(console.error);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Client-side filter as user types
+  // Re-apply search filter whenever pool or query changes
   useEffect(() => {
     const q = query.toLowerCase();
     setFiltered(
       q ? allUsers.filter(u => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q))
         : allUsers
     );
-  }, [query, allUsers]);
+  }, [query, allowedKey, rawUsers]); // eslint-disable-line react-hooks/exhaustive-deps
+
 
   const toggle = (userId: string) => {
     let next: string[];

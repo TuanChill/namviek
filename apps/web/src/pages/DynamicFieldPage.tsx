@@ -292,12 +292,10 @@ export default function DynamicFieldPage() {
                             return (
                               <td
                                 key={field.id}
-                                className={`px-3 py-2 border-r border-b align-middle transition-colors border-l border-t ${
-                                  isActive
-                                    ? 'border-l-primary border-t-primary border-r-primary border-b-primary'
-                                    : 'border-l-transparent border-t-transparent'
+                                className={`px-3 py-2 border-r border-b align-middle transition-all ${
+                                  isActive ? 'outline outline-2 outline-primary outline-offset-[-2px]' : ''
                                 }`}
-                                style={{ width: COL_WIDTH, maxWidth: COL_WIDTH, overflow: 'hidden' }}
+                                style={{ width: COL_WIDTH, maxWidth: COL_WIDTH, overflow: 'hidden', position: 'relative' }}
                                 onClick={e => { e.stopPropagation(); setActiveCell({ recordId: record.id, fieldId: field.id }); }}
                               >
                                 <CellEditor
