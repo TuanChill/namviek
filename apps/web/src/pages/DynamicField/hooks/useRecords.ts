@@ -42,11 +42,16 @@ export function useRecords() {
     setRecords(prev => prev.map(r => ({ ...r, fieldValues: r.fieldValues.filter(fv => fv.fieldId !== fieldId) })));
   }, []);
 
+  const deleteRecords = useCallback(async (recordIds: string[]) => {
+    await api.records.delete(recordIds);
+    setRecords(prev => prev.filter(r => !recordIds.includes(r.id)));
+  }, []);
+
   /** After a backfill, reload records from server */
   const reloadRecords = useCallback(async (dbId: string) => {
     const r = await api.records.list(dbId);
     setRecords(r);
   }, []);
 
-  return { records, setRecords, loadRecords, addRecord, setValue, removeFieldValues, reloadRecords };
+  return { records, setRecords, loadRecords, addRecord, setValue, removeFieldValues, reloadRecords, deleteRecords };
 }

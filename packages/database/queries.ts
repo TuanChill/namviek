@@ -125,6 +125,13 @@ export async function createDynRecord(databaseId: string) {
     });
 }
 
+/** Delete one or more records */
+export async function deleteDynRecords(recordIds: string[]) {
+    return await prisma.dynRecord.deleteMany({
+        where: { id: { in: recordIds } },
+    });
+}
+
 /** Upsert a single field value */
 export async function setFieldValue(
     recordId: string,

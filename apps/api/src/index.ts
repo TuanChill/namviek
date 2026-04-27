@@ -23,6 +23,7 @@ import {
   searchUsers,
   upsertDynUser,
   backfillIdField,
+  deleteDynRecords,
 } from '@local/database'
 import type { FieldType } from '@local/database'
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
@@ -153,6 +154,19 @@ app.post('/api/databases/:id/records', async (c) => {
   } catch (error) {
     console.error(error)
     return c.json({ error: 'Failed to create record' }, 500)
+  }
+})
+
+// DELETE /api/records — delete multiple records
+app.delete('/api/records', async (c) => {
+  try {
+    const body = await c.req.json()
+    if (!Array.isArray(body.ids)) return c.json({ error: 'ids array is required' }, 400)
+    await deleteDynRecords(body.ids)
+    return c.json({ success: true })
+  } catch (error) {
+    console.error(error)
+    return c.json({ error: 'Failed to delete records' }, 500)
   }
 })
 

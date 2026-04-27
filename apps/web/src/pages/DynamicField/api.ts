@@ -35,6 +35,7 @@ export const api = {
   records: {
     list: (dbId: string) => apiFetch<DynRecord[]>(`/databases/${dbId}/records`),
     create: (dbId: string) => apiFetch<DynRecord>(`/databases/${dbId}/records`, { method: 'POST' }),
+    delete: (ids: string[]) => apiFetch(`/records`, { method: 'DELETE', body: JSON.stringify({ ids }) }),
   },
   values: {
     set: (recordId: string, fieldId: string, payload: FieldValuePayload) =>

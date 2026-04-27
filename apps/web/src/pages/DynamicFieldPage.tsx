@@ -18,6 +18,7 @@ import {
   ContextMenu, ContextMenuContent, ContextMenuItem,
   ContextMenuSeparator, ContextMenuTrigger,
 } from '@/components/ui/context-menu';
+import { Checkbox } from '@/components/ui/checkbox';
 
 import { CellEditor } from './DynamicField/CellEditors';
 import { AddFieldDrawer } from './DynamicField/AddFieldDrawer';
@@ -35,9 +36,10 @@ const COL_WIDTH = 180;
 export default function DynamicFieldPage() {
   const { databases, selectedDb, setSelectedDb, createDatabase } = useDatabase();
   const { fields, loadFields, addField, renameField, deleteField, moveField, duplicateField, changeIcon, updateField } = useFields();
-  const { records, loadRecords, addRecord, setValue, removeFieldValues, reloadRecords } = useRecords();
+  const { records, loadRecords, addRecord, setValue, removeFieldValues, reloadRecords, deleteRecords } = useRecords();
 
   const [loading, setLoading] = useState(false);
+  const [selectedRecords, setSelectedRecords] = useState<Set<string>>(new Set());
 
   // DB creation
   const [showNewDb, setShowNewDb] = useState(false);
@@ -65,6 +67,7 @@ export default function DynamicFieldPage() {
   const loadDb = useCallback(async (db: DynDatabase) => {
     setSelectedDb(db);
     setActiveCell(null);
+    setSelectedRecords(new Set());
     setLoading(true);
     try {
       await Promise.all([loadFields(db.id), loadRecords(db.id)]);
@@ -134,6 +137,20 @@ export default function DynamicFieldPage() {
     await setValue(record, field, payload);
   };
 
+  const handleDeleteSelectedRecords = async () => {
+    if (selectedRecords.size === 0) return;
+    await deleteRecords(Array.from(selectedRecords));
+    setSelectedRecords(new Set());
+  };
+
+  const handleToggleAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedRecords(new Set(records.map(r => r.id)));
+    } else {
+      setSelectedRecords(new Set());
+    }
+  };
+
   return (
     <TooltipProvider>
       {/* Click-outside to clear active cell */}
@@ -194,6 +211,11 @@ export default function DynamicFieldPage() {
                 <span className="text-xs text-muted-foreground">{fields.length} fields · {records.length} records</span>
                 <div className="flex-1" />
                 <Button size="sm" variant="outline" onClick={() => setShowAddField(true)}><Plus size={14} /> Add field</Button>
+                {selectedRecords.size > 0 && (
+                  <Button size="sm" variant="destructive" onClick={handleDeleteSelectedRecords}>
+                    <Trash2 size={14} className="mr-1.5" /> Delete {selectedRecords.size}
+                  </Button>
+                )}
                 <Button size="sm" onClick={handleAddRecord}><Plus size={14} /> Add record</Button>
               </div>
 
@@ -216,7 +238,13 @@ export default function DynamicFieldPage() {
                     </colgroup>
                     <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
                       <tr>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground border-b border-r border-border/40">#</th>
+                        <th className="px-3 py-2 text-center text-xs font-medium text-muted-foreground border-b border-r border-border/40">
+                          <Checkbox 
+                            checked={records.length > 0 && selectedRecords.size === records.length}
+                            onCheckedChange={handleToggleAll}
+                            className="translate-y-[2px]"
+                          />
+                        </th>
                         {fields.map((field, idx) => {
                           const { Icon: DefaultIcon } = getFieldMeta(field.type);
                           const Icon = field.config?.customIcon ? getIconByName(field.config.customIcon) : DefaultIcon;
@@ -284,7 +312,18 @@ export default function DynamicFieldPage() {
                         </tr>
                       ) : records.map(record => (
                         <tr key={record.id} className="border-b hover:bg-muted/30 transition-colors">
-                          <td className="px-3 py-2 text-xs text-muted-foreground border-r">{record.rowNumber}</td>
+                          <td className="px-3 py-2 text-center border-r border-b align-middle">
+                            <Checkbox 
+                              checked={selectedRecords.has(record.id)}
+                              onCheckedChange={(checked) => {
+                                const newSet = new Set(selectedRecords);
+                                if (checked) newSet.add(record.id);
+                                else newSet.delete(record.id);
+                                setSelectedRecords(newSet);
+                              }}
+                              className="translate-y-[2px]"
+                            />
+                          </td>
                           {fields.map(field => {
                             const fv = record.fieldValues.find(v => v.fieldId === field.id);
                             const cellKey = `${record.id}:${field.id}`;
