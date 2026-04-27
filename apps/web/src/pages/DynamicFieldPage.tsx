@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Database, Loader2, ChevronLeft, ChevronRight, Copy, Trash2, Pencil, Smile } from 'lucide-react';
+import { Plus, Database, Loader2, ChevronLeft, ChevronRight, Copy, Trash2, Pencil, Smile, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/context-menu';
 import { CellEditor } from './DynamicField/CellEditors';
 import { AddFieldDrawer } from './DynamicField/AddFieldDrawer';
+import { EditFieldDrawer } from './DynamicField/EditFieldDrawer';
 import { getFieldMeta, ICON_OPTIONS, getIconByName } from './DynamicField/constants';
 import { api } from './DynamicField/api';
 import type { DynDatabase, DynRecord, Field, FieldConfig, FieldType, FieldValuePayload } from './DynamicField/types';
@@ -41,6 +42,9 @@ export default function DynamicFieldPage() {
   const [renameValue, setRenameValue] = useState('');
   const [deletingFieldId, setDeletingFieldId] = useState<string | null>(null);
   const [iconPickerFieldId, setIconPickerFieldId] = useState<string | null>(null);
+
+  // Edit field drawer
+  const [editingField, setEditingField] = useState<Field | null>(null);
 
   useEffect(() => { api.databases.list().then(setDatabases).catch(console.error); }, []);
 
@@ -120,6 +124,12 @@ export default function DynamicFieldPage() {
     const updated = await api.fields.update(iconPickerFieldId, { config: { ...(field.config ?? {}), customIcon: iconName } });
     setFields(prev => prev.map(f => f.id === iconPickerFieldId ? { ...f, config: updated.config } : f));
     setIconPickerFieldId(null);
+  };
+
+  // ── Edit field saved ──────────────────────────────────────────────────────
+  const handleEditFieldSaved = (updated: Field) => {
+    setFields(prev => prev.map(f => f.id === updated.id ? updated : f));
+    setEditingField(null);
   };
 
   // ── Records ───────────────────────────────────────────────────────────────
@@ -253,6 +263,9 @@ export default function DynamicFieldPage() {
                                 </th>
                               </ContextMenuTrigger>
                               <ContextMenuContent>
+                                <ContextMenuItem onClick={() => setEditingField(field)}>
+                                  <Settings2 size={13} className="mr-2" /> Edit field
+                                </ContextMenuItem>
                                 <ContextMenuItem onClick={() => { setRenamingFieldId(field.id); setRenameValue(field.name); }}>
                                   <Pencil size={13} className="mr-2" /> Rename
                                 </ContextMenuItem>
@@ -318,6 +331,14 @@ export default function DynamicFieldPage() {
 
       {/* ── Add Field Drawer ────────────────────────────────────── */}
       <AddFieldDrawer open={showAddField} onClose={() => setShowAddField(false)} onSubmit={handleAddField} />
+
+      {/* ── Edit Field Drawer ───────────────────────────────────── */}
+      <EditFieldDrawer
+        open={!!editingField}
+        field={editingField}
+        onClose={() => setEditingField(null)}
+        onSaved={handleEditFieldSaved}
+      />
 
       {/* ── Delete Field Confirmation ──────────────────────────── */}
       <AlertDialog open={!!deletingFieldId} onOpenChange={open => { if (!open) setDeletingFieldId(null); }}>

@@ -1,4 +1,4 @@
-import type { DynDatabase, DynRecord, Field, FieldOption, FieldValuePayload } from './types';
+import type { DynDatabase, DynRecord, Field, FieldOption, FieldValue, FieldValuePayload } from './types';
 import type { FieldType } from './types';
 
 const BASE = '/api';
@@ -36,7 +36,7 @@ export const api = {
   },
   values: {
     set: (recordId: string, fieldId: string, payload: FieldValuePayload) =>
-      apiFetch(`/records/${recordId}/values/${fieldId}`, { method: 'PUT', body: JSON.stringify(payload) }),
+      apiFetch<FieldValue>(`/records/${recordId}/values/${fieldId}`, { method: 'PUT', body: JSON.stringify(payload) }),
   },
   options: {
     list: (fieldId: string) => apiFetch<FieldOption[]>(`/fields/${fieldId}/options`),
