@@ -3,6 +3,7 @@ import { isAuthenticated } from '@/lib/auth-store';
 
 // Pages
 import LoginPage from './pages/LoginPage';
+import DynamicFieldPage from './pages/DynamicFieldPage';
 import SetupPage from './pages/SetupPage';
 import KanbanView from './pages/KanbanView';
 import TableView from './pages/TableView';
@@ -40,6 +41,10 @@ export const router = createBrowserRouter([
   {
     path: '/setup',
     Component: SetupPage,
+  },
+  {
+    path: '/test',
+    Component: DynamicFieldPage,
   },
 
   // Tenant routes (require auth)

@@ -9,4 +9,9 @@
  * 🟢 You can import this file directly.
  */
 export type * from './models/Test.js'
+export type * from './models/DynDatabase.js'
+export type * from './models/Field.js'
+export type * from './models/FieldOption.js'
+export type * from './models/DynRecord.js'
+export type * from './models/FieldValue.js'
 export type * from './commonInputTypes.js'

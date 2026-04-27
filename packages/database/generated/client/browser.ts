@@ -22,3 +22,28 @@ export * from './enums.js';
  * 
  */
 export type Test = Prisma.TestModel
+/**
+ * Model DynDatabase
+ * 
+ */
+export type DynDatabase = Prisma.DynDatabaseModel
+/**
+ * Model Field
+ * 
+ */
+export type Field = Prisma.FieldModel
+/**
+ * Model FieldOption
+ * 
+ */
+export type FieldOption = Prisma.FieldOptionModel
+/**
+ * Model DynRecord
+ * 
+ */
+export type DynRecord = Prisma.DynRecordModel
+/**
+ * Model FieldValue
+ * 
+ */
+export type FieldValue = Prisma.FieldValueModel

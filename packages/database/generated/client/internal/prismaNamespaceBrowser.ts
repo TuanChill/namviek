@@ -51,7 +51,12 @@ export const AnyNull = runtime.AnyNull
 
 
 export const ModelName = {
-  Test: 'Test'
+  Test: 'Test',
+  DynDatabase: 'DynDatabase',
+  Field: 'Field',
+  FieldOption: 'FieldOption',
+  DynRecord: 'DynRecord',
+  FieldValue: 'FieldValue'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -80,12 +85,87 @@ export const TestScalarFieldEnum = {
 export type TestScalarFieldEnum = (typeof TestScalarFieldEnum)[keyof typeof TestScalarFieldEnum]
 
 
+export const DynDatabaseScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  description: 'description',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type DynDatabaseScalarFieldEnum = (typeof DynDatabaseScalarFieldEnum)[keyof typeof DynDatabaseScalarFieldEnum]
+
+
+export const FieldScalarFieldEnum = {
+  id: 'id',
+  databaseId: 'databaseId',
+  name: 'name',
+  type: 'type',
+  position: 'position',
+  required: 'required',
+  isPrimary: 'isPrimary',
+  config: 'config',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type FieldScalarFieldEnum = (typeof FieldScalarFieldEnum)[keyof typeof FieldScalarFieldEnum]
+
+
+export const FieldOptionScalarFieldEnum = {
+  id: 'id',
+  fieldId: 'fieldId',
+  label: 'label',
+  color: 'color',
+  position: 'position'
+} as const
+
+export type FieldOptionScalarFieldEnum = (typeof FieldOptionScalarFieldEnum)[keyof typeof FieldOptionScalarFieldEnum]
+
+
+export const DynRecordScalarFieldEnum = {
+  id: 'id',
+  databaseId: 'databaseId',
+  rowNumber: 'rowNumber',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  archivedAt: 'archivedAt'
+} as const
+
+export type DynRecordScalarFieldEnum = (typeof DynRecordScalarFieldEnum)[keyof typeof DynRecordScalarFieldEnum]
+
+
+export const FieldValueScalarFieldEnum = {
+  id: 'id',
+  recordId: 'recordId',
+  fieldId: 'fieldId',
+  textValue: 'textValue',
+  numberValue: 'numberValue',
+  selectValue: 'selectValue',
+  multiSelectValue: 'multiSelectValue',
+  dateValue: 'dateValue',
+  personValue: 'personValue',
+  boolValue: 'boolValue',
+  jsonValue: 'jsonValue'
+} as const
+
+export type FieldValueScalarFieldEnum = (typeof FieldValueScalarFieldEnum)[keyof typeof FieldValueScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
 } as const
 
 export type SortOrder = (typeof SortOrder)[keyof typeof SortOrder]
+
+
+export const NullableJsonNullValueInput = {
+  DbNull: 'DbNull',
+  JsonNull: 'JsonNull'
+} as const
+
+export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
 
 
 export const QueryMode = {
@@ -102,4 +182,13 @@ export const NullsOrder = {
 } as const
 
 export type NullsOrder = (typeof NullsOrder)[keyof typeof NullsOrder]
+
+
+export const JsonNullValueFilter = {
+  DbNull: 'DbNull',
+  JsonNull: 'JsonNull',
+  AnyNull: 'AnyNull'
+} as const
+
+export type JsonNullValueFilter = (typeof JsonNullValueFilter)[keyof typeof JsonNullValueFilter]
 

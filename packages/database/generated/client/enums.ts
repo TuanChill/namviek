@@ -9,7 +9,22 @@
 * 🟢 You can import this file directly.
 */
 
+export const FieldType = {
+  text: 'text',
+  number: 'number',
+  select: 'select',
+  multi_select: 'multi_select',
+  date: 'date',
+  person: 'person',
+  checkbox: 'checkbox',
+  file: 'file',
+  url: 'url',
+  email: 'email',
+  id: 'id',
+  created_time: 'created_time',
+  created_by: 'created_by',
+  updated_time: 'updated_time',
+  updated_by: 'updated_by'
+} as const
 
-
-// This file is empty because there are no enums in the schema.
-export {}
+export type FieldType = (typeof FieldType)[keyof typeof FieldType]

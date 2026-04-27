@@ -1,4 +1,8 @@
 import { prisma } from "./client.js";
+import type { Prisma } from "./generated/client/client.js";
+import type { FieldType } from "./generated/client/client.js";
+
+// ─── Legacy test queries ───────────────────────────────────────────────────────
 
 /**
  * Get all tests from the database
@@ -31,5 +35,240 @@ export async function getTestById(id: number) {
         where: {
             id,
         },
+    });
+}
+
+// ─── Dynamic Fields System queries ────────────────────────────────────────────
+
+/** List all databases */
+export async function getDynDatabases() {
+    return await prisma.dynDatabase.findMany({
+        orderBy: { createdAt: "desc" },
+        include: { _count: { select: { fields: true, records: true } } },
+    });
+}
+
+/** Create a new database */
+export async function createDynDatabase(name: string, description?: string) {
+    return await prisma.dynDatabase.create({
+        data: { name, ...(description !== undefined && { description }) },
+    });
+}
+
+/** Get a single database by ID */
+export async function getDynDatabase(id: string) {
+    return await prisma.dynDatabase.findUnique({
+        where: { id },
+    });
+}
+
+/** List fields for a database, ordered by position */
+export async function getFields(databaseId: string) {
+    return await prisma.field.findMany({
+        where: { databaseId },
+        orderBy: { position: "asc" },
+        include: { options: { orderBy: { position: "asc" } } },
+    });
+}
+
+/** Create a field in a database */
+export async function createField(
+    databaseId: string,
+    name: string,
+    type: FieldType,
+    options?: { isPrimary?: boolean; required?: boolean; config?: object }
+) {
+    const maxPos = await prisma.field.aggregate({
+        where: { databaseId },
+        _max: { position: true },
+    });
+    const position = (maxPos._max.position ?? -1) + 1;
+
+    return await prisma.field.create({
+        data: {
+            databaseId,
+            name,
+            type,
+            position,
+            isPrimary: options?.isPrimary ?? false,
+            required: options?.required ?? false,
+            config: options?.config ?? undefined,
+        },
+    });
+}
+
+/** List records for a database with their field values */
+export async function getDynRecords(databaseId: string) {
+    return await prisma.dynRecord.findMany({
+        where: { databaseId, archivedAt: null },
+        orderBy: { rowNumber: "asc" },
+        include: {
+            fieldValues: {
+                include: { field: true },
+            },
+        },
+    });
+}
+
+/** Create an empty record in a database */
+export async function createDynRecord(databaseId: string) {
+    const maxRow = await prisma.dynRecord.aggregate({
+        where: { databaseId },
+        _max: { rowNumber: true },
+    });
+    const rowNumber = (maxRow._max.rowNumber ?? 0) + 1;
+
+    return await prisma.dynRecord.create({
+        data: { databaseId, rowNumber },
+        include: { fieldValues: true },
+    });
+}
+
+/** Upsert a single field value */
+export async function setFieldValue(
+    recordId: string,
+    fieldId: string,
+    payload: {
+        textValue?: string | null;
+        numberValue?: number | string | null;
+        selectValue?: string | null;
+        multiSelectValue?: string[];
+        dateValue?: Date | string | null;
+        boolValue?: boolean | null;
+        jsonValue?: object | null;
+    }
+) {
+    const cleaned: typeof payload = { ...payload };
+
+    // Convert date string to Date object (HTML inputs return "YYYY-MM-DD" or "YYYY-MM-DDTHH:mm")
+    if (cleaned.dateValue && typeof cleaned.dateValue === "string") {
+        cleaned.dateValue = new Date(cleaned.dateValue);
+    }
+
+    // Coerce numberValue from string to number if needed
+    if (cleaned.numberValue !== null && cleaned.numberValue !== undefined && typeof cleaned.numberValue === "string") {
+        const n = parseFloat(cleaned.numberValue);
+        cleaned.numberValue = isNaN(n) ? null : n;
+    }
+
+    return await prisma.fieldValue.upsert({
+        where: { recordId_fieldId: { recordId, fieldId } },
+        create: { recordId, fieldId, ...cleaned },
+        update: cleaned,
+    });
+}
+
+
+/** Get all options for a field */
+export async function getFieldOptions(fieldId: string) {
+    return await prisma.fieldOption.findMany({
+        where: { fieldId },
+        orderBy: { position: "asc" },
+    });
+}
+
+/** Add an option to a select/multi_select field */
+export async function createFieldOption(fieldId: string, label: string, color?: string) {
+    const agg = await prisma.fieldOption.aggregate({
+        where: { fieldId },
+        _max: { position: true },
+    });
+    const position = (agg._max.position ?? -1) + 1;
+    return await prisma.fieldOption.create({
+        data: { fieldId, label, color: color ?? null, position },
+    });
+}
+
+/** Delete a field option */
+export async function deleteFieldOption(optionId: string) {
+    return await prisma.fieldOption.delete({ where: { id: optionId } });
+}
+
+/** Update a field's config JSON */
+export async function updateFieldConfig(fieldId: string, config: Prisma.InputJsonValue) {
+    return await prisma.field.update({
+        where: { id: fieldId },
+        data: { config },
+    });
+}
+
+/** Delete a field and all its values */
+export async function deleteField(fieldId: string) {
+    return await prisma.field.delete({ where: { id: fieldId } });
+}
+
+/** Update a field's name and/or config */
+export async function updateField(
+    fieldId: string,
+    data: { name?: string; config?: Prisma.InputJsonValue }
+) {
+    return await prisma.field.update({
+        where: { id: fieldId },
+        data,
+        include: { options: { orderBy: { position: "asc" } } },
+    });
+}
+
+/** Swap a field's position with its left or right neighbour */
+export async function reorderField(fieldId: string, direction: "left" | "right") {
+    const field = await prisma.field.findUnique({ where: { id: fieldId } });
+    if (!field) throw new Error("Field not found");
+
+    const neighbour = await prisma.field.findFirst({
+        where: {
+            databaseId: field.databaseId,
+            position: direction === "left" ? { lt: field.position } : { gt: field.position },
+        },
+        orderBy: { position: direction === "left" ? "desc" : "asc" },
+    });
+    if (!neighbour) return null; // already at edge
+
+    await prisma.$transaction([
+        prisma.field.update({ where: { id: field.id },     data: { position: neighbour.position } }),
+        prisma.field.update({ where: { id: neighbour.id }, data: { position: field.position } }),
+    ]);
+    return true;
+}
+
+/** Duplicate a field (including its options) and insert it right after the original */
+export async function duplicateField(fieldId: string) {
+    const src = await prisma.field.findUnique({
+        where: { id: fieldId },
+        include: { options: { orderBy: { position: "asc" } } },
+    });
+    if (!src) throw new Error("Field not found");
+
+    // Shift positions of all fields after the source
+    await prisma.field.updateMany({
+        where: { databaseId: src.databaseId, position: { gt: src.position } },
+        data: { position: { increment: 1 } },
+    });
+
+    const copy = await prisma.field.create({
+        data: {
+            databaseId: src.databaseId,
+            name: `${src.name} (copy)`,
+            type: src.type,
+            position: src.position + 1,
+            required: src.required,
+            isPrimary: false,
+            config: src.config ?? undefined,
+        },
+    });
+
+    if (src.options.length > 0) {
+        await prisma.fieldOption.createMany({
+            data: src.options.map(o => ({
+                fieldId: copy.id,
+                label: o.label,
+                color: o.color,
+                position: o.position,
+            })),
+        });
+    }
+
+    return await prisma.field.findUnique({
+        where: { id: copy.id },
+        include: { options: { orderBy: { position: "asc" } } },
     });
 }
