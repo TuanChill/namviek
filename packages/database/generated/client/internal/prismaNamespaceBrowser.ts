@@ -52,6 +52,7 @@ export const AnyNull = runtime.AnyNull
 
 export const ModelName = {
   Test: 'Test',
+  DynUser: 'DynUser',
   DynDatabase: 'DynDatabase',
   Field: 'Field',
   FieldOption: 'FieldOption',
@@ -83,6 +84,18 @@ export const TestScalarFieldEnum = {
 } as const
 
 export type TestScalarFieldEnum = (typeof TestScalarFieldEnum)[keyof typeof TestScalarFieldEnum]
+
+
+export const DynUserScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  email: 'email',
+  avatarUrl: 'avatarUrl',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type DynUserScalarFieldEnum = (typeof DynUserScalarFieldEnum)[keyof typeof DynUserScalarFieldEnum]
 
 
 export const DynDatabaseScalarFieldEnum = {

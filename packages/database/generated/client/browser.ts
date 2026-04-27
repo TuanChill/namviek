@@ -23,6 +23,11 @@ export * from './enums.js';
  */
 export type Test = Prisma.TestModel
 /**
+ * Model DynUser
+ * 
+ */
+export type DynUser = Prisma.DynUserModel
+/**
  * Model DynDatabase
  * 
  */

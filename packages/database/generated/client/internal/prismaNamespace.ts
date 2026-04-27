@@ -385,6 +385,7 @@ type FieldRefInputType<Model, FieldType> = Model extends never ? never : FieldRe
 
 export const ModelName = {
   Test: 'Test',
+  DynUser: 'DynUser',
   DynDatabase: 'DynDatabase',
   Field: 'Field',
   FieldOption: 'FieldOption',
@@ -405,7 +406,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "test" | "dynDatabase" | "field" | "fieldOption" | "dynRecord" | "fieldValue"
+    modelProps: "test" | "dynUser" | "dynDatabase" | "field" | "fieldOption" | "dynRecord" | "fieldValue"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -480,6 +481,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.TestCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.TestCountAggregateOutputType> | number
+        }
+      }
+    }
+    DynUser: {
+      payload: Prisma.$DynUserPayload<ExtArgs>
+      fields: Prisma.DynUserFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.DynUserFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DynUserPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.DynUserFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DynUserPayload>
+        }
+        findFirst: {
+          args: Prisma.DynUserFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DynUserPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.DynUserFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DynUserPayload>
+        }
+        findMany: {
+          args: Prisma.DynUserFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DynUserPayload>[]
+        }
+        create: {
+          args: Prisma.DynUserCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DynUserPayload>
+        }
+        createMany: {
+          args: Prisma.DynUserCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.DynUserCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DynUserPayload>[]
+        }
+        delete: {
+          args: Prisma.DynUserDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DynUserPayload>
+        }
+        update: {
+          args: Prisma.DynUserUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DynUserPayload>
+        }
+        deleteMany: {
+          args: Prisma.DynUserDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.DynUserUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.DynUserUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DynUserPayload>[]
+        }
+        upsert: {
+          args: Prisma.DynUserUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DynUserPayload>
+        }
+        aggregate: {
+          args: Prisma.DynUserAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateDynUser>
+        }
+        groupBy: {
+          args: Prisma.DynUserGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.DynUserGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.DynUserCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.DynUserCountAggregateOutputType> | number
         }
       }
     }
@@ -902,6 +977,18 @@ export const TestScalarFieldEnum = {
 export type TestScalarFieldEnum = (typeof TestScalarFieldEnum)[keyof typeof TestScalarFieldEnum]
 
 
+export const DynUserScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  email: 'email',
+  avatarUrl: 'avatarUrl',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type DynUserScalarFieldEnum = (typeof DynUserScalarFieldEnum)[keyof typeof DynUserScalarFieldEnum]
+
+
 export const DynDatabaseScalarFieldEnum = {
   id: 'id',
   name: 'name',
@@ -1200,6 +1287,7 @@ export type PrismaClientOptions = ({
 }
 export type GlobalOmitConfig = {
   test?: Prisma.TestOmit
+  dynUser?: Prisma.DynUserOmit
   dynDatabase?: Prisma.DynDatabaseOmit
   field?: Prisma.FieldOmit
   fieldOption?: Prisma.FieldOptionOmit

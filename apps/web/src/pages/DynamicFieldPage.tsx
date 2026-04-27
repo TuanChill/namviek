@@ -1,160 +1,149 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Plus, Database, Loader2, ChevronLeft, ChevronRight, Copy, Trash2, Pencil, Smile, Settings2 } from 'lucide-react';
+import { useState, useCallback, useEffect } from 'react';
+import {
+  Plus, Database, Loader2,
+  ChevronLeft, ChevronRight, Copy, Trash2, Pencil, Smile, Settings2
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle
+} from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuTrigger,
+  ContextMenu, ContextMenuContent, ContextMenuItem,
+  ContextMenuSeparator, ContextMenuTrigger,
 } from '@/components/ui/context-menu';
+
 import { CellEditor } from './DynamicField/CellEditors';
 import { AddFieldDrawer } from './DynamicField/AddFieldDrawer';
 import { EditFieldDrawer } from './DynamicField/EditFieldDrawer';
 import { getFieldMeta, ICON_OPTIONS, getIconByName } from './DynamicField/constants';
-import { api } from './DynamicField/api';
-import type { DynDatabase, DynRecord, Field, FieldConfig, FieldType, FieldValuePayload } from './DynamicField/types';
 
-const COL_WIDTH = 180; // px — fixed column width
+import { useDatabase } from './DynamicField/hooks/useDatabase';
+import { useFields } from './DynamicField/hooks/useFields';
+import { useRecords } from './DynamicField/hooks/useRecords';
+
+import type { DynDatabase, Field, FieldConfig, FieldType, FieldValuePayload } from './DynamicField/types';
+
+const COL_WIDTH = 180;
 
 export default function DynamicFieldPage() {
-  const [databases, setDatabases] = useState<DynDatabase[]>([]);
-  const [selectedDb, setSelectedDb] = useState<DynDatabase | null>(null);
-  const [fields, setFields] = useState<Field[]>([]);
-  const [records, setRecords] = useState<DynRecord[]>([]);
+  const { databases, selectedDb, setSelectedDb, createDatabase } = useDatabase();
+  const { fields, loadFields, addField, renameField, deleteField, moveField, duplicateField, changeIcon, updateField } = useFields();
+  const { records, loadRecords, addRecord, setValue, removeFieldValues, reloadRecords } = useRecords();
+
   const [loading, setLoading] = useState(false);
 
   // DB creation
   const [showNewDb, setShowNewDb] = useState(false);
   const [newDbName, setNewDbName] = useState('');
 
-  // Add field drawer
+  // Drawers / dialogs
   const [showAddField, setShowAddField] = useState(false);
-
-  // Column context-menu actions
+  const [editingField, setEditingField] = useState<Field | null>(null);
   const [renamingFieldId, setRenamingFieldId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [deletingFieldId, setDeletingFieldId] = useState<string | null>(null);
   const [iconPickerFieldId, setIconPickerFieldId] = useState<string | null>(null);
 
-  // Edit field drawer
-  const [editingField, setEditingField] = useState<Field | null>(null);
+  // ── Active cell state ─────────────────────────────────────────────────────
+  const [activeCell, setActiveCell] = useState<{ recordId: string; fieldId: string } | null>(null);
 
-  useEffect(() => { api.databases.list().then(setDatabases).catch(console.error); }, []);
+  // Deactivate on ESC globally
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setActiveCell(null); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, []);
 
+  // ── Load DB ───────────────────────────────────────────────────────────────
   const loadDb = useCallback(async (db: DynDatabase) => {
     setSelectedDb(db);
+    setActiveCell(null);
     setLoading(true);
     try {
-      const [f, r] = await Promise.all([api.fields.list(db.id), api.records.list(db.id)]);
-      setFields(f);
-      setRecords(r);
+      await Promise.all([loadFields(db.id), loadRecords(db.id)]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [setSelectedDb, loadFields, loadRecords]);
 
-  // ── Database ──────────────────────────────────────────────────────────────
+  // ── Handlers ──────────────────────────────────────────────────────────────
   const handleCreateDb = async () => {
     if (!newDbName.trim()) return;
-    const db = await api.databases.create(newDbName.trim());
-    const list = await api.databases.list();
-    setDatabases(list);
+    const db = await createDatabase(newDbName.trim());
     setNewDbName('');
     setShowNewDb(false);
     await loadDb(db);
   };
 
-  // ── Field creation ────────────────────────────────────────────────────────
   const handleAddField = async (name: string, type: FieldType, config: FieldConfig, pendingOptions: { label: string; color: string }[]) => {
     if (!selectedDb) return;
-    const field = await api.fields.create(selectedDb.id, name, type, config);
-    const opts = await Promise.all(pendingOptions.map(o => api.options.create(field.id, o.label, o.color)));
-    setFields(prev => [...prev, { ...field, options: opts, config: config as Field['config'] }]);
+    await addField(selectedDb.id, name, type, config, pendingOptions);
+    // If id-type, reload records so backfilled values show up
+    if (type === 'id') await reloadRecords(selectedDb.id);
   };
 
-  // ── Field rename ──────────────────────────────────────────────────────────
   const commitRename = async () => {
     if (!renamingFieldId || !renameValue.trim()) { setRenamingFieldId(null); return; }
-    const updated = await api.fields.update(renamingFieldId, { name: renameValue.trim() });
-    setFields(prev => prev.map(f => f.id === renamingFieldId ? { ...f, name: updated.name } : f));
+    await renameField(renamingFieldId, renameValue.trim());
     setRenamingFieldId(null);
   };
 
-  // ── Field delete ──────────────────────────────────────────────────────────
   const handleDeleteField = async () => {
     if (!deletingFieldId) return;
-    await api.fields.delete(deletingFieldId);
-    setFields(prev => prev.filter(f => f.id !== deletingFieldId));
-    setRecords(prev => prev.map(r => ({ ...r, fieldValues: r.fieldValues.filter(fv => fv.fieldId !== deletingFieldId) })));
+    await deleteField(deletingFieldId);
+    removeFieldValues(deletingFieldId);
     setDeletingFieldId(null);
   };
 
-  // ── Field move ────────────────────────────────────────────────────────────
   const handleMoveField = async (fieldId: string, direction: 'left' | 'right') => {
-    await api.fields.move(fieldId, direction);
-    // Re-fetch to get correct order from DB
-    if (selectedDb) {
-      const f = await api.fields.list(selectedDb.id);
-      setFields(f);
-    }
+    if (!selectedDb) return;
+    await moveField(fieldId, direction, selectedDb.id);
   };
 
-  // ── Field duplicate ───────────────────────────────────────────────────────
   const handleDuplicate = async (fieldId: string) => {
-    const copy = await api.fields.duplicate(fieldId);
-    if (selectedDb) {
-      const f = await api.fields.list(selectedDb.id);
-      setFields(f);
-      void copy;
-    }
+    if (!selectedDb) return;
+    await duplicateField(fieldId, selectedDb.id);
   };
 
-  // ── Icon change ───────────────────────────────────────────────────────────
   const handleIconChange = async (iconName: string) => {
     if (!iconPickerFieldId) return;
     const field = fields.find(f => f.id === iconPickerFieldId);
-    if (!field) return;
-    const updated = await api.fields.update(iconPickerFieldId, { config: { ...(field.config ?? {}), customIcon: iconName } });
-    setFields(prev => prev.map(f => f.id === iconPickerFieldId ? { ...f, config: updated.config } : f));
+    await changeIcon(iconPickerFieldId, iconName, field?.config);
     setIconPickerFieldId(null);
   };
 
-  // ── Edit field saved ──────────────────────────────────────────────────────
   const handleEditFieldSaved = (updated: Field) => {
-    setFields(prev => prev.map(f => f.id === updated.id ? updated : f));
+    updateField(updated);
     setEditingField(null);
   };
 
-  // ── Records ───────────────────────────────────────────────────────────────
   const handleAddRecord = async () => {
     if (!selectedDb) return;
-    const record = await api.records.create(selectedDb.id);
-    setRecords(prev => [...prev, { ...record, fieldValues: [] }]);
+    const idFields = fields.filter(f => f.type === 'id');
+    await addRecord(selectedDb.id, idFields);
   };
 
-  const handleSetValue = async (record: DynRecord, field: Field, payload: FieldValuePayload) => {
-    const saved = await api.values.set(record.id, field.id, payload);
-    setRecords(prev => prev.map(r => {
-      if (r.id !== record.id) return r;
-      const exists = r.fieldValues.find(fv => fv.fieldId === field.id);
-      if (exists) return { ...r, fieldValues: r.fieldValues.map(fv => fv.fieldId === field.id ? { ...fv, ...saved } : fv) };
-      return { ...r, fieldValues: [...r.fieldValues, { ...saved, field }] };
-    }));
+  const handleSetValue = async (record: import('./DynamicField/types').DynRecord, field: Field, payload: FieldValuePayload) => {
+    await setValue(record, field, payload);
   };
 
   return (
     <TooltipProvider>
-      <div className="flex h-screen bg-background text-foreground overflow-hidden">
+      {/* Click-outside to clear active cell */}
+      <div
+        className="flex h-screen bg-background text-foreground overflow-hidden"
+        onClick={() => setActiveCell(null)}
+      >
 
         {/* ── Sidebar ───────────────────────────────────────────── */}
-        <aside className="w-56 flex flex-col border-r shrink-0">
+        <aside className="w-56 flex flex-col border-r shrink-0" onClick={e => e.stopPropagation()}>
           <div className="px-3 py-3 border-b flex items-center gap-2">
             <Database size={15} className="text-muted-foreground" />
             <span className="text-sm font-semibold">Databases</span>
@@ -199,7 +188,7 @@ export default function DynamicFieldPage() {
           ) : (
             <>
               {/* Toolbar */}
-              <div className="px-5 py-3 border-b flex items-center gap-3 shrink-0">
+              <div className="px-5 py-3 border-b flex items-center gap-3 shrink-0" onClick={e => e.stopPropagation()}>
                 <span className="font-semibold">{selectedDb.name}</span>
                 <Separator orientation="vertical" className="h-4" />
                 <span className="text-xs text-muted-foreground">{fields.length} fields · {records.length} records</span>
@@ -227,25 +216,19 @@ export default function DynamicFieldPage() {
                     </colgroup>
                     <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
                       <tr>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground border-b border-r">#</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground border-b border-r border-border/40">#</th>
                         {fields.map((field, idx) => {
                           const { Icon: DefaultIcon } = getFieldMeta(field.type);
                           const Icon = field.config?.customIcon ? getIconByName(field.config.customIcon) : DefaultIcon;
-
                           return (
                             <ContextMenu key={field.id}>
                               <ContextMenuTrigger asChild>
-                                <th className="px-3 py-2 text-left border-b border-r cursor-context-menu select-none"
-                                  style={{ width: COL_WIDTH }}>
+                                <th className="px-3 py-2 text-left border-b border-r border-border/40 cursor-context-menu select-none" style={{ width: COL_WIDTH }}>
                                   {renamingFieldId === field.id ? (
-                                    <Input
-                                      autoFocus
-                                      value={renameValue}
-                                      onChange={e => setRenameValue(e.target.value)}
+                                    <Input autoFocus value={renameValue} onChange={e => setRenameValue(e.target.value)}
                                       onBlur={commitRename}
                                       onKeyDown={e => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') setRenamingFieldId(null); }}
-                                      className="h-6 text-xs px-1 font-normal"
-                                    />
+                                      className="h-6 text-xs px-1 font-normal" />
                                   ) : (
                                     <Tooltip>
                                       <TooltipTrigger asChild>
@@ -283,10 +266,7 @@ export default function DynamicFieldPage() {
                                 <ContextMenuItem onClick={() => handleDuplicate(field.id)}>
                                   <Copy size={13} className="mr-2" /> Duplicate field
                                 </ContextMenuItem>
-                                <ContextMenuItem
-                                  className="text-destructive focus:text-destructive"
-                                  onClick={() => setDeletingFieldId(field.id)}
-                                >
+                                <ContextMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeletingFieldId(field.id)}>
                                   <Trash2 size={13} className="mr-2" /> Delete field
                                 </ContextMenuItem>
                               </ContextMenuContent>
@@ -307,10 +287,29 @@ export default function DynamicFieldPage() {
                           <td className="px-3 py-2 text-xs text-muted-foreground border-r">{record.rowNumber}</td>
                           {fields.map(field => {
                             const fv = record.fieldValues.find(v => v.fieldId === field.id);
+                            const cellKey = `${record.id}:${field.id}`;
+                            const isActive = activeCell?.recordId === record.id && activeCell?.fieldId === field.id;
                             return (
-                              <td key={field.id} className="px-3 py-2 border-r align-middle" style={{ width: COL_WIDTH, maxWidth: COL_WIDTH, overflow: 'hidden' }}>
-                                <CellEditor field={field} value={fv} record={record}
-                                  onSave={payload => handleSetValue(record, field, payload)} />
+                              <td
+                                key={field.id}
+                                className={`px-3 py-2 border-r border-b align-middle transition-colors border-l border-t ${
+                                  isActive
+                                    ? 'border-l-primary border-t-primary border-r-primary border-b-primary'
+                                    : 'border-l-transparent border-t-transparent'
+                                }`}
+                                style={{ width: COL_WIDTH, maxWidth: COL_WIDTH, overflow: 'hidden' }}
+                                onClick={e => { e.stopPropagation(); setActiveCell({ recordId: record.id, fieldId: field.id }); }}
+                              >
+                                <CellEditor
+                                  key={cellKey}
+                                  field={field}
+                                  value={fv}
+                                  record={record}
+                                  isActive={isActive}
+                                  onActivate={() => setActiveCell({ recordId: record.id, fieldId: field.id })}
+                                  onDeactivate={() => setActiveCell(null)}
+                                  onSave={payload => handleSetValue(record, field, payload)}
+                                />
                               </td>
                             );
                           })}
@@ -329,10 +328,9 @@ export default function DynamicFieldPage() {
         </div>
       </div>
 
-      {/* ── Add Field Drawer ────────────────────────────────────── */}
+      {/* ── Drawers & Dialogs ─────────────────────────────────── */}
       <AddFieldDrawer open={showAddField} onClose={() => setShowAddField(false)} onSubmit={handleAddField} />
 
-      {/* ── Edit Field Drawer ───────────────────────────────────── */}
       <EditFieldDrawer
         open={!!editingField}
         field={editingField}
@@ -340,13 +338,12 @@ export default function DynamicFieldPage() {
         onSaved={handleEditFieldSaved}
       />
 
-      {/* ── Delete Field Confirmation ──────────────────────────── */}
       <AlertDialog open={!!deletingFieldId} onOpenChange={open => { if (!open) setDeletingFieldId(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete field?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the field <strong>{fields.find(f => f.id === deletingFieldId)?.name}</strong> and all its values across every record. This cannot be undone.
+              This will permanently delete <strong>{fields.find(f => f.id === deletingFieldId)?.name}</strong> and all its values. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -358,12 +355,9 @@ export default function DynamicFieldPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* ── Icon Picker Dialog ─────────────────────────────────── */}
       <Dialog open={!!iconPickerFieldId} onOpenChange={open => { if (!open) setIconPickerFieldId(null); }}>
         <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Change icon</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Change icon</DialogTitle></DialogHeader>
           <div className="grid grid-cols-6 gap-2 pt-2">
             {ICON_OPTIONS.map(({ name, Icon }) => (
               <button key={name} onClick={() => handleIconChange(name)}
@@ -375,7 +369,6 @@ export default function DynamicFieldPage() {
           </div>
         </DialogContent>
       </Dialog>
-
     </TooltipProvider>
   );
 }

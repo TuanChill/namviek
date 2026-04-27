@@ -2,6 +2,7 @@ import { prisma } from "./client.js";
 import type { Prisma } from "./generated/client/client.js";
 import type { FieldType } from "./generated/client/client.js";
 
+
 // ─── Legacy test queries ───────────────────────────────────────────────────────
 
 /**
@@ -134,6 +135,7 @@ export async function setFieldValue(
         selectValue?: string | null;
         multiSelectValue?: string[];
         dateValue?: Date | string | null;
+        personValue?: string[];
         boolValue?: boolean | null;
         jsonValue?: object | null;
     }
@@ -271,4 +273,69 @@ export async function duplicateField(fieldId: string) {
         where: { id: copy.id },
         include: { options: { orderBy: { position: "asc" } } },
     });
+}
+
+// ─── DynUser queries ───────────────────────────────────────────────────────────
+
+/** List all users (for person field picker) */
+export async function getUsers() {
+    return await prisma.dynUser.findMany({
+        orderBy: { name: "asc" },
+        select: { id: true, name: true, email: true, avatarUrl: true },
+    });
+}
+
+/** Search users by name or email */
+export async function searchUsers(q: string) {
+    return await prisma.dynUser.findMany({
+        where: {
+            OR: [
+                { name: { contains: q, mode: "insensitive" } },
+                { email: { contains: q, mode: "insensitive" } },
+            ],
+        },
+        orderBy: { name: "asc" },
+        take: 20,
+        select: { id: true, name: true, email: true, avatarUrl: true },
+    });
+}
+
+/** Seed a demo user (idempotent — skips if email exists) */
+export async function upsertDynUser(name: string, email: string, avatarUrl?: string) {
+    return await prisma.dynUser.upsert({
+        where: { email },
+        create: { name, email, avatarUrl },
+        update: { name, avatarUrl },
+    });
+}
+
+/**
+ * Backfill id-type field values for all existing records that don't yet have
+ * a value for this field. Sets textValue = String(rowNumber).
+ */
+export async function backfillIdField(fieldId: string, databaseId: string) {
+    const records = await prisma.dynRecord.findMany({
+        where: { databaseId },
+        select: { id: true, rowNumber: true },
+    });
+
+    const existing = await prisma.fieldValue.findMany({
+        where: { fieldId, recordId: { in: records.map(r => r.id) } },
+        select: { recordId: true },
+    });
+    const existingSet = new Set(existing.map(e => e.recordId));
+
+    const toCreate = records
+        .filter(r => !existingSet.has(r.id))
+        .map(r => ({
+            id: crypto.randomUUID(),
+            recordId: r.id,
+            fieldId,
+            textValue: String(r.rowNumber),
+        }));
+
+    if (toCreate.length > 0) {
+        await prisma.fieldValue.createMany({ data: toCreate });
+    }
+    return toCreate.length;
 }

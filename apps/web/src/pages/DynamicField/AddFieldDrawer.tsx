@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, X, Palette } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,8 @@ import {
 } from '@/components/ui/select';
 import { OptionChip } from './CellEditors';
 import { FIELD_TYPES, OPTION_COLORS, DATE_FORMATS, NUMBER_FORMATS } from './constants';
-import type { FieldType, FieldConfig, FieldOption } from './types';
+import { api } from './api';
+import type { FieldType, FieldConfig, DynUser } from './types';
 
 interface PendingOption { label: string; color: string; }
 
@@ -29,10 +30,19 @@ export function AddFieldDrawer({ open, onClose, onSubmit }: Props) {
   const [name, setName] = useState('');
   const [type, setType] = useState<FieldType>('text');
   const [config, setConfig] = useState<FieldConfig>({});
-  const [options, setOptions] = useState<PendingOption[]>([]);
+  const [options, setOptions] = useState<{ label: string; color: string }[]>([]);
   const [optLabel, setOptLabel] = useState('');
   const [optColor, setOptColor] = useState(OPTION_COLORS[0]);
   const [saving, setSaving] = useState(false);
+  const [allUsers, setAllUsers] = useState<DynUser[]>([]);
+  const [restrictUsers, setRestrictUsers] = useState(false);
+
+  // Load users lazily when person type is selected
+  useEffect(() => {
+    if (type === 'person' && allUsers.length === 0) {
+      api.users.list().then(setAllUsers).catch(console.error);
+    }
+  }, [type]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const patch = (partial: Partial<FieldConfig>) => setConfig(c => ({ ...c, ...partial }));
 
@@ -43,7 +53,14 @@ export function AddFieldDrawer({ open, onClose, onSubmit }: Props) {
     setOptColor(OPTION_COLORS[options.length % OPTION_COLORS.length]);
   };
 
-  const reset = () => { setName(''); setType('text'); setConfig({}); setOptions([]); setOptLabel(''); };
+  const reset = () => {
+    setName('');
+    setType('text');
+    setConfig({});
+    setOptions([]);
+    setOptLabel('');
+    setRestrictUsers(false);
+  };
 
   const handleSubmit = async () => {
     if (!name.trim()) return;
@@ -226,7 +243,61 @@ export function AddFieldDrawer({ open, onClose, onSubmit }: Props) {
               <Switch checked={config.richText ?? false} onCheckedChange={v => patch({ richText: v })} />
             </div>
           )}
+
+          {/* Person: allow multiple + restrict to specific users */}
+          {type === 'person' && (
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="font-normal">Allow multiple people</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">Let a cell hold more than one person</p>
+                </div>
+                <Switch checked={config.allowMultiple ?? false} onCheckedChange={v => patch({ allowMultiple: v })} />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="font-normal">Restrict to specific people</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">Only show selected members in picker</p>
+                </div>
+                <Switch
+                  checked={restrictUsers}
+                  onCheckedChange={v => {
+                    setRestrictUsers(v);
+                    patch({ allowedUserIds: v ? (config.allowedUserIds ?? []) : undefined });
+                  }}
+                />
+              </div>
+
+              {restrictUsers && (
+                <div className="flex flex-col gap-1 border rounded-md p-2 max-h-40 overflow-y-auto">
+                  {allUsers.length === 0
+                    ? <p className="text-xs text-muted-foreground text-center py-2">Loading…</p>
+                    : allUsers.map(u => {
+                        const selected = (config.allowedUserIds ?? []).includes(u.id);
+                        return (
+                          <label key={u.id} className="flex items-center gap-2 py-1 cursor-pointer hover:bg-accent rounded px-1">
+                            <input
+                              type="checkbox"
+                              className="accent-primary"
+                              checked={selected}
+                              onChange={() => {
+                                const prev = config.allowedUserIds ?? [];
+                                patch({ allowedUserIds: selected ? prev.filter(id => id !== u.id) : [...prev, u.id] });
+                              }}
+                            />
+                            <img src={u.avatarUrl ?? undefined} alt={u.name} className="w-5 h-5 rounded-full object-cover" />
+                            <span className="text-xs">{u.name}</span>
+                          </label>
+                        );
+                      })
+                  }
+                </div>
+              )}
+            </div>
+          )}
         </div>
+
 
         <div className="px-5 py-4 border-t flex gap-2">
           <Button onClick={handleSubmit} disabled={saving || !name.trim()} className="flex-1">

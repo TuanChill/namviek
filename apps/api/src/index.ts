@@ -19,8 +19,13 @@ import {
   updateField,
   reorderField,
   duplicateField,
+  getUsers,
+  searchUsers,
+  upsertDynUser,
+  backfillIdField,
 } from '@local/database'
 import type { FieldType } from '@local/database'
+
 
 const app = new Hono()
 
@@ -238,9 +243,51 @@ app.post('/api/fields/:fieldId/duplicate', async (c) => {
   }
 })
 
+// POST /api/fields/:fieldId/backfill — backfill id-type field for existing records
+app.post('/api/fields/:fieldId/backfill', async (c) => {
+  try {
+    const body = await c.req.json()
+    const count = await backfillIdField(c.req.param('fieldId'), body.databaseId)
+    return c.json({ backfilled: count })
+  } catch (error) {
+    console.error(error)
+    return c.json({ error: 'Failed to backfill field' }, 500)
+  }
+})
+
+// ─── Users routes ──────────────────────────────────────────────────────────────
+
+// GET /api/users?q= — list or search users
+app.get('/api/users', async (c) => {
+  try {
+    const q = c.req.query('q')?.trim()
+    const users = q ? await searchUsers(q) : await getUsers()
+    return c.json(users)
+  } catch (error) {
+    console.error(error)
+    return c.json({ error: 'Failed to fetch users' }, 500)
+  }
+})
+
+// POST /api/users — create/upsert a user (useful for seeding)
+app.post('/api/users', async (c) => {
+  try {
+    const body = await c.req.json()
+    if (!body.name?.trim() || !body.email?.trim()) {
+      return c.json({ error: 'name and email are required' }, 400)
+    }
+    const user = await upsertDynUser(body.name.trim(), body.email.trim(), body.avatarUrl)
+    return c.json(user, 201)
+  } catch (error) {
+    console.error(error)
+    return c.json({ error: 'Failed to create user' }, 500)
+  }
+})
+
 serve({
   fetch: app.fetch,
   port: Number(process.env.PORT) || 4001
 }, (info) => {
   console.log(`Server is running on http://localhost:${info.port}`)
 })
+

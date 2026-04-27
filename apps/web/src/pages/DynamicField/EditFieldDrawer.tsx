@@ -24,7 +24,7 @@ import {
   getIconByName,
 } from './constants';
 import { api } from './api';
-import type { Field, FieldConfig, FieldOption } from './types';
+import type { Field, FieldConfig, FieldOption, DynUser } from './types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -59,6 +59,7 @@ export function EditFieldDrawer({ open, field, onClose, onSaved }: Props) {
   const [optColor, setOptColor] = useState(OPTION_COLORS[0]);
 
   const [saving, setSaving] = useState(false);
+  const [allUsers, setAllUsers] = useState<DynUser[]>([]);
 
   // ── Initialise form when field changes ──────────────────────────────────────
   useEffect(() => {
@@ -82,6 +83,11 @@ export function EditFieldDrawer({ open, field, onClose, onSaved }: Props) {
         .catch(console.error);
     } else {
       setSavedOptions([]);
+    }
+
+    // Load users for person fields
+    if (field.type === 'person') {
+      api.users.list().then(setAllUsers).catch(console.error);
     }
   }, [field, open]);
 
@@ -396,7 +402,61 @@ export function EditFieldDrawer({ open, field, onClose, onSaved }: Props) {
               />
             </div>
           )}
+
+          {/* Person: allow multiple + restrict to specific users */}
+          {field.type === 'person' && (
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="font-normal">Allow multiple people</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">Let a cell hold more than one person</p>
+                </div>
+                <Switch
+                  checked={config.allowMultiple ?? false}
+                  onCheckedChange={v => patch({ allowMultiple: v })}
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="font-normal">Restrict to specific people</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">Only show selected members in picker</p>
+                </div>
+                <Switch
+                  checked={(config.allowedUserIds?.length ?? 0) > 0 || config.allowedUserIds !== undefined}
+                  onCheckedChange={v => patch({ allowedUserIds: v ? [] : undefined })}
+                />
+              </div>
+
+              {config.allowedUserIds !== undefined && (
+                <div className="flex flex-col gap-1 border rounded-md p-2 max-h-40 overflow-y-auto">
+                  {allUsers.length === 0
+                    ? <p className="text-xs text-muted-foreground text-center py-2">Loading…</p>
+                    : allUsers.map(u => {
+                        const selected = (config.allowedUserIds ?? []).includes(u.id);
+                        return (
+                          <label key={u.id} className="flex items-center gap-2 py-1 cursor-pointer hover:bg-accent rounded px-1">
+                            <input
+                              type="checkbox"
+                              className="accent-primary"
+                              checked={selected}
+                              onChange={() => {
+                                const prev = config.allowedUserIds ?? [];
+                                patch({ allowedUserIds: selected ? prev.filter(id => id !== u.id) : [...prev, u.id] });
+                              }}
+                            />
+                            <img src={u.avatarUrl ?? undefined} alt={u.name} className="w-5 h-5 rounded-full object-cover" />
+                            <span className="text-xs">{u.name}</span>
+                          </label>
+                        );
+                      })
+                  }
+                </div>
+              )}
+            </div>
+          )}
         </div>
+
 
         {/* Footer */}
         <div className="px-5 py-4 border-t flex gap-2">

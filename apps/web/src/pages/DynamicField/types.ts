@@ -13,9 +13,14 @@ export interface FieldConfig {
   currency?: string;
   // text
   richText?: boolean;
+  // person
+  allowMultiple?: boolean;
+  /** If set and non-empty, only these user IDs are shown in the picker */
+  allowedUserIds?: string[];
   // visual override
   customIcon?: string;
 }
+
 
 export interface FieldOption {
   id: string;
@@ -42,9 +47,17 @@ export interface FieldValue {
   selectValue?: string | null;
   multiSelectValue?: string[];
   dateValue?: string | null;
+  personValue?: string[];
   boolValue?: boolean | null;
   jsonValue?: unknown;
   field: Field;
+}
+
+export interface DynUser {
+  id: string;
+  name: string;
+  email: string;
+  avatarUrl?: string | null;
 }
 
 export interface DynRecord {
@@ -68,5 +81,6 @@ export type FieldValuePayload = {
   selectValue?: string | null;
   multiSelectValue?: string[];
   dateValue?: string | null;
+  personValue?: string[];
   boolValue?: boolean | null;
 };

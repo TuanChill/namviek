@@ -1,4 +1,4 @@
-import type { DynDatabase, DynRecord, Field, FieldOption, FieldValue, FieldValuePayload } from './types';
+import type { DynDatabase, DynRecord, DynUser, Field, FieldOption, FieldValue, FieldValuePayload } from './types';
 import type { FieldType } from './types';
 
 const BASE = '/api';
@@ -29,6 +29,8 @@ export const api = {
       apiFetch(`/fields/${fieldId}/move`, { method: 'POST', body: JSON.stringify({ direction }) }),
     duplicate: (fieldId: string) =>
       apiFetch<Field>(`/fields/${fieldId}/duplicate`, { method: 'POST' }),
+    backfill: (fieldId: string, databaseId: string) =>
+      apiFetch<{ backfilled: number }>(`/fields/${fieldId}/backfill`, { method: 'POST', body: JSON.stringify({ databaseId }) }),
   },
   records: {
     list: (dbId: string) => apiFetch<DynRecord[]>(`/databases/${dbId}/records`),
@@ -44,5 +46,9 @@ export const api = {
       apiFetch<FieldOption>(`/fields/${fieldId}/options`, { method: 'POST', body: JSON.stringify({ label, color }) }),
     delete: (fieldId: string, optionId: string) =>
       apiFetch(`/fields/${fieldId}/options/${optionId}`, { method: 'DELETE' }),
+  },
+  users: {
+    list: () => apiFetch<DynUser[]>('/users'),
+    search: (q: string) => apiFetch<DynUser[]>(`/users?q=${encodeURIComponent(q)}`),
   },
 };
