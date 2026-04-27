@@ -23,10 +23,10 @@ export const api = {
       apiFetch<Field>(`/databases/${dbId}/fields`, { method: 'POST', body: JSON.stringify({ name, type, config }) }),
     update: (fieldId: string, data: { name?: string; config?: object }) =>
       apiFetch<Field>(`/fields/${fieldId}`, { method: 'PATCH', body: JSON.stringify(data) }),
-    delete: (fieldId: string) =>
-      apiFetch(`/fields/${fieldId}`, { method: 'DELETE' }),
-    move: (fieldId: string, direction: 'left' | 'right') =>
-      apiFetch(`/fields/${fieldId}/move`, { method: 'POST', body: JSON.stringify({ direction }) }),
+    delete: (fieldId: string, databaseId: string) =>
+      apiFetch(`/fields/${fieldId}?databaseId=${databaseId}`, { method: 'DELETE' }),
+    move: (fieldId: string, databaseId: string, direction: 'left' | 'right') =>
+      apiFetch(`/fields/${fieldId}/move`, { method: 'POST', body: JSON.stringify({ direction, databaseId }) }),
     duplicate: (fieldId: string) =>
       apiFetch<Field>(`/fields/${fieldId}/duplicate`, { method: 'POST' }),
     backfill: (fieldId: string, databaseId: string) =>
@@ -35,11 +35,11 @@ export const api = {
   records: {
     list: (dbId: string) => apiFetch<DynRecord[]>(`/databases/${dbId}/records`),
     create: (dbId: string) => apiFetch<DynRecord>(`/databases/${dbId}/records`, { method: 'POST' }),
-    delete: (ids: string[]) => apiFetch(`/records`, { method: 'DELETE', body: JSON.stringify({ ids }) }),
+    delete: (dbId: string, ids: string[]) => apiFetch(`/records`, { method: 'DELETE', body: JSON.stringify({ ids, databaseId: dbId }) }),
   },
   values: {
-    set: (recordId: string, fieldId: string, payload: FieldValuePayload) =>
-      apiFetch<FieldValue>(`/records/${recordId}/values/${fieldId}`, { method: 'PUT', body: JSON.stringify(payload) }),
+    set: (dbId: string, recordId: string, fieldId: string, payload: FieldValuePayload) =>
+      apiFetch<FieldValue>(`/records/${recordId}/values/${fieldId}`, { method: 'PUT', body: JSON.stringify({ ...payload, databaseId: dbId }) }),
   },
   options: {
     list: (fieldId: string) => apiFetch<FieldOption[]>(`/fields/${fieldId}/options`),

@@ -28,6 +28,7 @@ import { getFieldMeta, ICON_OPTIONS, getIconByName } from './DynamicField/consta
 import { useDatabase } from './DynamicField/hooks/useDatabase';
 import { useFields } from './DynamicField/hooks/useFields';
 import { useRecords } from './DynamicField/hooks/useRecords';
+import { useDatabaseStream } from './DynamicField/hooks/useDatabaseStream';
 
 import type { DynDatabase, Field, FieldConfig, FieldType, FieldValuePayload } from './DynamicField/types';
 
@@ -35,8 +36,8 @@ const COL_WIDTH = 180;
 
 export default function DynamicFieldPage() {
   const { databases, selectedDb, setSelectedDb, createDatabase } = useDatabase();
-  const { fields, loadFields, addField, renameField, deleteField, moveField, duplicateField, changeIcon, updateField } = useFields();
-  const { records, loadRecords, addRecord, setValue, removeFieldValues, reloadRecords, deleteRecords } = useRecords();
+  const { fields, setFields, loadFields, addField, renameField, deleteField, moveField, duplicateField, changeIcon, updateField } = useFields();
+  const { records, setRecords, loadRecords, addRecord, setValue, removeFieldValues, reloadRecords, deleteRecords } = useRecords();
 
   const [loading, setLoading] = useState(false);
   const [selectedRecords, setSelectedRecords] = useState<Set<string>>(new Set());
@@ -62,6 +63,55 @@ export default function DynamicFieldPage() {
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
   }, []);
+
+  // ── Stream ────────────────────────────────────────────────────────────────
+  useDatabaseStream(selectedDb?.id, {
+    onRecordCreated: (record) => {
+      setRecords((prev) => {
+        if (prev.some(r => r.id === record.id)) return prev;
+        return [...prev, record];
+      });
+    },
+    onRecordsDeleted: (ids) => {
+      setRecords((prev) => prev.filter(r => !ids.includes(r.id)));
+      setSelectedRecords(prev => {
+        const newSet = new Set(prev);
+        ids.forEach(id => newSet.delete(id));
+        return newSet;
+      });
+    },
+    onValueUpdated: (value) => {
+      setRecords((prev) => prev.map(r => {
+        if (r.id !== value.recordId) return r;
+        const exists = r.fieldValues.find(fv => fv.fieldId === value.fieldId);
+        if (exists) {
+          return { ...r, fieldValues: r.fieldValues.map(fv => fv.fieldId === value.fieldId ? value : fv) };
+        }
+        // Need to add field to value since UI expects field object, but event only has fieldId
+        // The cell might crash if we just push it, but it actually depends on `fv.fieldId === field.id` matching.
+        // Wait, `value` from SSE is just FieldValue, it doesn't have `.field` populated.
+        // But `useRecords.ts` adds it: `{ ...saved, field }`.
+        // Here we can find the field from `fields`.
+        return { ...r, fieldValues: [...r.fieldValues, value as any] }; 
+      }));
+    },
+    onFieldCreated: (field) => {
+      setFields((prev) => {
+        if (prev.some(f => f.id === field.id)) return prev;
+        return [...prev, field].sort((a, b) => a.position - b.position);
+      });
+    },
+    onFieldDeleted: (id) => {
+      setFields((prev) => prev.filter(f => f.id !== id));
+      removeFieldValues(id);
+    },
+    onFieldUpdated: (field) => {
+      setFields((prev) => prev.map(f => f.id === field.id ? { ...f, ...field } : f));
+    },
+    onFieldsReordered: () => {
+      if (selectedDb) loadFields(selectedDb.id);
+    }
+  });
 
   // ── Load DB ───────────────────────────────────────────────────────────────
   const loadDb = useCallback(async (db: DynDatabase) => {
@@ -99,8 +149,8 @@ export default function DynamicFieldPage() {
   };
 
   const handleDeleteField = async () => {
-    if (!deletingFieldId) return;
-    await deleteField(deletingFieldId);
+    if (!deletingFieldId || !selectedDb) return;
+    await deleteField(deletingFieldId, selectedDb.id);
     removeFieldValues(deletingFieldId);
     setDeletingFieldId(null);
   };
@@ -134,12 +184,13 @@ export default function DynamicFieldPage() {
   };
 
   const handleSetValue = async (record: import('./DynamicField/types').DynRecord, field: Field, payload: FieldValuePayload) => {
-    await setValue(record, field, payload);
+    if (!selectedDb) return;
+    await setValue(selectedDb.id, record, field, payload);
   };
 
   const handleDeleteSelectedRecords = async () => {
-    if (selectedRecords.size === 0) return;
-    await deleteRecords(Array.from(selectedRecords));
+    if (selectedRecords.size === 0 || !selectedDb) return;
+    await deleteRecords(selectedDb.id, Array.from(selectedRecords));
     setSelectedRecords(new Set());
   };
 

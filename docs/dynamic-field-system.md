@@ -280,7 +280,46 @@ When the user clicks **+ Add record**:
 
 ---
 
-## 9. Data Flow Examples
+## 9. Real-time Database Synchronization Strategy
+
+We use Server-Sent Events (SSE) and an in-memory PubSub system to synchronize database changes (e.g., adding records, updating cell values) across multiple client sessions in real-time.
+
+### Architecture Overview
+
+```mermaid
+sequenceDiagram
+    participant UserA as User A (Browser)
+    participant UserB as User B (Browser)
+    participant API as Hono API
+    participant PubSub as PubSub Manager
+    participant DB as Database
+
+    UserB->>API: Connect to /api/databases/:id/stream
+    API->>PubSub: subscribe(databaseId)
+    
+    UserA->>API: Update Cell Value (PUT /records/.../values)
+    API->>DB: Save value to database
+    API->>PubSub: publish(databaseId, "VALUE_UPDATED", data)
+    
+    PubSub-->>API: Trigger subscriber callback
+    API-->>UserB: SSE Event: VALUE_UPDATED
+    
+    UserB->>UserB: Update local React state idempotently
+```
+
+### How it Works
+
+1. **Connection**: Clients connect to the `GET /api/databases/:id/stream` endpoint. The server holds this connection open using `streamSSE` and subscribes to events for that specific `databaseId` via the `PubSub` manager.
+2. **Mutation**: When a user performs a write operation (e.g., creating a row or editing a cell), the backend performs the database mutation and immediately calls `dbEvents.publish(...)` with the new data.
+3. **Broadcast**: The `PubSub` manager iterates through all active connections for that `databaseId` and pushes the event down their respective SSE streams.
+4. **Idempotent Updates**: The frontend receives the event and updates its local state (e.g., React `useState`). The updates are designed to be idempotent (e.g., checking if a record ID already exists before adding it) to avoid duplicating data if the client receives an event for an action it performed itself.
+
+> [!NOTE]
+> The current `PubSub` implementation is in-memory. If deploying multiple API instances (e.g., horizontally scaled containers), this should be replaced with a distributed message broker like Redis Pub/Sub to ensure events broadcasted from one instance reach clients connected to another.
+
+---
+
+## 10. Data Flow Examples
 
 ### Create a record
 
@@ -315,7 +354,7 @@ User clicks person cell
 
 ---
 
-## 10. Known Limitations / Next Steps
+## 11. Known Limitations / Next Steps
 
 - **No auth** — `created_by` / `updated_by` always show "System". Wire to Better Auth session when ready.
 - **User management UI** — Users can be created via `POST /api/users` (or seeded directly). No admin panel yet.

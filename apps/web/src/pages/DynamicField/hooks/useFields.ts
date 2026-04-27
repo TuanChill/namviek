@@ -37,13 +37,13 @@ export function useFields() {
     return updated;
   }, []);
 
-  const deleteField = useCallback(async (fieldId: string) => {
-    await api.fields.delete(fieldId);
+  const deleteField = useCallback(async (fieldId: string, dbId: string) => {
+    await api.fields.delete(fieldId, dbId);
     setFields(prev => prev.filter(f => f.id !== fieldId));
   }, []);
 
   const moveField = useCallback(async (fieldId: string, direction: 'left' | 'right', dbId: string) => {
-    await api.fields.move(fieldId, direction);
+    await api.fields.move(fieldId, dbId, direction);
     const f = await api.fields.list(dbId);
     setFields(f);
   }, []);

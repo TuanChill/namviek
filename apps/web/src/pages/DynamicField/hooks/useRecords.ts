@@ -19,7 +19,7 @@ export function useRecords() {
     // For each id-type field, immediately write rowNumber as textValue
     if (idFields.length > 0) {
       const results = await Promise.all(
-        idFields.map(f => api.values.set(record.id, f.id, { textValue: String(record.rowNumber) }))
+        idFields.map(f => api.values.set(dbId, record.id, f.id, { textValue: String(record.rowNumber) }))
       );
       fieldValues = results.map((fv, i) => ({ ...fv, field: idFields[i] }));
     }
@@ -28,8 +28,8 @@ export function useRecords() {
     return record;
   }, []);
 
-  const setValue = useCallback(async (record: DynRecord, field: Field, payload: FieldValuePayload) => {
-    const saved = await api.values.set(record.id, field.id, payload);
+  const setValue = useCallback(async (dbId: string, record: DynRecord, field: Field, payload: FieldValuePayload) => {
+    const saved = await api.values.set(dbId, record.id, field.id, payload);
     setRecords(prev => prev.map(r => {
       if (r.id !== record.id) return r;
       const exists = r.fieldValues.find(fv => fv.fieldId === field.id);
@@ -42,8 +42,8 @@ export function useRecords() {
     setRecords(prev => prev.map(r => ({ ...r, fieldValues: r.fieldValues.filter(fv => fv.fieldId !== fieldId) })));
   }, []);
 
-  const deleteRecords = useCallback(async (recordIds: string[]) => {
-    await api.records.delete(recordIds);
+  const deleteRecords = useCallback(async (dbId: string, recordIds: string[]) => {
+    await api.records.delete(dbId, recordIds);
     setRecords(prev => prev.filter(r => !recordIds.includes(r.id)));
   }, []);
 

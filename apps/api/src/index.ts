@@ -2,6 +2,8 @@ import 'dotenv/config'
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
+import { streamSSE } from 'hono/streaming'
+import { dbEvents } from './pubsub.js'
 import {
   getAllTests,
   createTest,
@@ -81,6 +83,37 @@ app.post('/api/tests', async (c) => {
 
 // ─── Dynamic Fields System routes ─────────────────────────────────────────────
 
+// GET /api/databases/:id/stream — SSE for real-time sync
+app.get('/api/databases/:id/stream', (c) => {
+  const dbId = c.req.param('id')
+  
+  return streamSSE(c, async (stream) => {
+    let active = true
+
+    const unsubscribe = dbEvents.subscribe(dbId, async (event, data) => {
+      if (!active) return
+      try {
+        await stream.writeSSE({
+          event,
+          data: JSON.stringify(data),
+        })
+      } catch (err) {
+        console.error('SSE write error', err)
+      }
+    })
+
+    stream.onAbort(() => {
+      active = false
+      unsubscribe()
+    })
+
+    // Keep connection alive
+    while (active) {
+      await stream.sleep(15000)
+    }
+  })
+})
+
 // GET /api/databases — list all databases
 app.get('/api/databases', async (c) => {
   try {
@@ -128,6 +161,7 @@ app.post('/api/databases/:id/fields', async (c) => {
       body.type as FieldType,
       { isPrimary: body.isPrimary, required: body.required, config: body.config }
     )
+    dbEvents.publish(c.req.param('id'), 'FIELD_CREATED', field)
     return c.json(field, 201)
   } catch (error) {
     console.error(error)
@@ -150,6 +184,7 @@ app.get('/api/databases/:id/records', async (c) => {
 app.post('/api/databases/:id/records', async (c) => {
   try {
     const record = await createDynRecord(c.req.param('id'))
+    dbEvents.publish(c.req.param('id'), 'RECORD_CREATED', record)
     return c.json(record, 201)
   } catch (error) {
     console.error(error)
@@ -163,6 +198,12 @@ app.delete('/api/records', async (c) => {
     const body = await c.req.json()
     if (!Array.isArray(body.ids)) return c.json({ error: 'ids array is required' }, 400)
     await deleteDynRecords(body.ids)
+    
+    // We don't have dbId directly here, but we could pass it or clients can just listen.
+    // Actually, deleteDynRecords doesn't return dbId, so frontend should pass databaseId.
+    if (body.databaseId) {
+      dbEvents.publish(body.databaseId, 'RECORDS_DELETED', { ids: body.ids })
+    }
     return c.json({ success: true })
   } catch (error) {
     console.error(error)
@@ -174,11 +215,15 @@ app.delete('/api/records', async (c) => {
 app.put('/api/records/:recordId/values/:fieldId', async (c) => {
   try {
     const body = await c.req.json()
+    const { databaseId, ...payload } = body
     const value = await setFieldValue(
       c.req.param('recordId'),
       c.req.param('fieldId'),
-      body
+      payload
     )
+    if (body.databaseId) {
+      dbEvents.publish(body.databaseId, 'VALUE_UPDATED', value)
+    }
     return c.json(value)
   } catch (error) {
     console.error(error)
@@ -228,7 +273,11 @@ app.delete('/api/fields/:fieldId/options/:optionId', async (c) => {
 // DELETE /api/fields/:fieldId — delete a field
 app.delete('/api/fields/:fieldId', async (c) => {
   try {
+    const databaseId = c.req.query('databaseId')
     await deleteField(c.req.param('fieldId'))
+    if (databaseId) {
+      dbEvents.publish(databaseId, 'FIELD_DELETED', { id: c.req.param('fieldId') })
+    }
     return c.json({ success: true })
   } catch (error) {
     console.error(error)
@@ -241,6 +290,7 @@ app.patch('/api/fields/:fieldId', async (c) => {
   try {
     const body = await c.req.json()
     const field = await updateField(c.req.param('fieldId'), body)
+    dbEvents.publish(field.databaseId, 'FIELD_UPDATED', field)
     return c.json(field)
   } catch (error) {
     console.error(error)
@@ -253,6 +303,9 @@ app.post('/api/fields/:fieldId/move', async (c) => {
   try {
     const body = await c.req.json()
     const result = await reorderField(c.req.param('fieldId'), body.direction)
+    if (body.databaseId) {
+      dbEvents.publish(body.databaseId, 'FIELDS_REORDERED', {})
+    }
     return c.json({ success: result !== null })
   } catch (error) {
     console.error(error)
@@ -264,6 +317,7 @@ app.post('/api/fields/:fieldId/move', async (c) => {
 app.post('/api/fields/:fieldId/duplicate', async (c) => {
   try {
     const field = await duplicateField(c.req.param('fieldId'))
+    dbEvents.publish(field.databaseId, 'FIELD_CREATED', field)
     return c.json(field, 201)
   } catch (error) {
     console.error(error)

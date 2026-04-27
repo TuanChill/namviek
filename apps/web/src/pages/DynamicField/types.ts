@@ -52,6 +52,7 @@ export interface Field {
 export interface FieldValue {
   id: string;
   fieldId: string;
+  recordId: string;
   textValue?: string | null;
   numberValue?: string | null;
   selectValue?: string | null;
