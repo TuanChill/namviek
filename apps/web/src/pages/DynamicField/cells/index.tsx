@@ -9,6 +9,7 @@ export { TextCell } from './TextCell';
 export { CheckboxCell } from './CheckboxCell';
 export { ComputedCell } from './ComputedCell';
 export { PersonCell, PersonChip } from './PersonCell';
+export { FileCell, FileChip } from './FileCell';
 
 // ─── CellEditor dispatcher ────────────────────────────────────────────────────
 
@@ -20,6 +21,7 @@ import { TextCell } from './TextCell';
 import { CheckboxCell } from './CheckboxCell';
 import { ComputedCell } from './ComputedCell';
 import { PersonCell } from './PersonCell';
+import { FileCell } from './FileCell';
 import { COMPUTED_TYPES } from '../constants';
 import type { CellEditorProps } from './shared';
 
@@ -35,6 +37,7 @@ export function CellEditor({
     case 'number':       return <NumberCell field={field} value={value} onSave={onSave} />;
     case 'checkbox':     return <CheckboxCell field={field} value={value} onSave={onSave} />;
     case 'person':       return <PersonCell field={field} value={value} onSave={onSave} />;
+    case 'file':         return <FileCell field={field} value={value} onSave={onSave} />;
     default:             return (
       <TextCell
         field={field} value={value} onSave={onSave}

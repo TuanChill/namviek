@@ -7,6 +7,8 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1037.0",
+    "@aws-sdk/s3-request-presigner": "^3.1037.0",
     "@hono/node-server": "^1.19.6",
     "@local/database": "workspace:*",
     "dotenv": "^17.2.3",

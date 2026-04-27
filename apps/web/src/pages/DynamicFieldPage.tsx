@@ -245,7 +245,7 @@ export default function DynamicFieldPage() {
                                   )}
                                 </th>
                               </ContextMenuTrigger>
-                              <ContextMenuContent>
+                              <ContextMenuContent className='w-[180px]'>
                                 <ContextMenuItem onClick={() => setEditingField(field)}>
                                   <Settings2 size={13} className="mr-2" /> Edit field
                                 </ContextMenuItem>
@@ -292,9 +292,8 @@ export default function DynamicFieldPage() {
                             return (
                               <td
                                 key={field.id}
-                                className={`px-3 py-2 border-r border-b align-middle transition-all ${
-                                  isActive ? 'outline outline-2 outline-primary outline-offset-[-2px]' : ''
-                                }`}
+                                className={`px-3 py-2 border-r border-b align-middle transition-all ${isActive ? 'outline outline-2 outline-primary outline-offset-[-2px]' : ''
+                                  }`}
                                 style={{ width: COL_WIDTH, maxWidth: COL_WIDTH, overflow: 'hidden', position: 'relative' }}
                                 onClick={e => { e.stopPropagation(); setActiveCell({ recordId: record.id, fieldId: field.id }); }}
                               >

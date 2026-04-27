@@ -17,9 +17,19 @@ export interface FieldConfig {
   allowMultiple?: boolean;
   /** If set and non-empty, only these user IDs are shown in the picker */
   allowedUserIds?: string[];
+  // file
+  allowMultipleFiles?: boolean;
   // visual override
   customIcon?: string;
 }
+
+export interface FileAttachment {
+  url: string;
+  name: string;
+  size: number;
+  type: string;
+}
+
 
 
 export interface FieldOption {

@@ -1,4 +1,4 @@
-import type { DynDatabase, DynRecord, DynUser, Field, FieldOption, FieldValue, FieldValuePayload } from './types';
+import type { DynDatabase, DynRecord, DynUser, Field, FieldOption, FieldValue, FieldValuePayload, FileAttachment } from './types';
 import type { FieldType } from './types';
 
 const BASE = '/api';
@@ -51,4 +51,23 @@ export const api = {
     list: () => apiFetch<DynUser[]>('/users'),
     search: (q: string) => apiFetch<DynUser[]>(`/users?q=${encodeURIComponent(q)}`),
   },
+  upload: {
+    file: async (file: File): Promise<FileAttachment> => {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch(`${BASE}/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json() as Promise<FileAttachment>;
+    },
+    delete: async (url: string): Promise<void> => {
+      const res = await fetch(`${BASE}/upload?url=${encodeURIComponent(url)}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error(await res.text());
+    },
+  },
 };
+

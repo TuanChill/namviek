@@ -455,6 +455,17 @@ export function EditFieldDrawer({ open, field, onClose, onSaved }: Props) {
               )}
             </div>
           )}
+
+          {/* File: allow multiple */}
+          {field?.type === 'file' && (
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="font-normal">Allow multiple files</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">Let users upload more than one file</p>
+              </div>
+              <Switch checked={config.allowMultipleFiles ?? false} onCheckedChange={v => patch({ allowMultipleFiles: v })} />
+            </div>
+          )}
         </div>
 
 

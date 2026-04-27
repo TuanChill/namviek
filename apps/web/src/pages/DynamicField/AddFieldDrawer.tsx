@@ -296,8 +296,18 @@ export function AddFieldDrawer({ open, onClose, onSubmit }: Props) {
               )}
             </div>
           )}
-        </div>
 
+          {/* File: allow multiple */}
+          {type === 'file' && (
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="font-normal">Allow multiple files</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">Let users upload more than one file</p>
+              </div>
+              <Switch checked={config.allowMultipleFiles ?? false} onCheckedChange={v => patch({ allowMultipleFiles: v })} />
+            </div>
+          )}
+        </div>
 
         <div className="px-5 py-4 border-t flex gap-2">
           <Button onClick={handleSubmit} disabled={saving || !name.trim()} className="flex-1">

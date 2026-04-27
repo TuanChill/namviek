@@ -25,6 +25,20 @@ import {
   backfillIdField,
 } from '@local/database'
 import type { FieldType } from '@local/database'
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
+import crypto from 'crypto'
+
+const s3Client = new S3Client({
+  region: 'auto',
+  endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+  credentials: {
+    accessKeyId: process.env.R2_ACCESS_KEY_ID || '',
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || '',
+  },
+})
+
+const R2_BUCKET = process.env.R2_BUCKET || ''
+const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || ''
 
 
 const app = new Hono()
@@ -252,6 +266,73 @@ app.post('/api/fields/:fieldId/backfill', async (c) => {
   } catch (error) {
     console.error(error)
     return c.json({ error: 'Failed to backfill field' }, 500)
+  }
+})
+
+// ─── Users routes ──────────────────────────────────────────────────────────────
+
+// ─── Upload routes ─────────────────────────────────────────────────────────────
+
+app.post('/api/upload', async (c) => {
+  try {
+    const body = await c.req.parseBody()
+    const file = body['file'] as File
+
+    if (!file || !(file instanceof File)) {
+      return c.json({ error: 'File is required' }, 400)
+    }
+
+    const arrayBuffer = await file.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+    
+    // Generate a unique key
+    const uniqueId = crypto.randomBytes(8).toString('hex')
+    const extension = file.name.split('.').pop() || ''
+    const key = `uploads/${Date.now()}-${uniqueId}.${extension}`
+
+    await s3Client.send(new PutObjectCommand({
+      Bucket: R2_BUCKET,
+      Key: key,
+      Body: buffer,
+      ContentType: file.type,
+    }))
+
+    const url = `${R2_PUBLIC_URL}/${key}`
+
+    return c.json({
+      url,
+      name: file.name,
+      size: file.size,
+      type: file.type,
+    })
+  } catch (error) {
+    console.error('Upload error:', error)
+    return c.json({ error: 'Failed to upload file' }, 500)
+  }
+})
+
+app.delete('/api/upload', async (c) => {
+  try {
+    const url = c.req.query('url')
+    if (!url) return c.json({ error: 'url is required' }, 400)
+
+    // Extract key from URL
+    const publicUrlPrefix = `${R2_PUBLIC_URL}/`
+    if (!url.startsWith(publicUrlPrefix)) {
+      return c.json({ error: 'Invalid URL' }, 400)
+    }
+
+    const key = url.slice(publicUrlPrefix.length)
+
+    await s3Client.send(new DeleteObjectCommand({
+      Bucket: R2_BUCKET,
+      Key: key,
+    }))
+
+    return c.json({ success: true })
+  } catch (error) {
+    console.error('Delete upload error:', error)
+    return c.json({ error: 'Failed to delete file' }, 500)
   }
 })
 
