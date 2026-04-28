@@ -18,6 +18,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { useTemplates } from '../hooks/useTemplates';
+import { SidebarMenuButton } from '@/components/ui/sidebar';
 import { Loader2, LayoutTemplate, ImageIcon } from 'lucide-react';
 import type { Template } from '../api';
 import { TemplateProgressWidget } from './TemplateProgressWidget';
@@ -26,15 +27,15 @@ import { TemplateProgressWidget } from './TemplateProgressWidget';
 // Add your preview images here, keyed by template id.
 // Example: { 'pm-task-tracker': '/images/templates/pm-task-tracker.png' }
 const TEMPLATE_PREVIEW_IMAGES: Record<string, string> = {
-  'pm-task-tracker':         '/images/templates/pm-task-tracker.png',
-  'pm-bug-tracker':          '/images/templates/pm-bug-tracker.png',
-  'pm-roadmap':              '/images/templates/pm-roadmap.png',
-  'hr-applicant-tracker':    '/images/templates/hr-applicant-tracker.png',
-  'hr-employee-directory':   '/images/templates/hr-employee-directory.png',
-  'sales-pipeline':          '/images/templates/sales-pipeline.png',
-  'sales-customer-feedback': '/images/templates/sales-customer-feedback.png',
-  'mktg-content-calendar':   '/images/templates/mktg-content-calendar.png',
-  'mktg-campaign-tracker':   '/images/templates/mktg-campaign-tracker.png',
+  'pm-task-tracker': '/templates/campaign-tracker.png',
+  'pm-bug-tracker': '/templates/campaign-tracker.png',
+  'pm-roadmap': '/templates/campaign-tracker.png',
+  'hr-applicant-tracker': '/templates/campaign-tracker.png',
+  'hr-employee-directory': '/templates/campaign-tracker.png',
+  'sales-pipeline': '/templates/campaign-tracker.png',
+  'sales-customer-feedback': '/templates/campaign-tracker.png',
+  'mktg-content-calendar': '/templates/campaign-tracker.png',
+  'mktg-campaign-tracker': '/templates/campaign-tracker.png',
 };
 
 export function TemplateDialog() {
@@ -113,14 +114,10 @@ export function TemplateDialog() {
     <>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start gap-1.5 h-8 text-xs text-muted-foreground"
-          >
-            <LayoutTemplate size={13} />
-            Start from Template
-          </Button>
+          <SidebarMenuButton tooltip="Start from Template">
+            <LayoutTemplate />
+            <span>Start from Template</span>
+          </SidebarMenuButton>
         </DialogTrigger>
 
         <DialogContent className="sm:max-w-5xl max-h-[88vh] h-[88vh] flex flex-col p-0 overflow-hidden">
@@ -161,8 +158,8 @@ export function TemplateDialog() {
                                 key={template.id}
                                 onClick={() => setSelectedTemplate(template)}
                                 className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${selectedTemplate?.id === template.id
-                                    ? 'bg-primary text-primary-foreground font-medium'
-                                    : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+                                  ? 'bg-primary text-primary-foreground font-medium'
+                                  : 'hover:bg-muted text-muted-foreground hover:text-foreground'
                                   }`}
                               >
                                 {template.name}

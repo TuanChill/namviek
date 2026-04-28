@@ -7,7 +7,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
@@ -20,6 +19,20 @@ import {
   ContextMenuSeparator, ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarTrigger,
+} from '@/components/ui/sidebar';
 
 import { CellEditor } from './DynamicField/CellEditors';
 import { AddFieldDrawer } from './DynamicField/AddFieldDrawer';
@@ -226,88 +239,146 @@ export default function DynamicFieldPage() {
   };
 
   return (
-    <TooltipProvider>
-      {/* Click-outside to clear active cell */}
-      <div
-        className="flex h-screen bg-background text-foreground overflow-hidden"
-        onClick={() => setActiveCell(null)}
-      >
-
-        {/* ── Sidebar ───────────────────────────────────────────── */}
-        <aside className="w-56 flex flex-col border-r shrink-0" onClick={e => e.stopPropagation()}>
-          <div className="px-3 py-3 border-b flex items-center gap-2">
-            <Database size={15} className="text-muted-foreground" />
-            <span className="text-sm font-semibold">Databases</span>
-          </div>
-          <ScrollArea className="flex-1">
-            <div className="p-2 flex flex-col gap-0.5">
-              {databases.map(db => (
-                <button key={db.id} onClick={() => loadDb(db)}
-                  className={`w-full text-left px-2.5 py-2 rounded-md text-sm transition-colors ${selectedDb?.id === db.id ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'}`}>
-                  <div className="font-medium truncate">{db.name}</div>
-                  <div className="text-xs opacity-60">{db._count.fields} fields · {db._count.records} rows</div>
-                </button>
-              ))}
-            </div>
-          </ScrollArea>
-          <div className="p-2 border-t">
-            {showNewDb ? (
-              <div className="flex flex-col gap-1.5">
-                <Input autoFocus value={newDbName} onChange={e => setNewDbName(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') handleCreateDb(); if (e.key === 'Escape') setShowNewDb(false); }}
-                  placeholder="Database name" className="h-7 text-xs" />
-                <div className="flex gap-1">
-                  <Button size="sm" className="flex-1 h-7 text-xs" onClick={handleCreateDb}>Create</Button>
-                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setShowNewDb(false)}>Cancel</Button>
+    <SidebarProvider>
+      <Sidebar collapsible="icon" onClick={(e) => e.stopPropagation()}>
+        {/* ── Sidebar Header ──────────────────────────────────── */}
+        <SidebarHeader>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton size="lg" asChild>
+                <div className="flex items-center gap-2 cursor-default select-none">
+                  <div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground shrink-0">
+                    <Database size={14} />
+                  </div>
+                  <div className="flex flex-col leading-tight">
+                    <span className="text-sm font-semibold">Databases</span>
+                    <span className="text-xs text-muted-foreground">{databases.length} total</span>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-1">
-                <Button variant="ghost" size="sm" className="w-full justify-start gap-1.5 h-8 text-xs text-muted-foreground" onClick={() => setShowNewDb(true)}>
-                  <Plus size={13} /> New database
-                </Button>
-                <TemplateDialog />
-              </div>
-            )}
-          </div>
-        </aside>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarHeader>
 
-        {/* ── Main ──────────────────────────────────────────────── */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        {/* ── Sidebar Content ─────────────────────────────────── */}
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarGroupLabel>Your Databases</SidebarGroupLabel>
+            <SidebarMenu>
+              {databases.map(db => (
+                <SidebarMenuItem key={db.id}>
+                  <SidebarMenuButton
+                    isActive={selectedDb?.id === db.id}
+                    onClick={() => loadDb(db)}
+                    tooltip={db.name}
+                  >
+                    <Database />
+                    <div className="flex flex-col leading-tight min-w-0">
+                      <span className="truncate font-medium">{db.name}</span>
+                      <span className="text-xs text-muted-foreground opacity-70">
+                        {db._count.fields} fields · {db._count.records} rows
+                      </span>
+                    </div>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroup>
+        </SidebarContent>
+
+        {/* ── Sidebar Footer ──────────────────────────────────── */}
+        <SidebarFooter>
+          {showNewDb ? (
+            <div className="flex flex-col gap-1.5 px-1">
+              <Input
+                autoFocus
+                value={newDbName}
+                onChange={e => setNewDbName(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') handleCreateDb();
+                  if (e.key === 'Escape') setShowNewDb(false);
+                }}
+                placeholder="Database name"
+                className="h-7 text-xs"
+              />
+              <div className="flex gap-1">
+                <Button size="sm" className="flex-1 h-7 text-xs" onClick={handleCreateDb}>Create</Button>
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setShowNewDb(false)}>Cancel</Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-1">
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton onClick={() => setShowNewDb(true)} tooltip="New database">
+                    <Plus />
+                    <span>New database</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <TemplateDialog />
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </div>
+          )}
+        </SidebarFooter>
+      </Sidebar>
+
+      {/* ── Main content (SidebarInset) ───────────────────────── */}
+      <SidebarInset onClick={() => setActiveCell(null)}>
+        <TooltipProvider>
           {!selectedDb ? (
-            <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted-foreground">
+            <div className="flex flex-1 flex-col items-center justify-center gap-3 text-muted-foreground h-full">
               <Database size={40} className="opacity-20" />
               <p className="text-sm font-medium">Select or create a database</p>
             </div>
           ) : (
             <>
               {/* Toolbar */}
-              <div className="px-5 py-3 border-b flex items-center gap-3 shrink-0" onClick={e => e.stopPropagation()}>
+              <header
+                className="flex h-12 shrink-0 items-center gap-3 border-b px-4"
+                onClick={e => e.stopPropagation()}
+              >
+                <SidebarTrigger className="-ml-1" />
+                <Separator orientation="vertical" className="h-4" />
                 <span className="font-semibold">{selectedDb.name}</span>
                 <Separator orientation="vertical" className="h-4" />
-                <span className="text-xs text-muted-foreground">{fields.length} fields · {records.length} records</span>
+                <span className="text-xs text-muted-foreground">
+                  {fields.length} fields · {records.length} records
+                </span>
                 <div className="flex-1" />
-                <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10" onClick={() => setShowDeleteDb(true)}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-destructive hover:bg-destructive/10"
+                  onClick={() => setShowDeleteDb(true)}
+                >
                   <Trash2 size={14} className="mr-1.5" /> Delete DB
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => setShowAddField(true)}><Plus size={14} /> Add field</Button>
+                <Button size="sm" variant="outline" onClick={() => setShowAddField(true)}>
+                  <Plus size={14} /> Add field
+                </Button>
                 {selectedRecords.size > 0 && (
                   <Button size="sm" variant="destructive" onClick={handleDeleteSelectedRecords}>
                     <Trash2 size={14} className="mr-1.5" /> Delete {selectedRecords.size}
                   </Button>
                 )}
-                <Button size="sm" onClick={handleAddRecord}><Plus size={14} /> Add record</Button>
-              </div>
+                <Button size="sm" onClick={handleAddRecord}>
+                  <Plus size={14} /> Add record
+                </Button>
+              </header>
 
               {/* Table */}
               {loading ? (
-                <div className="flex-1 flex items-center justify-center">
+                <div className="flex flex-1 items-center justify-center">
                   <Loader2 size={22} className="animate-spin text-muted-foreground" />
                 </div>
               ) : fields.length === 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                <div className="flex flex-1 flex-col items-center justify-center gap-2 text-muted-foreground">
                   <p className="text-sm">No fields yet.</p>
-                  <Button size="sm" variant="outline" onClick={() => setShowAddField(true)}><Plus size={14} /> Add your first field</Button>
+                  <Button size="sm" variant="outline" onClick={() => setShowAddField(true)}>
+                    <Plus size={14} /> Add your first field
+                  </Button>
                 </div>
               ) : (
                 <div className="flex-1 overflow-auto">
@@ -319,7 +390,7 @@ export default function DynamicFieldPage() {
                     <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
                       <tr>
                         <th className="px-3 py-2 text-center text-xs font-medium text-muted-foreground border-b border-r border-border/40">
-                          <Checkbox 
+                          <Checkbox
                             checked={records.length > 0 && selectedRecords.size === records.length}
                             onCheckedChange={handleToggleAll}
                             className="translate-y-[2px]"
@@ -393,7 +464,7 @@ export default function DynamicFieldPage() {
                       ) : records.map(record => (
                         <tr key={record.id} className="border-b hover:bg-muted/30 transition-colors">
                           <td className="px-3 py-2 text-center border-r border-b align-middle">
-                            <Checkbox 
+                            <Checkbox
                               checked={selectedRecords.has(record.id)}
                               onCheckedChange={(checked) => {
                                 const newSet = new Set(selectedRecords);
@@ -411,8 +482,7 @@ export default function DynamicFieldPage() {
                             return (
                               <td
                                 key={field.id}
-                                className={`px-3 py-2 border-r border-b align-middle transition-all ${isActive ? 'outline outline-2 outline-primary outline-offset-[-2px]' : ''
-                                  }`}
+                                className={`px-3 py-2 border-r border-b align-middle transition-all ${isActive ? 'outline outline-2 outline-primary outline-offset-[-2px]' : ''}`}
                                 style={{ width: COL_WIDTH, maxWidth: COL_WIDTH, overflow: 'hidden', position: 'relative' }}
                                 onClick={e => { e.stopPropagation(); setActiveCell({ recordId: record.id, fieldId: field.id }); }}
                               >
@@ -441,8 +511,8 @@ export default function DynamicFieldPage() {
               )}
             </>
           )}
-        </div>
-      </div>
+        </TooltipProvider>
+      </SidebarInset>
 
       {/* ── Drawers & Dialogs ─────────────────────────────────── */}
       <AddFieldDrawer open={showAddField} onClose={() => setShowAddField(false)} onSubmit={handleAddField} />
@@ -502,6 +572,6 @@ export default function DynamicFieldPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </TooltipProvider>
+    </SidebarProvider>
   );
 }
