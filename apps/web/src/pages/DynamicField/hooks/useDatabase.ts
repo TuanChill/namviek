@@ -21,5 +21,14 @@ export function useDatabase() {
     setSelectedDb(db);
   }, []);
 
-  return { databases, selectedDb, setSelectedDb, createDatabase, selectDatabase };
+  const deleteDatabase = useCallback(async (id: string) => {
+    await api.databases.delete(id);
+    const list = await api.databases.list();
+    setDatabases(list);
+    if (selectedDb?.id === id) {
+      setSelectedDb(null);
+    }
+  }, [selectedDb]);
+
+  return { databases, selectedDb, setSelectedDb, createDatabase, selectDatabase, deleteDatabase };
 }

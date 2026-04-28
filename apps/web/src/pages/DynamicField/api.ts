@@ -1,6 +1,21 @@
 import type { DynDatabase, DynRecord, DynUser, Field, FieldOption, FieldValue, FieldValuePayload, FileAttachment } from './types';
 import type { FieldType } from './types';
 
+export interface TemplateField {
+  name: string;
+  type: FieldType;
+  fakerRule: string;
+  options?: string[];
+}
+
+export interface Template {
+  id: string;
+  category: string;
+  name: string;
+  description: string;
+  fields: TemplateField[];
+}
+
 const BASE = '/api';
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -16,6 +31,11 @@ export const api = {
   databases: {
     list: () => apiFetch<DynDatabase[]>('/databases'),
     create: (name: string) => apiFetch<DynDatabase>('/databases', { method: 'POST', body: JSON.stringify({ name }) }),
+    delete: (id: string) => apiFetch<{ success: boolean }>(`/databases/${id}`, { method: 'DELETE' }),
+  },
+  templates: {
+    list: () => apiFetch<Template[]>('/templates'),
+    createDatabase: (templateId: string, name?: string) => apiFetch<DynDatabase>('/databases/from-template', { method: 'POST', body: JSON.stringify({ templateId, name }) })
   },
   fields: {
     list: (dbId: string) => apiFetch<Field[]>(`/databases/${dbId}/fields`),

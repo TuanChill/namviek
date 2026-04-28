@@ -63,6 +63,13 @@ export async function getDynDatabase(id: string) {
     });
 }
 
+/** Delete a database */
+export async function deleteDynDatabase(id: string) {
+    return await prisma.dynDatabase.delete({
+        where: { id },
+    });
+}
+
 /** List fields for a database, ordered by position */
 export async function getFields(databaseId: string) {
     return await prisma.field.findMany({

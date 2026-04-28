@@ -24,6 +24,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { CellEditor } from './DynamicField/CellEditors';
 import { AddFieldDrawer } from './DynamicField/AddFieldDrawer';
 import { EditFieldDrawer } from './DynamicField/EditFieldDrawer';
+import { TemplateDialog } from './DynamicField/components/TemplateDialog';
 import { getFieldMeta, ICON_OPTIONS, getIconByName } from './DynamicField/constants';
 
 import { useDatabase } from './DynamicField/hooks/useDatabase';
@@ -36,7 +37,7 @@ import type { DynDatabase, Field, FieldConfig, FieldType, FieldValuePayload } fr
 const COL_WIDTH = 180;
 
 export default function DynamicFieldPage() {
-  const { databases, selectedDb, setSelectedDb, createDatabase } = useDatabase();
+  const { databases, selectedDb, setSelectedDb, createDatabase, deleteDatabase } = useDatabase();
   const { fields, setFields, loadFields, addField, renameField, deleteField, moveField, duplicateField, changeIcon, updateField } = useFields();
   const { records, setRecords, loadRecords, addRecord, setValue, removeFieldValues, reloadRecords, deleteRecords } = useRecords();
 
@@ -46,9 +47,10 @@ export default function DynamicFieldPage() {
   const [loading, setLoading] = useState(false);
   const [selectedRecords, setSelectedRecords] = useState<Set<string>>(new Set());
 
-  // DB creation
+  // DB creation & deletion
   const [showNewDb, setShowNewDb] = useState(false);
   const [newDbName, setNewDbName] = useState('');
+  const [showDeleteDb, setShowDeleteDb] = useState(false);
 
   // Drawers / dialogs
   const [showAddField, setShowAddField] = useState(false);
@@ -147,6 +149,13 @@ export default function DynamicFieldPage() {
     setNewDbName('');
     setShowNewDb(false);
     await loadDb(db);
+  };
+
+  const handleDeleteDb = async () => {
+    if (!selectedDb) return;
+    await deleteDatabase(selectedDb.id);
+    setShowDeleteDb(false);
+    navigate('/test');
   };
 
   const handleAddField = async (name: string, type: FieldType, config: FieldConfig, pendingOptions: { label: string; color: string }[]) => {
@@ -253,9 +262,12 @@ export default function DynamicFieldPage() {
                 </div>
               </div>
             ) : (
-              <Button variant="ghost" size="sm" className="w-full justify-start gap-1.5 h-8 text-xs text-muted-foreground" onClick={() => setShowNewDb(true)}>
-                <Plus size={13} /> New database
-              </Button>
+              <div className="flex flex-col gap-1">
+                <Button variant="ghost" size="sm" className="w-full justify-start gap-1.5 h-8 text-xs text-muted-foreground" onClick={() => setShowNewDb(true)}>
+                  <Plus size={13} /> New database
+                </Button>
+                <TemplateDialog />
+              </div>
             )}
           </div>
         </aside>
@@ -275,6 +287,9 @@ export default function DynamicFieldPage() {
                 <Separator orientation="vertical" className="h-4" />
                 <span className="text-xs text-muted-foreground">{fields.length} fields · {records.length} records</span>
                 <div className="flex-1" />
+                <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10" onClick={() => setShowDeleteDb(true)}>
+                  <Trash2 size={14} className="mr-1.5" /> Delete DB
+                </Button>
                 <Button size="sm" variant="outline" onClick={() => setShowAddField(true)}><Plus size={14} /> Add field</Button>
                 {selectedRecords.size > 0 && (
                   <Button size="sm" variant="destructive" onClick={handleDeleteSelectedRecords}>
@@ -451,6 +466,23 @@ export default function DynamicFieldPage() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleDeleteField}>
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showDeleteDb} onOpenChange={setShowDeleteDb}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete database?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the <strong>{selectedDb?.name}</strong> database and all of its fields and records. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleDeleteDb}>
+              Delete Database
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

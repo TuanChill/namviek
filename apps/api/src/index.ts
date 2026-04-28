@@ -26,10 +26,13 @@ import {
   upsertDynUser,
   backfillIdField,
   deleteDynRecords,
+  deleteDynDatabase,
 } from '@local/database'
 import type { FieldType } from '@local/database'
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
 import crypto from 'crypto'
+import { TEMPLATES } from './config/templates.js'
+import { createDatabaseFromTemplate } from './services/template.service.js'
 
 const s3Client = new S3Client({
   region: 'auto',
@@ -83,10 +86,57 @@ app.post('/api/tests', async (c) => {
 
 // ─── Dynamic Fields System routes ─────────────────────────────────────────────
 
+// POST /api/databases/from-template — create database from template
+app.post('/api/databases/from-template', async (c) => {
+  try {
+    const body = await c.req.json()
+    if (!body.templateId) return c.json({ error: 'templateId is required' }, 400)
+    const db = await createDatabaseFromTemplate(body.templateId, body.name)
+    return c.json(db, 201)
+  } catch (error) {
+    console.error(error)
+    return c.json({ error: 'Failed to create database from template' }, 500)
+  }
+})
+
+// GET /api/databases/from-template/stream — create database via SSE stream
+app.get('/api/databases/from-template/stream', (c) => {
+  console.log('[API] Hit /api/databases/from-template/stream endpoint');
+  const templateId = c.req.query('templateId')
+  const name = c.req.query('name')
+
+  console.log(`[API] templateId: ${templateId}, name: ${name}`);
+
+  if (!templateId) return c.json({ error: 'templateId is required' }, 400)
+
+  return streamSSE(c, async (stream) => {
+    console.log('[API] streamSSE initialized');
+    try {
+      console.log('[API] Calling createDatabaseFromTemplate...');
+      const db = await createDatabaseFromTemplate(templateId, name, async (msg) => {
+        await stream.writeSSE({
+          event: 'progress',
+          data: msg,
+        })
+      })
+      await stream.writeSSE({
+        event: 'done',
+        data: JSON.stringify(db),
+      })
+    } catch (error: any) {
+      console.error(error)
+      await stream.writeSSE({
+        event: 'error',
+        data: error.message || 'Failed to create from template',
+      })
+    }
+  })
+})
+
 // GET /api/databases/:id/stream — SSE for real-time sync
 app.get('/api/databases/:id/stream', (c) => {
   const dbId = c.req.param('id')
-  
+
   return streamSSE(c, async (stream) => {
     let active = true
 
@@ -137,6 +187,23 @@ app.post('/api/databases', async (c) => {
     return c.json({ error: 'Failed to create database' }, 500)
   }
 })
+
+// DELETE /api/databases/:id — delete a database
+app.delete('/api/databases/:id', async (c) => {
+  try {
+    await deleteDynDatabase(c.req.param('id'))
+    return c.json({ success: true })
+  } catch (error) {
+    console.error(error)
+    return c.json({ error: 'Failed to delete database' }, 500)
+  }
+})
+
+// GET /api/templates — get all predefined templates
+app.get('/api/templates', (c) => {
+  return c.json(TEMPLATES)
+})
+
 
 // GET /api/databases/:id/fields — list fields
 app.get('/api/databases/:id/fields', async (c) => {
@@ -198,7 +265,7 @@ app.delete('/api/records', async (c) => {
     const body = await c.req.json()
     if (!Array.isArray(body.ids)) return c.json({ error: 'ids array is required' }, 400)
     await deleteDynRecords(body.ids)
-    
+
     // We don't have dbId directly here, but we could pass it or clients can just listen.
     // Actually, deleteDynRecords doesn't return dbId, so frontend should pass databaseId.
     if (body.databaseId) {
@@ -317,6 +384,9 @@ app.post('/api/fields/:fieldId/move', async (c) => {
 app.post('/api/fields/:fieldId/duplicate', async (c) => {
   try {
     const field = await duplicateField(c.req.param('fieldId'))
+    if (!field) {
+      return c.json({ error: 'Field not found' }, 404)
+    }
     dbEvents.publish(field.databaseId, 'FIELD_CREATED', field)
     return c.json(field, 201)
   } catch (error) {
@@ -352,7 +422,7 @@ app.post('/api/upload', async (c) => {
 
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
-    
+
     // Generate a unique key
     const uniqueId = crypto.randomBytes(8).toString('hex')
     const extension = file.name.split('.').pop() || ''
