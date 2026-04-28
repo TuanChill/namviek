@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Check, X, Search, User } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
-import { api } from '../api';
+import { useUsers } from '../hooks/useUsers';
 import type { DynUser } from '../types';
 import type { CellProps } from './shared';
 
@@ -48,7 +48,7 @@ export function PersonChip({ user }: { user: DynUser }) {
 export function PersonCell({ field, value, onSave }: CellProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const [rawUsers, setRawUsers] = useState<DynUser[]>([]);  // all users from API
+  const { users: rawUsers } = useUsers();
   const [filtered, setFiltered] = useState<DynUser[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -61,13 +61,6 @@ export function PersonCell({ field, value, onSave }: CellProps) {
   const allUsers = (allowedUserIds && allowedUserIds.length > 0)
     ? rawUsers.filter(u => allowedUserIds.includes(u.id))
     : rawUsers;
-
-  // Load all users once on mount
-  useEffect(() => {
-    api.users.list().then(users => {
-      setRawUsers(users);
-    }).catch(console.error);
-  }, []);
 
   // Re-apply search filter whenever pool or query changes
   useEffect(() => {

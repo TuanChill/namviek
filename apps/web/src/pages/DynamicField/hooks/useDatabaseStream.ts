@@ -20,7 +20,8 @@ export function useDatabaseStream(dbId: string | undefined, handlers: StreamHand
   useEffect(() => {
     if (!dbId) return;
 
-    const eventSource = new EventSource(`/api/databases/${dbId}/stream`);
+    const baseUrl = import.meta.env.DEV ? 'http://localhost:4001/api' : '/api';
+    const eventSource = new EventSource(`${baseUrl}/databases/${dbId}/stream`);
 
     eventSource.addEventListener('RECORD_CREATED', (e) => {
       handlersRef.current.onRecordCreated(JSON.parse(e.data));
