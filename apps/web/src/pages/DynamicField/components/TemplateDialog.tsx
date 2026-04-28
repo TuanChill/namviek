@@ -32,7 +32,7 @@ export function TemplateDialog() {
     try {
       const db = await createFromTemplate({ templateId: template.id });
       setOpen(false);
-      navigate(`/databases/${db.id}`);
+      navigate(`/test/${db.id}`);
     } catch (error) {
       console.error('Failed to create from template:', error);
       alert('Failed to create database from template');
