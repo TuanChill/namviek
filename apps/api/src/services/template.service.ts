@@ -9,6 +9,21 @@ import {
 } from '@local/database'
 import { TEMPLATES } from '../config/templates.js'
 
+/** Curated palette — each value is stored in the option and rendered by OptionChip */
+const OPTION_COLORS = [
+  '#f87171', // red-400
+  '#fb923c', // orange-400
+  '#facc15', // yellow-400
+  '#4ade80', // green-400
+  '#34d399', // emerald-400
+  '#22d3ee', // cyan-400
+  '#60a5fa', // blue-400
+  '#818cf8', // indigo-400
+  '#a78bfa', // violet-400
+  '#e879f9', // fuchsia-400
+  '#f472b6', // pink-400
+]
+
 export async function createDatabaseFromTemplate(templateId: string, name?: string, onProgress?: (msg: string) => Promise<void>) {
   console.log(`[Template] Starting creation for template ID: ${templateId}`);
   const template = TEMPLATES.find((t) => t.id === templateId)
@@ -37,11 +52,15 @@ export async function createDatabaseFromTemplate(templateId: string, name?: stri
     const field = await createField(db.id, tField.name, tField.type)
     fields.push({ ...tField, createdId: field.id })
 
-    // If it's a select field, create options
+    // If it's a select field, create options with random distinct colors
     if (tField.options && tField.options.length > 0) {
       fieldIdToOptionsMap[field.id] = []
-      for (const opt of tField.options) {
-        const optionRecord = await createFieldOption(field.id, opt)
+      // Shuffle palette so options within the same field get different colors
+      const shuffled = [...OPTION_COLORS].sort(() => Math.random() - 0.5)
+      for (let i = 0; i < tField.options.length; i++) {
+        const opt = tField.options[i]
+        const color = shuffled[i % shuffled.length]
+        const optionRecord = await createFieldOption(field.id, opt, color)
         fieldIdToOptionsMap[field.id].push(optionRecord.id)
       }
     }

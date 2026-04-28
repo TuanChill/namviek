@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Check } from 'lucide-react';
+import { X } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { OptionChip, CellTrigger } from './shared';
 import type { CellProps } from './shared';
@@ -31,8 +31,7 @@ export function SelectCell({ field, value, onSave }: CellProps) {
             )}
             {field.options.map(opt => (
               <button key={opt.id} onClick={() => { onSave({ selectValue: opt.id }); setOpen(false); }}
-                className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-accent">
-                {opt.id === selectedId && <Check size={12} className="text-primary shrink-0" />}
+                className={`flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-accent ${opt.id === selectedId ? 'bg-accent' : ''}`}>
                 <OptionChip label={opt.label} color={opt.color} />
               </button>
             ))}

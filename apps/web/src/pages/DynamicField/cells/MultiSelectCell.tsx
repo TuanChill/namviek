@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Checkbox } from '@/components/ui/checkbox';
 import { OptionChip, CellTrigger } from './shared';
 import type { CellProps } from './shared';
 
@@ -31,10 +30,12 @@ export function MultiSelectCell({ field, value, onSave }: CellProps) {
           <p className="text-xs text-muted-foreground px-2 py-1.5">No options defined</p>
         ) : (
           field.options.map(opt => (
-            <label key={opt.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer">
-              <Checkbox checked={selected.includes(opt.id)} onCheckedChange={() => toggle(opt.id)} />
+            <button key={opt.id} onClick={() => toggle(opt.id)}
+              className={`flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-accent text-left ${
+                selected.includes(opt.id) ? 'bg-accent' : ''
+              }`}>
               <OptionChip label={opt.label} color={opt.color} />
-            </label>
+            </button>
           ))
         )}
         {selected.length > 0 && (
