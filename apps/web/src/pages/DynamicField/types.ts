@@ -11,6 +11,10 @@ export interface FieldConfig {
   numberFormat?: 'integer' | 'decimal' | 'percent' | 'currency';
   precision?: number;
   currency?: string;
+  showAs?: 'number' | 'bar' | 'ring';
+  divideBy?: number;
+  color?: string;
+  showNumber?: boolean;
   // text
   richText?: boolean;
   // person

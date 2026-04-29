@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, X, Palette } from 'lucide-react';
+import { Plus, X, Palette, ChevronsUpDown, Check } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { cn } from '@/lib/utils';
 import { OptionChip } from './CellEditors';
 import {
   OPTION_COLORS,
@@ -344,49 +347,158 @@ export function EditFieldDrawer({ open, field, onClose, onSaved }: Props) {
             </div>
           )}
 
-          {/* Number: format + precision + currency */}
+          {/* Number: format + precision */}
           {field.type === 'number' && (
             <div className="flex flex-col gap-3">
               <div className="flex flex-col gap-1.5">
-                <Label>Format</Label>
+                <Label>Number format</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      className="w-full justify-between h-8 text-xs px-3 font-normal"
+                    >
+                      {config.numberFormat
+                        ? NUMBER_FORMATS.find(f => f.value === config.numberFormat)?.label
+                        : 'Select format...'}
+                      <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[280px] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Filter formats..." className="h-8 text-xs" />
+                      <CommandList>
+                        <CommandEmpty>No format found.</CommandEmpty>
+                        <CommandGroup>
+                          {NUMBER_FORMATS.map(f => (
+                            <CommandItem
+                              key={f.value}
+                              value={f.label}
+                              onSelect={() => {
+                                patch({ numberFormat: f.value as FieldConfig['numberFormat'] });
+                              }}
+                              className="text-xs"
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-3 w-3",
+                                  config.numberFormat === f.value ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {f.label}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              {/* Decimal places is relevant for all of our formats now since they are all numbers/currencies */}
+              <div className="flex flex-col gap-1.5">
+                <Label>Decimal places</Label>
                 <ShadSelect
-                  value={config.numberFormat ?? 'decimal'}
-                  onValueChange={v => patch({ numberFormat: v as FieldConfig['numberFormat'] })}
+                  value={config.precision === undefined ? 'default' : config.precision.toString()}
+                  onValueChange={v => patch({ precision: v === 'default' ? undefined : parseInt(v) })}
                 >
                   <SelectTrigger className="h-8 text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {NUMBER_FORMATS.map(f => (
-                      <SelectItem key={f.value} value={f.value} className="text-xs">
-                        {f.label}
-                      </SelectItem>
+                    <SelectItem value="default" className="text-xs">Default</SelectItem>
+                    {[0, 1, 2, 3, 4, 5].map(n => (
+                      <SelectItem key={n} value={n.toString()} className="text-xs">{n}</SelectItem>
                     ))}
                   </SelectContent>
                 </ShadSelect>
               </div>
-              {(config.numberFormat === 'decimal' || !config.numberFormat) && (
-                <div className="flex flex-col gap-1.5">
-                  <Label>Decimal places</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={6}
-                    value={config.precision ?? 2}
-                    onChange={e => patch({ precision: parseInt(e.target.value) })}
-                    className="h-8 text-xs"
-                  />
+
+              <Separator />
+
+              <div className="flex flex-col gap-2">
+                <Label>Show as</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    onClick={() => patch({ showAs: 'number' })}
+                    className={`flex flex-col items-center justify-center py-2 rounded-md border transition-colors ${
+                      (config.showAs === 'number' || !config.showAs)
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-border hover:bg-accent text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <span className="text-lg font-semibold leading-none mb-1">42</span>
+                    <span className="text-xs">Number</span>
+                  </button>
+                  <button
+                    onClick={() => patch({ showAs: 'bar' })}
+                    className={`flex flex-col items-center justify-center py-2 rounded-md border transition-colors ${
+                      config.showAs === 'bar'
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-border hover:bg-accent text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <div className="w-8 h-1 bg-current rounded-full mb-2 opacity-50 relative overflow-hidden">
+                       <div className="absolute top-0 left-0 bottom-0 w-1/2 bg-current rounded-full" />
+                    </div>
+                    <span className="text-xs">Bar</span>
+                  </button>
+                  <button
+                    onClick={() => patch({ showAs: 'ring' })}
+                    className={`flex flex-col items-center justify-center py-2 rounded-md border transition-colors ${
+                      config.showAs === 'ring'
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-border hover:bg-accent text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <div className="w-4 h-4 rounded-full border-2 border-current mb-1 opacity-80" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%, 0 50%)' }} />
+                    <span className="text-xs">Ring</span>
+                  </button>
                 </div>
-              )}
-              {config.numberFormat === 'currency' && (
-                <div className="flex flex-col gap-1.5">
-                  <Label>Currency symbol</Label>
-                  <Input
-                    value={config.currency ?? '$'}
-                    onChange={e => patch({ currency: e.target.value })}
-                    className="h-8 text-xs"
-                    maxLength={3}
-                  />
+              </div>
+
+              {(config.showAs === 'bar' || config.showAs === 'ring') && (
+                <div className="bg-muted p-3 rounded-md flex flex-col gap-3">
+                  <div className="flex items-center justify-between gap-4">
+                    <Label className="font-normal shrink-0">Color</Label>
+                    <ShadSelect
+                      value={config.color ?? OPTION_COLORS[2]}
+                      onValueChange={v => patch({ color: v })}
+                    >
+                      <SelectTrigger className="h-8 text-xs border-transparent bg-transparent shadow-none hover:bg-background/50 focus:ring-0 px-2 justify-end gap-2 text-right">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {OPTION_COLORS.map(c => (
+                          <SelectItem key={c} value={c} className="text-xs">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: c }} />
+                              {c}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </ShadSelect>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-4">
+                    <Label className="font-normal shrink-0">Divide by</Label>
+                    <Input
+                      type="number"
+                      value={config.divideBy ?? 100}
+                      onChange={e => patch({ divideBy: parseFloat(e.target.value) || 100 })}
+                      className="h-8 text-xs w-24 text-right bg-background border-transparent"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between gap-4">
+                    <Label className="font-normal shrink-0">Show number</Label>
+                    <Switch
+                      checked={config.showNumber ?? true}
+                      onCheckedChange={v => patch({ showNumber: v })}
+                    />
+                  </div>
                 </div>
               )}
             </div>

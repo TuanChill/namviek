@@ -54,10 +54,15 @@ export const DATE_FORMATS = [
 ] as const;
 
 export const NUMBER_FORMATS = [
-  { value: 'integer',  label: 'Integer (1,234)' },
-  { value: 'decimal',  label: 'Decimal (1,234.56)' },
-  { value: 'percent',  label: 'Percent (12.3%)' },
-  { value: 'currency', label: 'Currency ($12.34)' },
+  { value: 'number', label: 'Number' },
+  { value: 'number_with_separators', label: 'Number with separators' },
+  { value: 'percent', label: 'Percent' },
+  { value: 'usd', label: 'US Dollar (USD)' },
+  { value: 'aud', label: 'Australian dollar (AUD)' },
+  { value: 'cad', label: 'Canadian dollar (CAD)' },
+  { value: 'sgd', label: 'Singapore dollar (SGD)' },
+  { value: 'eur', label: 'Euro (EUR)' },
+  { value: 'gbp', label: 'Pound Sterling (GBP)' },
 ] as const;
 
 export function formatDateValue(raw: string, config?: { dateFormat?: string; includeTime?: boolean }): string {
@@ -81,16 +86,43 @@ export function formatDateValue(raw: string, config?: { dateFormat?: string; inc
   }
 }
 
-export function formatNumberValue(raw: string | null | undefined, config?: { numberFormat?: string; precision?: number; currency?: string }): string {
+export function formatNumberValue(raw: string | number | null | undefined, config?: Record<string, any>): string {
   if (raw == null || raw === '') return '';
-  const n = parseFloat(raw);
-  if (isNaN(n)) return raw;
-  const precision = config?.precision ?? 2;
-  switch (config?.numberFormat) {
-    case 'integer':  return Math.round(n).toLocaleString();
-    case 'percent':  return `${n.toFixed(precision)}%`;
-    case 'currency': return `${config?.currency ?? '$'}${n.toFixed(2)}`;
-    default:         return n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: precision });
+  const n = typeof raw === 'string' ? parseFloat(raw) : raw;
+  if (isNaN(n)) return String(raw);
+  const precision = config?.precision;
+  const format = config?.numberFormat ?? 'number_with_separators';
+
+  switch (format) {
+    case 'number':
+      return precision !== undefined ? n.toFixed(precision) : n.toString();
+    case 'number_with_separators':
+      return n.toLocaleString(undefined, { minimumFractionDigits: precision ?? 0, maximumFractionDigits: precision ?? 2 });
+    case 'percent':
+      return precision !== undefined 
+        ? `${n.toFixed(precision)}%` 
+        : `${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}%`;
+    case 'usd':
+    case 'aud':
+    case 'cad':
+    case 'sgd':
+    case 'eur':
+    case 'gbp':
+      return n.toLocaleString(undefined, { 
+        style: 'currency', 
+        currency: format.toUpperCase(), 
+        minimumFractionDigits: precision ?? 2, 
+        maximumFractionDigits: precision ?? 2 
+      });
+    // Legacy support
+    case 'integer':
+      return Math.round(n).toLocaleString();
+    case 'decimal':
+      return n.toLocaleString(undefined, { minimumFractionDigits: precision ?? 0, maximumFractionDigits: precision ?? 2 });
+    case 'currency':
+      return `${config?.currency ?? '$'}${n.toLocaleString(undefined, { minimumFractionDigits: precision ?? 2, maximumFractionDigits: precision ?? 2 })}`;
+    default:
+      return n.toLocaleString(undefined, { minimumFractionDigits: precision ?? 0, maximumFractionDigits: precision ?? 2 });
   }
 }
 

@@ -10,7 +10,62 @@ import type { CellProps } from './shared';
 export function NumberCell({ field, value, onSave }: CellProps) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState('');
-  const display = formatNumberValue(value?.numberValue, field.config ?? {});
+  const config = field.config ?? {};
+  const display = formatNumberValue(value?.numberValue, config);
+  const showAs = config.showAs ?? 'number';
+  const color = config.color ?? '#10b981';
+  const showNumber = config.showNumber ?? true;
+  const divideBy = config.divideBy ?? 100;
+
+  const numValueRaw = value?.numberValue;
+  const numValue = typeof numValueRaw === 'string' ? parseFloat(numValueRaw) : (numValueRaw ?? 0);
+  const percent = Math.min(100, Math.max(0, (numValue / divideBy) * 100));
+
+  let DisplayComponent;
+  if (value?.numberValue == null) {
+    DisplayComponent = '—';
+  } else if (showAs === 'bar') {
+    DisplayComponent = (
+      <div className="flex items-center gap-2 w-full min-w-[100px]">
+        {showNumber && <span className="text-sm">{display}</span>}
+        <div className="h-1.5 flex-1 bg-muted rounded-full overflow-hidden" style={{ backgroundColor: `${color}22` }}>
+          <div className="h-full rounded-full transition-all" style={{ width: `${percent}%`, backgroundColor: color }} />
+        </div>
+      </div>
+    );
+  } else if (showAs === 'ring') {
+    const radius = 8;
+    const circumference = 2 * Math.PI * radius;
+    const strokeDashoffset = circumference - (percent / 100) * circumference;
+
+    DisplayComponent = (
+      <div className="flex items-center gap-2">
+        {showNumber && <span className="text-sm">{display}</span>}
+        <svg className="w-5 h-5 -rotate-90 shrink-0" viewBox="0 0 20 20">
+          <circle cx="10" cy="10" r={radius} fill="none" strokeWidth="3" className="text-muted" style={{ stroke: `${color}22` }} />
+          <circle
+            cx="10"
+            cy="10"
+            r={radius}
+            fill="none"
+            stroke={color}
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={strokeDashoffset}
+            className="transition-all duration-300"
+          />
+        </svg>
+      </div>
+    );
+  } else {
+    DisplayComponent = (
+      <span className="flex items-center gap-1.5 text-sm">
+        {/* <Hash size={12} className="text-muted-foreground shrink-0" /> */}
+        {display}
+      </span>
+    );
+  }
 
   const commit = () => {
     onSave({ numberValue: draft === '' ? null : parseFloat(draft) });
@@ -21,10 +76,8 @@ export function NumberCell({ field, value, onSave }: CellProps) {
     <Popover open={open} onOpenChange={v => { setOpen(v); if (v) setDraft(value?.numberValue ?? ''); }}>
       <PopoverTrigger asChild>
         <button className="w-full text-left min-h-5">
-          <CellTrigger empty={!display}>
-            {display
-              ? <span className="flex items-center gap-1.5 text-sm"><Hash size={12} className="text-muted-foreground shrink-0" />{display}</span>
-              : '—'}
+          <CellTrigger empty={value?.numberValue == null}>
+            {DisplayComponent}
           </CellTrigger>
         </button>
       </PopoverTrigger>
