@@ -275,9 +275,6 @@ export default function DynamicFieldPage() {
                     <Database />
                     <div className="flex flex-col leading-tight min-w-0">
                       <span className="truncate font-medium">{db.name}</span>
-                      <span className="text-xs text-muted-foreground opacity-70">
-                        {db._count.fields} fields · {db._count.records} rows
-                      </span>
                     </div>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
