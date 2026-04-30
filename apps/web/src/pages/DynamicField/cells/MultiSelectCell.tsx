@@ -19,17 +19,17 @@ export function MultiSelectCell({ field, value, onSave }: CellProps) {
         <button className="w-full text-left min-h-5">
           <CellTrigger empty={selected.length === 0}>
             {selected.length === 0 ? '—' : selected.map(id => {
-              const opt = field.options.find(o => o.id === id);
+              const opt = field.options?.find(o => o.id === id);
               return opt ? <OptionChip key={id} label={opt.label} color={opt.color} /> : null;
             })}
           </CellTrigger>
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-52 p-1" align="start">
-        {field.options.length === 0 ? (
+        {(field.options?.length ?? 0) === 0 ? (
           <p className="text-xs text-muted-foreground px-2 py-1.5">No options defined</p>
         ) : (
-          field.options.map(opt => (
+          field.options?.map(opt => (
             <button key={opt.id} onClick={() => toggle(opt.id)}
               className={`flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-accent text-left ${
                 selected.includes(opt.id) ? 'bg-accent' : ''

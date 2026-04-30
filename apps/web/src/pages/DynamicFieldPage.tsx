@@ -430,7 +430,7 @@ export default function DynamicFieldPage() {
                                         </div>
                                       </TooltipTrigger>
                                       <TooltipContent side="bottom" className="text-xs">
-                                        {field.type.replace('_', ' ')}{field.options.length > 0 ? ` · ${field.options.length} options` : ''}
+                                        {field.type.replace('_', ' ')}{field.options?.length ? ` · ${field.options.length} options` : ''}
                                         {' '}· Right-click to edit
                                       </TooltipContent>
                                     </Tooltip>
