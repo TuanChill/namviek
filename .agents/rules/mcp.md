@@ -40,14 +40,22 @@ You focus exclusively on the **MCP layer** (`apps/mcp/`) using:
    - Keep MCP as a thin adapter over `apps/api`
    - Handle API errors and surface actionable messages
    - Respect API auth/environment configuration
+  - When field config behavior changes in the app/API, update MCP field tool schemas and help metadata in the same change
 
-4. **Data Usability for Agents**
+4. **Field Config Contract Discipline**
+  - Treat field config as a cross-layer contract, not an MCP-only detail
+  - Before adding or changing field config keys, verify the source of truth in the web UI and API validation
+  - Keep `apps/api`, `apps/mcp`, and MCP help/discovery output aligned in the same PR/change
+  - If a field type uses separate APIs for related resources (for example select options), expose dedicated MCP tools instead of hiding that behavior in vague config blobs
+  - Prefer explicit per-field-type Zod inputs over generic `config: object` when agents need to call tools reliably
+
+5. **Data Usability for Agents**
    - Prefer human-readable outputs when possible
    - Include both raw and display-friendly results for complex data
    - Resolve IDs to labels/names where useful (select/person fields)
    - Keep responses concise but complete
 
-5. **Tool Discovery and Guidance**
+6. **Tool Discovery and Guidance**
    - Maintain a help/discovery tool (`mcp_help`)
    - Group tools by category (database/field/record/query/stats/user/meta)
    - Provide examples and usage hints for common tasks
@@ -94,6 +102,10 @@ apps/mcp/
 | Tool | Description |
 |---|---|
 | `list_fields` | List all fields in a database |
+| `list_field_options` | List live options for a select or multi-select field |
+| `create_field_option` | Create one live option for a select or multi-select field |
+| `delete_field_option` | Delete one live option from a select or multi-select field |
+| `get_field_config_contract` | Show allowed config keys and option tools by field type |
 | `create_field` | Create a field (name, type, required) |
 | `update_field` | Rename or update field config |
 | `delete_field` | Delete a field and its values |
@@ -213,10 +225,22 @@ pnpm --filter mcp build
 5. **Add human-readable output** for user-facing fields.
 6. **Validate with build** after every tool update.
 7. **Document new tools** in `mcp_help` metadata.
+8. **When field config changes, update all layers together**:
+   - API validation and route behavior in `apps/api`
+   - MCP Zod schemas and tool handlers in `apps/mcp/src/tools/field.tools.ts`
+   - Discovery metadata in `apps/mcp/src/tools/meta.tools.ts` and `apps/mcp/src/index.ts`
+   - Contract/help outputs such as `get_field_config_contract`
+9. **Do not model live select options as config** unless the API truly stores them in config; prefer dedicated option tools when the app uses separate option records.
 
 ## Common Tasks
 
 - **Add a new tool**: create or update file in `apps/mcp/src/tools/`, export in `tools/index.ts`, register in `src/index.ts`.
+- **Add or change field config**:
+  1. verify the config keys in the web UI and API validation
+  2. update `create_field` / `update_field` schemas in `apps/mcp/src/tools/field.tools.ts`
+  3. update `get_field_config_contract`
+  4. update `mcp_help` metadata and HTTP tool listing if tool surface changed
+  5. run `pnpm --filter mcp build`
 - **Improve readability**: map internal IDs to labels/names in tool responses.
 - **Add stats capability**: implement aggregation in `stats.tools.ts`.
 - **Troubleshoot client parsing errors**: check for accidental stdout logs.

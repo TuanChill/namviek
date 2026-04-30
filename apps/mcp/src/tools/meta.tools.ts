@@ -19,6 +19,10 @@ const TOOL_DOCS: ToolDoc[] = [
   { name: 'create_database_from_template_by_id', category: 'database', summary: 'Create a database from template by templateId.' },
 
   { name: 'list_fields', category: 'field', summary: 'List fields in a database.' },
+  { name: 'list_field_options', category: 'field', summary: 'List live options for a select or multi-select field.' },
+  { name: 'create_field_option', category: 'field', summary: 'Create one live option for a select or multi-select field.' },
+  { name: 'delete_field_option', category: 'field', summary: 'Delete one live option from a select or multi-select field.' },
+  { name: 'get_field_config_contract', category: 'field', summary: 'Show allowed config keys and option tools by field type.' },
   { name: 'create_field', category: 'field', summary: 'Create a field.' },
   { name: 'update_field', category: 'field', summary: 'Update field name/config.' },
   { name: 'delete_field', category: 'field', summary: 'Delete a field.' },

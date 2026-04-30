@@ -79,6 +79,14 @@ export async function getFields(databaseId: string) {
     });
 }
 
+/** Get one field by ID */
+export async function getFieldById(fieldId: string) {
+    return await prisma.field.findUnique({
+        where: { id: fieldId },
+        include: { options: { orderBy: { position: "asc" } } },
+    });
+}
+
 /** Create a field in a database */
 export async function createField(
     databaseId: string,

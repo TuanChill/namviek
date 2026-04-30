@@ -48,7 +48,7 @@ async function start() {
           tools: [
             'mcp_help',
             'list_databases', 'list_templates', 'get_database', 'create_database', 'delete_database', 'create_database_from_template', 'create_database_from_template_by_id',
-            'list_fields', 'create_field', 'update_field', 'delete_field', 'reorder_field', 'duplicate_field',
+            'list_fields', 'list_field_options', 'create_field_option', 'delete_field_option', 'get_field_config_contract', 'create_field', 'update_field', 'delete_field', 'reorder_field', 'duplicate_field',
             'list_records', 'create_record', 'delete_records', 'set_field_value', 'bulk_set_values', 'preview_table',
             'query_records', 'search_records',
             'get_database_stats', 'get_stats', 'get_distribution', 'get_timeline', 'get_person_activity',
