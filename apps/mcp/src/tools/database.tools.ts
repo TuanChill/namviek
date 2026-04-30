@@ -3,6 +3,21 @@ import { z } from 'zod'
 import { apiGet, apiPost, apiDelete } from '../client.js'
 
 export function registerDatabaseTools(server: McpServer) {
+  // ─── list_templates ─────────────────────────────────────────────────────────
+  server.registerTool(
+    'list_templates',
+    {
+      description: 'List all predefined database templates that can be used for bootstrap creation.',
+      inputSchema: {},
+    },
+    async () => {
+      const templates = await apiGet('/api/templates')
+      return {
+        content: [{ type: 'text', text: JSON.stringify(templates, null, 2) }],
+      }
+    }
+  )
+
   // ─── list_databases ──────────────────────────────────────────────────────────
   server.registerTool(
     'list_databases',
@@ -81,6 +96,26 @@ export function registerDatabaseTools(server: McpServer) {
     'create_database_from_template',
     {
       description: 'Create a database from a predefined template (e.g. CRM, Project Tracker).',
+      inputSchema: {
+        templateId: z.string().describe('Template ID'),
+        name: z.string().optional().describe('Optional custom name for the database'),
+      },
+    },
+    async ({ templateId, name }) => {
+      const db = await apiPost('/api/databases/from-template', { templateId, name })
+      return {
+        content: [{ type: 'text', text: JSON.stringify(db, null, 2) }],
+      }
+    }
+  )
+
+  // ─── create_database_from_template_by_id ───────────────────────────────────
+  server.registerTool(
+    'create_database_from_template_by_id',
+    {
+      description:
+        'Create a database from a predefined template by templateId. ' +
+        'This is an explicit alias of create_database_from_template.',
       inputSchema: {
         templateId: z.string().describe('Template ID'),
         name: z.string().optional().describe('Optional custom name for the database'),

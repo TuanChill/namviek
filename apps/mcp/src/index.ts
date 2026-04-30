@@ -2,14 +2,17 @@ import 'dotenv/config'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
-import { createServer } from 'node:http'
+import { createServer } from 'http'
 
-import { registerDatabaseTools } from './tools/database.tools.js'
-import { registerFieldTools } from './tools/field.tools.js'
-import { registerQueryTools } from './tools/query.tools.js'
-import { registerRecordTools } from './tools/record.tools.js'
-import { registerStatsTools } from './tools/stats.tools.js'
-import { registerUserTools } from './tools/user.tools.js'
+import {
+  registerDatabaseTools,
+  registerFieldTools,
+  registerMetaTools,
+  registerQueryTools,
+  registerRecordTools,
+  registerStatsTools,
+  registerUserTools,
+} from './tools/index.js'
 
 const PORT = Number(process.env.PORT) || 4002
 const TRANSPORT = process.env.MCP_TRANSPORT || 'stdio'
@@ -27,6 +30,7 @@ const server = new McpServer({
 // ─── Register all tools ───────────────────────────────────────────────────────
 registerDatabaseTools(server)
 registerFieldTools(server)
+registerMetaTools(server)
 registerQueryTools(server)
 registerRecordTools(server)
 registerStatsTools(server)
@@ -42,7 +46,8 @@ async function start() {
           version: '1.0.0',
           endpoint: '/mcp',
           tools: [
-            'list_databases', 'get_database', 'create_database', 'delete_database', 'create_database_from_template',
+            'mcp_help',
+            'list_databases', 'list_templates', 'get_database', 'create_database', 'delete_database', 'create_database_from_template', 'create_database_from_template_by_id',
             'list_fields', 'create_field', 'update_field', 'delete_field', 'reorder_field', 'duplicate_field',
             'list_records', 'create_record', 'delete_records', 'set_field_value', 'bulk_set_values', 'preview_table',
             'query_records', 'search_records',

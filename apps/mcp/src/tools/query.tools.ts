@@ -8,6 +8,17 @@ type Field = {
   type: string
 }
 
+type FieldOption = {
+  id: string
+  label: string
+}
+
+type User = {
+  id: string
+  name: string
+  email: string
+}
+
 type FieldValue = {
   fieldId: string
   textValue?: string | null
@@ -69,12 +80,62 @@ function toComparable(value: unknown): number | string {
   return normalizeText(value)
 }
 
+function createLabelResolvers(
+  fields: Field[],
+  optionLabelsByFieldId: Map<string, Map<string, string>>,
+  usersById: Map<string, User>
+) {
+  const fieldsById = new Map(fields.map((f) => [f.id, f]))
+
+  const toDisplayValue = (fieldId: string, value: unknown): unknown => {
+    const field = fieldsById.get(fieldId)
+    if (!field) return value
+
+    if (field.type === 'select' && typeof value === 'string') {
+      const label = optionLabelsByFieldId.get(field.id)?.get(value)
+      return label ?? value
+    }
+
+    if (field.type === 'multi_select' && Array.isArray(value)) {
+      const labels = optionLabelsByFieldId.get(field.id)
+      return value.map((id) => labels?.get(String(id)) ?? String(id))
+    }
+
+    if (field.type === 'person' && Array.isArray(value)) {
+      return value.map((id) => usersById.get(String(id))?.name ?? String(id))
+    }
+
+    return value
+  }
+
+  const toHumanReadableRecord = (row: RecordRow) => {
+    const valuesByFieldName: Record<string, unknown> = {}
+
+    for (const field of fields) {
+      const raw = getRawValue(row, field.id)
+      valuesByFieldName[field.name] = toDisplayValue(field.id, raw)
+    }
+
+    return {
+      id: row.id,
+      rowNumber: row.rowNumber,
+      values: valuesByFieldName,
+    }
+  }
+
+  return {
+    toDisplayValue,
+    toHumanReadableRecord,
+  }
+}
+
 export function registerQueryTools(server: McpServer) {
   server.registerTool(
     'query_records',
     {
       description:
-        'Filter records in a database by field value, date range, sort order, and optional free text.',
+        'Filter records in a database by field value, date range, sort order, and optional free text. ' +
+        'Returns both raw records and humanReadableRecords with select/person values resolved to labels.',
       inputSchema: {
         databaseId: z.string().describe('Database ID'),
         filters: z.array(
@@ -104,6 +165,21 @@ export function registerQueryTools(server: McpServer) {
         apiGet<Field[]>(`/api/databases/${databaseId}/fields`),
         apiGet<RecordRow[]>(`/api/databases/${databaseId}/records`),
       ])
+
+      const selectOrMultiSelectFields = fields.filter((f) => f.type === 'select' || f.type === 'multi_select')
+      const hasPersonField = fields.some((f) => f.type === 'person')
+
+      const optionResults = await Promise.all(
+        selectOrMultiSelectFields.map(async (field) => {
+          const options = await apiGet<FieldOption[]>(`/api/fields/${field.id}/options`)
+          return [field.id, new Map(options.map((o) => [o.id, o.label]))] as const
+        })
+      )
+
+      const users = hasPersonField ? await apiGet<User[]>('/api/users') : []
+      const optionLabelsByFieldId = new Map<string, Map<string, string>>(optionResults)
+      const usersById = new Map(users.map((u) => [u.id, u]))
+      const { toHumanReadableRecord } = createLabelResolvers(fields, optionLabelsByFieldId, usersById)
 
       const byId = new Map(fields.map((f) => [f.id, f]))
       const byName = new Map(fields.map((f) => [f.name.toLowerCase(), f]))
@@ -217,6 +293,7 @@ export function registerQueryTools(server: McpServer) {
             returned: limited.length,
             fields,
             records: limited,
+            humanReadableRecords: limited.map(toHumanReadableRecord),
           }, null, 2),
         }],
       }
@@ -226,7 +303,9 @@ export function registerQueryTools(server: McpServer) {
   server.registerTool(
     'search_records',
     {
-      description: 'Run a case-insensitive full-text style search across all field values in a database.',
+      description:
+        'Run a case-insensitive full-text style search across all field values in a database. ' +
+        'Returns both raw records and humanReadableRecords with labels resolved.',
       inputSchema: {
         databaseId: z.string().describe('Database ID'),
         query: z.string().min(1).describe('Search query text'),
@@ -238,6 +317,21 @@ export function registerQueryTools(server: McpServer) {
         apiGet<Field[]>(`/api/databases/${databaseId}/fields`),
         apiGet<RecordRow[]>(`/api/databases/${databaseId}/records`),
       ])
+
+      const selectOrMultiSelectFields = fields.filter((f) => f.type === 'select' || f.type === 'multi_select')
+      const hasPersonField = fields.some((f) => f.type === 'person')
+
+      const optionResults = await Promise.all(
+        selectOrMultiSelectFields.map(async (field) => {
+          const options = await apiGet<FieldOption[]>(`/api/fields/${field.id}/options`)
+          return [field.id, new Map(options.map((o) => [o.id, o.label]))] as const
+        })
+      )
+
+      const users = hasPersonField ? await apiGet<User[]>('/api/users') : []
+      const optionLabelsByFieldId = new Map<string, Map<string, string>>(optionResults)
+      const usersById = new Map(users.map((u) => [u.id, u]))
+      const { toHumanReadableRecord } = createLabelResolvers(fields, optionLabelsByFieldId, usersById)
 
       const q = query.toLowerCase().trim()
       const matches = records
@@ -252,6 +346,7 @@ export function registerQueryTools(server: McpServer) {
           text: JSON.stringify({
             totalMatched: matches.length,
             records: matches.map((m) => ({ ...m.row, _score: m.score })),
+            humanReadableRecords: matches.map((m) => ({ ...toHumanReadableRecord(m.row), _score: m.score })),
           }, null, 2),
         }],
       }

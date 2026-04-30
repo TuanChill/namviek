@@ -20,7 +20,8 @@ export function useDatabaseStream(dbId: string | undefined, handlers: StreamHand
   useEffect(() => {
     if (!dbId) return;
 
-    const baseUrl = import.meta.env.DEV ? 'http://localhost:4001/api' : '/api';
+    // Always use the web app origin so Vite/ingress proxy can inject required auth headers.
+    const baseUrl = '/api';
     const eventSource = new EventSource(`${baseUrl}/databases/${dbId}/stream`);
 
     eventSource.addEventListener('RECORD_CREATED', (e) => {
