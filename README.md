@@ -20,6 +20,7 @@ A modern monorepo template using **pnpm workspaces** for efficient package manag
 - [🎨 UI Components with shadcn/ui](#-ui-components-with-shadcnui)
 - [🔐 Authentication with Better Auth](#-authentication-with-better-auth)
 - [🔗 Workspace Dependencies](#-workspace-dependencies)
+- [🤖 MCP Server](#-mcp-server)
 - [📝 License](#-license)
 
 ## 📦 Project Structure
@@ -618,6 +619,77 @@ import { prisma } from '@local/database';
 ```
 
 This allows for seamless code sharing across the monorepo.
+
+## 🤖 MCP Server
+
+This monorepo ships a **Model Context Protocol (MCP) server** (`apps/mcp/`) that exposes every database operation as a typed, AI-callable tool. AI agents can create databases, manage fields, write records, run queries, and generate analytics — all in natural language.
+
+📖 **[MCP development & tool reference →](./.agents/rules/mcp.md)**  
+📖 **[Agent usage guide →](./docs/mcp_agent_guide.md)**
+
+### Build
+
+```bash
+pnpm --filter api dev    # must be running first
+pnpm --filter mcp build  # compile to apps/mcp/dist/
+```
+
+### Connect an AI client
+
+#### Claude Desktop
+
+File: `~/Library/Application Support/Claude/claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "namviek": {
+      "command": "node",
+      "args": ["/absolute/path/to/namviek-v2/apps/mcp/dist/index.js"],
+      "env": {
+        "API_URL": "http://localhost:4001",
+        "API_KEY": "namviek-mcp-dev-key"
+      }
+    }
+  }
+}
+```
+
+#### OpenAI Codex CLI
+
+File: `~/.codex/config.toml`
+
+```toml
+[mcp_servers.namviek]
+command = "node"
+args = ["/absolute/path/to/namviek-v2/apps/mcp/dist/index.js"]
+
+[mcp_servers.namviek.env]
+API_URL = "http://localhost:4001"
+API_KEY = "namviek-mcp-dev-key"
+```
+
+#### Gemini CLI
+
+File: `~/.gemini/settings.json`
+
+```json
+{
+  "mcpServers": {
+    "namviek": {
+      "command": "node",
+      "args": ["/absolute/path/to/namviek-v2/apps/mcp/dist/index.js"],
+      "env": {
+        "API_URL": "http://localhost:4001",
+        "API_KEY": "namviek-mcp-dev-key"
+      }
+    }
+  }
+}
+```
+
+> [!TIP]
+> Replace `/absolute/path/to/namviek-v2` with the actual path on your machine (e.g. `/Users/hudy/ws/namviek-v2`).
 
 ## 📝 License
 
