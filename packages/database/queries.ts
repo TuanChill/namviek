@@ -151,21 +151,37 @@ export async function setFieldValue(
         dateValue?: Date | string | null;
         personValue?: string[];
         boolValue?: boolean | null;
-        jsonValue?: object | null;
+        jsonValue?: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput;
     }
 ) {
-    const cleaned: typeof payload = { ...payload };
-
-    // Convert date string to Date object (HTML inputs return "YYYY-MM-DD" or "YYYY-MM-DDTHH:mm")
-    if (cleaned.dateValue && typeof cleaned.dateValue === "string") {
-        cleaned.dateValue = new Date(cleaned.dateValue);
-    }
-
-    // Coerce numberValue from string to number if needed
-    if (cleaned.numberValue !== null && cleaned.numberValue !== undefined && typeof cleaned.numberValue === "string") {
-        const n = parseFloat(cleaned.numberValue);
-        cleaned.numberValue = isNaN(n) ? null : n;
-    }
+    const cleaned: {
+        textValue?: string | null;
+        numberValue?: number | null;
+        selectValue?: string | null;
+        multiSelectValue?: string[];
+        dateValue?: Date | null;
+        personValue?: string[];
+        boolValue?: boolean | null;
+        jsonValue?: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput;
+    } = {
+        textValue: payload.textValue,
+        numberValue:
+            typeof payload.numberValue === "string"
+                ? (() => {
+                    const n = parseFloat(payload.numberValue);
+                    return Number.isNaN(n) ? null : n;
+                })()
+                : payload.numberValue,
+        selectValue: payload.selectValue,
+        multiSelectValue: payload.multiSelectValue,
+        dateValue:
+            typeof payload.dateValue === "string"
+                ? new Date(payload.dateValue)
+                : payload.dateValue,
+        personValue: payload.personValue,
+        boolValue: payload.boolValue,
+        jsonValue: payload.jsonValue,
+    };
 
     return await prisma.fieldValue.upsert({
         where: { recordId_fieldId: { recordId, fieldId } },
@@ -327,6 +343,39 @@ export async function upsertDynUser(name: string, email: string, avatarUrl?: str
  * Backfill id-type field values for all existing records that don't yet have
  * a value for this field. Sets textValue = String(rowNumber).
  */
+// ─── Statistics queries ────────────────────────────────────────────────────────
+
+/** Simple stats for a database: total records + daily counts by created_at / updated_at */
+export async function getDatabaseStats(databaseId: string) {
+    const totalRecords = await prisma.dynRecord.count({
+        where: { databaseId, archivedAt: null },
+    });
+
+    const byCreatedRaw = await prisma.$queryRaw<{ date: string; count: bigint }[]>`
+        SELECT DATE("createdAt") AS date, COUNT(*) AS count
+        FROM dyn_records
+        WHERE "databaseId" = ${databaseId} AND "archivedAt" IS NULL
+        GROUP BY DATE("createdAt")
+        ORDER BY date DESC
+        LIMIT 30
+    `;
+
+    const byUpdatedRaw = await prisma.$queryRaw<{ date: string; count: bigint }[]>`
+        SELECT DATE("updatedAt") AS date, COUNT(*) AS count
+        FROM dyn_records
+        WHERE "databaseId" = ${databaseId} AND "archivedAt" IS NULL
+        GROUP BY DATE("updatedAt")
+        ORDER BY date DESC
+        LIMIT 30
+    `;
+
+    return {
+        totalRecords,
+        byCreatedAt: byCreatedRaw.map(r => ({ date: String(r.date), count: Number(r.count) })),
+        byUpdatedAt: byUpdatedRaw.map(r => ({ date: String(r.date), count: Number(r.count) })),
+    };
+}
+
 export async function backfillIdField(fieldId: string, databaseId: string) {
     const records = await prisma.dynRecord.findMany({
         where: { databaseId },

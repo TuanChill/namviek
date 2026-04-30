@@ -20,6 +20,9 @@ export default defineConfig(({ mode }) => {
         '/api': {
           target: 'http://localhost:4001',
           changeOrigin: true,
+          headers: {
+            'x-api-key': env.MCP_API_KEY || 'namviek-mcp-dev-key',
+          },
         },
       },
     },

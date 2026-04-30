@@ -27,6 +27,7 @@ import {
   backfillIdField,
   deleteDynRecords,
   deleteDynDatabase,
+  getDatabaseStats,
 } from '@local/database'
 import type { FieldType } from '@local/database'
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
@@ -55,6 +56,17 @@ app.use('/*', cors({
   origin: origins.split(','),
   credentials: true,
 }))
+
+// ─── API Key middleware ────────────────────────────────────────────────────────
+// Protect all /api/* routes with a fixed API key (for MCP server access)
+const MCP_API_KEY = process.env.MCP_API_KEY || 'namviek-mcp-dev-key'
+app.use('/api/*', async (c, next) => {
+  const key = c.req.header('x-api-key')
+  if (!key || key !== MCP_API_KEY) {
+    return c.json({ error: 'Unauthorized: invalid or missing x-api-key' }, 401)
+  }
+  await next()
+})
 
 app.get('/', (c) => {
   return c.text('Hello Hono 2!')
@@ -202,6 +214,17 @@ app.delete('/api/databases/:id', async (c) => {
 // GET /api/templates — get all predefined templates
 app.get('/api/templates', (c) => {
   return c.json(TEMPLATES)
+})
+
+// GET /api/databases/:id/stats — simple stats for MCP agent
+app.get('/api/databases/:id/stats', async (c) => {
+  try {
+    const stats = await getDatabaseStats(c.req.param('id'))
+    return c.json(stats)
+  } catch (error) {
+    console.error(error)
+    return c.json({ error: 'Failed to fetch stats' }, 500)
+  }
 })
 
 

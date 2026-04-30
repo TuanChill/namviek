@@ -9,9 +9,11 @@
     "check-outdated": "node scripts/check-outdated.js",
     "dev:api": "pnpm --filter api dev",
     "dev:web": "pnpm --filter web dev",
+    "dev:mcp": "pnpm --filter mcp dev",
     "dev:all": "pnpm --parallel --filter api --filter web dev",
     "build:api": "pnpm --filter api build",
     "build:web": "pnpm --filter web build",
+    "build:mcp": "pnpm --filter mcp build",
     "build:all": "pnpm --parallel --filter api --filter web build"
   },
   "keywords": [],
