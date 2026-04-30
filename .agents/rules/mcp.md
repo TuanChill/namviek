@@ -72,6 +72,65 @@ apps/mcp/
 └── tsconfig.json
 ```
 
+## Registered Tools
+
+### Meta
+| Tool | Description |
+|---|---|
+| `mcp_help` | Discover all tools, filterable by category or name |
+
+### Database (`database.tools.ts`)
+| Tool | API Endpoint | Description |
+|---|---|---|
+| `list_databases` | GET /api/databases | List all databases with field/record counts |
+| `get_database` | GET /api/databases | Get a single database by ID |
+| `create_database` | POST /api/databases | Create a blank database |
+| `delete_database` | DELETE /api/databases/:id | Delete a database and all its data |
+| `list_templates` | GET /api/templates | List all predefined bootstrap templates |
+| `create_database_from_template` | POST /api/databases/from-template | Create a database from a predefined template |
+| `create_database_from_template_by_id` | POST /api/databases/from-template | Explicit alias of `create_database_from_template` |
+
+### Field (`field.tools.ts`)
+| Tool | Description |
+|---|---|
+| `list_fields` | List all fields in a database |
+| `create_field` | Create a field (name, type, required) |
+| `update_field` | Rename or update field config |
+| `delete_field` | Delete a field and its values |
+| `reorder_field` | Move a field left or right |
+| `duplicate_field` | Clone a field |
+
+### Record (`record.tools.ts`)
+| Tool | Description |
+|---|---|
+| `list_records` | List all records with field values |
+| `create_record` | Add a new empty record |
+| `delete_records` | Delete records by IDs |
+| `set_field_value` | Set a single cell value |
+| `bulk_set_values` | Set multiple cell values in one call |
+| `preview_table` | Render records as a markdown table |
+
+### Query (`query.tools.ts`)
+| Tool | Description |
+|---|---|
+| `query_records` | Filter/sort records with structured criteria |
+| `search_records` | Full-text search across all field values |
+
+### Stats (`stats.tools.ts`)
+| Tool | Description |
+|---|---|
+| `get_database_stats` | Total records and daily counts (last 30 days) |
+| `get_stats` | Count, sum, avg, min, max for a number field |
+| `get_distribution` | Value distribution for select/multi_select fields |
+| `get_timeline` | Date-bucketed record counts (day/week/month) |
+| `get_person_activity` | Record counts per person for a person field |
+
+### User (`user.tools.ts`)
+| Tool | Description |
+|---|---|
+| `list_users` | List all users |
+| `search_users` | Search users by name or email |
+
 ## Key Patterns
 
 ### Register a Tool
