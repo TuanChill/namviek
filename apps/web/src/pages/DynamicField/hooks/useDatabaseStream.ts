@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import type { DynRecord, Field, FieldValue } from '../types';
+import type { DynDatabase, DynRecord, Field, FieldValue } from '../types';
 
 interface StreamHandlers {
   onRecordCreated: (record: DynRecord) => void;
@@ -9,6 +9,8 @@ interface StreamHandlers {
   onFieldDeleted: (id: string) => void;
   onFieldUpdated: (field: Field) => void;
   onFieldsReordered: () => void;
+  onDatabaseCreated: (database: DynDatabase) => void;
+  onDatabaseDeleted: (id: string) => void;
 }
 
 export function useDatabaseStream(dbId: string | undefined, handlers: StreamHandlers) {
@@ -16,6 +18,28 @@ export function useDatabaseStream(dbId: string | undefined, handlers: StreamHand
   useEffect(() => {
     handlersRef.current = handlers;
   }, [handlers]);
+
+  useEffect(() => {
+    const baseUrl = '/api';
+    const databaseEventSource = new EventSource(`${baseUrl}/databases/stream`);
+
+    databaseEventSource.addEventListener('DATABASE_CREATED', (e) => {
+      handlersRef.current.onDatabaseCreated(JSON.parse(e.data));
+    });
+
+    databaseEventSource.addEventListener('DATABASE_DELETED', (e) => {
+      const data = JSON.parse(e.data);
+      handlersRef.current.onDatabaseDeleted(data.id);
+    });
+
+    databaseEventSource.onerror = (error) => {
+      console.error('Database SSE connection error:', error);
+    };
+
+    return () => {
+      databaseEventSource.close();
+    };
+  }, []);
 
   useEffect(() => {
     if (!dbId) return;

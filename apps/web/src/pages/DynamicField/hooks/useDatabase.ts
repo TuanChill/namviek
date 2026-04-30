@@ -30,5 +30,29 @@ export function useDatabase() {
     }
   }, [selectedDb]);
 
-  return { databases, selectedDb, setSelectedDb, createDatabase, selectDatabase, deleteDatabase };
+  const upsertDatabase = useCallback((db: DynDatabase) => {
+    setDatabases((prev) => {
+      const exists = prev.some((item) => item.id === db.id);
+      if (exists) {
+        return prev.map((item) => (item.id === db.id ? db : item));
+      }
+      return [...prev, db];
+    });
+  }, []);
+
+  const removeDatabase = useCallback((id: string) => {
+    setDatabases((prev) => prev.filter((db) => db.id !== id));
+    setSelectedDb((prev) => (prev?.id === id ? null : prev));
+  }, []);
+
+  return {
+    databases,
+    selectedDb,
+    setSelectedDb,
+    createDatabase,
+    selectDatabase,
+    deleteDatabase,
+    upsertDatabase,
+    removeDatabase,
+  };
 }

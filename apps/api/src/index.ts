@@ -25,6 +25,9 @@ import { TEMPLATES } from './config/templates.js'
 import { createDatabaseFromTemplate } from './services/template.service.js'
 import { registerFieldRoutes } from './services/field.service.js'
 
+const app = new Hono()
+const GLOBAL_DATABASE_STREAM_ID = '__GLOBAL_DATABASES__'
+
 const s3Client = new S3Client({
   region: 'auto',
   endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
@@ -37,9 +40,6 @@ const s3Client = new S3Client({
 const R2_BUCKET = process.env.R2_BUCKET || ''
 const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || ''
 
-
-const app = new Hono()
-
 // Enable CORS for web app
 const origins = process.env.ORIGINS || 'http://localhost:2001'
 app.use('/*', cors({
@@ -47,7 +47,6 @@ app.use('/*', cors({
   credentials: true,
 }))
 
-// ─── API Key middleware ────────────────────────────────────────────────────────
 // Protect all /api/* routes with a fixed API key (for MCP server access)
 const MCP_API_KEY = process.env.MCP_API_KEY || 'namviek-mcp-dev-key'
 app.use('/api/*', async (c, next) => {
@@ -166,6 +165,34 @@ app.get('/api/databases/:id/stream', (c) => {
   })
 })
 
+// GET /api/databases/stream — SSE for database list changes
+app.get('/api/databases/stream', (c) => {
+  return streamSSE(c, async (stream) => {
+    let active = true
+
+    const unsubscribe = dbEvents.subscribe(GLOBAL_DATABASE_STREAM_ID, async (event, data) => {
+      if (!active) return
+      try {
+        await stream.writeSSE({
+          event,
+          data: JSON.stringify(data),
+        })
+      } catch (err) {
+        console.error('Database SSE write error', err)
+      }
+    })
+
+    stream.onAbort(() => {
+      active = false
+      unsubscribe()
+    })
+
+    while (active) {
+      await stream.sleep(15000)
+    }
+  })
+})
+
 // GET /api/databases — list all databases
 app.get('/api/databases', async (c) => {
   try {
@@ -183,6 +210,7 @@ app.post('/api/databases', async (c) => {
     const body = await c.req.json()
     if (!body.name?.trim()) return c.json({ error: 'name is required' }, 400)
     const db = await createDynDatabase(body.name.trim(), body.description)
+    dbEvents.publish(GLOBAL_DATABASE_STREAM_ID, 'DATABASE_CREATED', db)
     return c.json(db, 201)
   } catch (error) {
     console.error(error)
@@ -193,7 +221,9 @@ app.post('/api/databases', async (c) => {
 // DELETE /api/databases/:id — delete a database
 app.delete('/api/databases/:id', async (c) => {
   try {
-    await deleteDynDatabase(c.req.param('id'))
+    const dbId = c.req.param('id')
+    dbEvents.publish(GLOBAL_DATABASE_STREAM_ID, 'DATABASE_DELETED', { id: dbId })
+    await deleteDynDatabase(dbId)
     return c.json({ success: true })
   } catch (error) {
     console.error(error)

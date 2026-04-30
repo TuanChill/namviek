@@ -50,7 +50,7 @@ import type { DynDatabase, Field, FieldConfig, FieldType, FieldValuePayload } fr
 const COL_WIDTH = 180;
 
 export default function DynamicFieldPage() {
-  const { databases, selectedDb, setSelectedDb, createDatabase, deleteDatabase } = useDatabase();
+  const { databases, selectedDb, setSelectedDb, createDatabase, deleteDatabase, upsertDatabase, removeDatabase } = useDatabase();
   const { fields, setFields, loadFields, addField, renameField, deleteField, moveField, duplicateField, changeIcon, updateField } = useFields();
   const { records, setRecords, loadRecords, addRecord, setValue, removeFieldValues, reloadRecords, deleteRecords } = useRecords();
 
@@ -64,6 +64,7 @@ export default function DynamicFieldPage() {
   const [showNewDb, setShowNewDb] = useState(false);
   const [newDbName, setNewDbName] = useState('');
   const [showDeleteDb, setShowDeleteDb] = useState(false);
+  const [showDeletedDbNotice, setShowDeletedDbNotice] = useState(false);
 
   // Drawers / dialogs
   const [showAddField, setShowAddField] = useState(false);
@@ -129,7 +130,17 @@ export default function DynamicFieldPage() {
     },
     onFieldsReordered: () => {
       if (selectedDb) loadFields(selectedDb.id);
-    }
+    },
+    onDatabaseCreated: (database) => {
+      upsertDatabase(database);
+    },
+    onDatabaseDeleted: (id) => {
+      const deletedSelectedDb = selectedDb?.id === id;
+      removeDatabase(id);
+      if (deletedSelectedDb) {
+        setShowDeletedDbNotice(true);
+      }
+    },
   });
 
   // ── Load DB ───────────────────────────────────────────────────────────────
@@ -228,6 +239,11 @@ export default function DynamicFieldPage() {
     if (selectedRecords.size === 0 || !selectedDb) return;
     await deleteRecords(selectedDb.id, Array.from(selectedRecords));
     setSelectedRecords(new Set());
+  };
+
+  const handleCloseDeletedDbNotice = () => {
+    setShowDeletedDbNotice(false);
+    window.location.href = '/test';
   };
 
   const handleToggleAll = (checked: boolean) => {
@@ -550,6 +566,22 @@ export default function DynamicFieldPage() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleDeleteDb}>
               Delete Database
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showDeletedDbNotice}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Database was deleted</AlertDialogTitle>
+            <AlertDialogDescription>
+              This database was deleted. Close this dialog to reload and return to the test page.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={handleCloseDeletedDbNotice}>
+              Close
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
