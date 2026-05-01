@@ -107,7 +107,9 @@ apps/mcp/
 | `delete_field_option` | Delete one live option from a select or multi-select field |
 | `get_field_config_contract` | Show allowed config keys and option tools by field type |
 | `create_field` | Create a field (name, type, required) |
+| `bulk_create_fields` | Create multiple fields in one call |
 | `update_field` | Rename or update field config |
+| `bulk_update_fields` | Update multiple fields in one call |
 | `delete_field` | Delete a field and its values |
 | `reorder_field` | Move a field left or right |
 | `duplicate_field` | Clone a field |
@@ -120,6 +122,7 @@ apps/mcp/
 | `delete_records` | Delete records by IDs |
 | `set_field_value` | Set a single cell value |
 | `bulk_set_values` | Set multiple cell values in one call |
+| `create_records_with_data` | Create records and populate their initial values in one call |
 | `preview_table` | Render records as a markdown table |
 
 ### Query (`query.tools.ts`)
@@ -223,14 +226,15 @@ pnpm --filter mcp build
 3. **Prefer explicit schemas**: avoid vague/overly broad inputs.
 4. **Return stable shapes**: avoid breaking response contracts.
 5. **Add human-readable output** for user-facing fields.
-6. **Validate with build** after every tool update.
-7. **Document new tools** in `mcp_help` metadata.
-8. **When field config changes, update all layers together**:
+6. **Prefer bulk tools** when they reduce round-trips: `bulk_create_fields`, `bulk_update_fields`, `bulk_set_values`, `create_records_with_data`.
+7. **Validate with build** after every tool update.
+8. **Document new tools** in `mcp_help` metadata.
+9. **When field config changes, update all layers together**:
    - API validation and route behavior in `apps/api`
    - MCP Zod schemas and tool handlers in `apps/mcp/src/tools/field.tools.ts`
    - Discovery metadata in `apps/mcp/src/tools/meta.tools.ts` and `apps/mcp/src/index.ts`
    - Contract/help outputs such as `get_field_config_contract`
-9. **Do not model live select options as config** unless the API truly stores them in config; prefer dedicated option tools when the app uses separate option records.
+10. **Do not model live select options as config** unless the API truly stores them in config; prefer dedicated option tools when the app uses separate option records.
 
 ## Common Tasks
 

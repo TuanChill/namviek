@@ -100,7 +100,9 @@ create_database_from_template_by_id { templateId: "...", name: "My CRM" }
 |---|---|---|
 | `list_fields` | `databaseId` | List all fields (columns) ordered by position |
 | `create_field` | `databaseId`, `name`, `type` | Add a field. `type` is one of: `text \| number \| select \| multi_select \| date \| person \| checkbox \| file \| url \| email \| id \| created_time \| created_by \| updated_time \| updated_by` |
+| `bulk_create_fields` | `databaseId`, `fields[]` | Add multiple fields in one call. Each entry accepts the same shape as `create_field` except `databaseId`. |
 | `update_field` | `fieldId`, `name?`, `config?` | Rename or update config |
+| `bulk_update_fields` | `updates[]` | Update multiple fields in one call. Each entry accepts the same shape as `update_field`. |
 | `delete_field` | `fieldId`, `databaseId` | Delete field and all its values |
 | `reorder_field` | `fieldId`, `direction` (`left`/`right`), `databaseId?` | Move column left or right |
 | `duplicate_field` | `fieldId` | Clone a field next to the original |
@@ -113,6 +115,7 @@ create_database_from_template_by_id { templateId: "...", name: "My CRM" }
 |---|---|---|
 | `list_records` | `databaseId` | List all rows with field values |
 | `create_record` | `databaseId` | Add a new empty row |
+| `create_records_with_data` | `databaseId`, `records[]` | Create one or more rows and populate their initial values in the same call |
 | `delete_records` | `ids[]`, `databaseId?` | Delete one or more rows by ID |
 | `set_field_value` | `recordId`, `fieldId`, `databaseId`, + one value key | Set a single cell |
 | `bulk_set_values` | `updates[]` (array of above) | Set many cells in one call |
@@ -178,8 +181,7 @@ create_database_from_template_by_id { templateId: "...", name: "My CRM" }
 2. create_database_from_template_by_id { templateId, name }
 3. list_fields { databaseId }          ← confirm schema
 4. list_users                          ← collect user IDs for person fields
-5. create_record { databaseId }        ← add first row
-6. bulk_set_values { updates: [...] }  ← populate cells
+5. create_records_with_data { databaseId, records: [...] } ← add and populate initial rows
 7. preview_table { databaseId }        ← visual check
 ```
 
@@ -211,7 +213,7 @@ create_database_from_template_by_id { templateId: "...", name: "My CRM" }
 - **Use `preview_table`** for quick visual validation before reporting data to the user.
 - **Chain `list_templates` → `create_database_from_template_by_id`** when the user asks to set up a new workspace (CRM, project tracker, etc.).
 - **Never guess IDs** — always resolve them via `list_databases`, `list_fields`, or `list_users` first.
-- **`bulk_set_values` is faster** than multiple `set_field_value` calls when populating many cells.
+- **Prefer bulk tools** for throughput: `bulk_create_fields`, `bulk_update_fields`, `bulk_set_values`, and `create_records_with_data` reduce round-trips significantly.
 
 ---
 

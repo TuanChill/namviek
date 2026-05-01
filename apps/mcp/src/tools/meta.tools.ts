@@ -24,7 +24,9 @@ const TOOL_DOCS: ToolDoc[] = [
   { name: 'delete_field_option', category: 'field', summary: 'Delete one live option from a select or multi-select field.' },
   { name: 'get_field_config_contract', category: 'field', summary: 'Show allowed config keys and option tools by field type.' },
   { name: 'create_field', category: 'field', summary: 'Create a field.' },
+  { name: 'bulk_create_fields', category: 'field', summary: 'Create multiple fields in one call.' },
   { name: 'update_field', category: 'field', summary: 'Update field name/config.' },
+  { name: 'bulk_update_fields', category: 'field', summary: 'Update multiple fields in one call.' },
   { name: 'delete_field', category: 'field', summary: 'Delete a field.' },
   { name: 'reorder_field', category: 'field', summary: 'Move field left/right.' },
   { name: 'duplicate_field', category: 'field', summary: 'Duplicate a field.' },
@@ -34,6 +36,7 @@ const TOOL_DOCS: ToolDoc[] = [
   { name: 'delete_records', category: 'record', summary: 'Delete records by IDs.' },
   { name: 'set_field_value', category: 'record', summary: 'Set one cell value.' },
   { name: 'bulk_set_values', category: 'record', summary: 'Set many cell values.' },
+  { name: 'create_records_with_data', category: 'record', summary: 'Create one or more records with initial field values.' },
   { name: 'preview_table', category: 'record', summary: 'Preview records as a markdown table.' },
 
   { name: 'query_records', category: 'query', summary: 'Filter/sort/search records with structured criteria.' },
