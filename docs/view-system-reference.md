@@ -76,7 +76,18 @@ Template creation behavior in `apps/api/src/services/template.service.ts`:
     - Edit dialog: name, icon, groupBy, date granularity, default toggle, fields shown on cards
 - Kanban rendering:
   - `apps/web/src/pages/DynamicField/views/kanban/KanbanView.tsx`
+  - `apps/web/src/pages/DynamicField/views/kanban/KanbanCard.tsx`
+  - `apps/web/src/pages/DynamicField/views/kanban/KanbanColumn.tsx`
   - card preview respects `view.config.hiddenFieldIds`
+- Calendar rendering:
+  - `apps/web/src/pages/DynamicField/views/calendar/CalendarView.tsx`
+  - props: `fields, records, loading, view, onUpdateView, onAddRecord, onSetValue`
+  - month mode: 7-column grid; records placed by `startDateFieldId`
+  - week mode: 7 vertical day-columns for the current week
+  - per-cell add record via `AddRecordPopover` (name input + Create); auto-fills start/end date fields
+  - add buttons visible on hover only (`opacity-0 group-hover:opacity-100`)
+  - empty states: no date fields configured, no start field set
+  - mode changes saved back to `view.config` via `onUpdateView`
 
 ## 2) Data Contract (View Config)
 
@@ -87,6 +98,11 @@ Defined in `apps/web/src/pages/DynamicField/types.ts`:
   - `granularity`: `day | month | quarter` (date-like only)
 - `hiddenFieldIds?: string[]`
   - used by Kanban card preview to hide fields per view
+- `calendar?: ViewCalendarConfig`
+  - `startDateFieldId?: string` — field used to place records on the grid
+  - `endDateFieldId?: string` — optional field for record end date
+  - `mode?: 'month' | 'week'` — default `'month'`
+  - only fields with type `date | created_time | updated_time` are shown as options
 
 Stored in DB as `DynView.config` JSON.
 
@@ -110,7 +126,14 @@ If you need to change view behavior:
 4. Update UI in:
    - `apps/web/src/pages/DynamicField/views/components/ViewManagerTabBar.tsx`
    - `apps/web/src/pages/DynamicField/views/kanban/KanbanView.tsx`
+   - `apps/web/src/pages/DynamicField/views/calendar/CalendarView.tsx`
 5. If schema changes: add Prisma migration under `packages/database/prisma/migrations/`.
+
+### Calendar-specific notes
+- Edit View dialog shows calendar settings (start/end date selectors, mode) only when `view.type === 'calendar'`.
+- "Fields shown on cards" section is hidden for calendar views (only relevant for kanban/timeline).
+- `ViewCalendarConfig` is defined in `apps/web/src/pages/DynamicField/types.ts`.
+- `DynamicFieldPage.tsx` passes `onAddRecord` (returns created record), `onSetValue`, and `onUpdateView` to `CalendarView`.
 
 ## 5) Useful Commands
 
