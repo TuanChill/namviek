@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
-import { Plus, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useUsers } from '../../hooks/useUsers';
+import { Loader2 } from 'lucide-react';
+import { KanbanColumn } from './KanbanColumn';
+import type { KanbanColumnData } from './KanbanColumn';
 import type { DynRecord, DynView, Field, FieldValuePayload } from '../../types';
 
 interface KanbanViewProps {
@@ -11,13 +11,6 @@ interface KanbanViewProps {
   view: DynView;
   onSetValue: (record: DynRecord, field: Field, payload: FieldValuePayload) => void;
   onAddRecord: () => void;
-}
-
-interface KanbanColumn {
-  key: string;
-  label: string;
-  color?: string | null;
-  records: DynRecord[];
 }
 
 function getRecordGroupKey(record: DynRecord, field: Field): string {
@@ -32,8 +25,8 @@ function getRecordGroupKey(record: DynRecord, field: Field): string {
   return '__none__';
 }
 
-function buildColumns(records: DynRecord[], groupField: Field): KanbanColumn[] {
-  const columns: Map<string, KanbanColumn> = new Map();
+function buildColumns(records: DynRecord[], groupField: Field): KanbanColumnData[] {
+  const columns: Map<string, KanbanColumnData> = new Map();
 
   if (groupField.type === 'select' || groupField.type === 'multi_select') {
     // Build ordered columns from field options
@@ -66,7 +59,7 @@ function buildColumns(records: DynRecord[], groupField: Field): KanbanColumn[] {
   return Array.from(columns.values());
 }
 
-export function KanbanView({ fields, records, loading, view, onAddRecord }: KanbanViewProps) {
+export function KanbanView({ fields, records, loading, view, onSetValue, onAddRecord }: KanbanViewProps) {
   const groupByConfig = (view.config as any)?.groupBy;
   const groupField = useMemo(() => {
     if (!groupByConfig?.fieldId) {
@@ -101,98 +94,15 @@ export function KanbanView({ fields, records, loading, view, onAddRecord }: Kanb
   return (
     <div className="flex flex-1 overflow-x-auto gap-4 p-4">
       {columns.map(col => (
-        <div
+        <KanbanColumn
           key={col.key}
-          className="flex flex-col gap-2 min-w-[260px] max-w-[260px]"
-        >
-          {/* Column header */}
-          <div className="flex items-center gap-2 px-1">
-            {col.color && (
-              <span
-                className="w-3 h-3 rounded-full shrink-0"
-                style={{ backgroundColor: col.color }}
-              />
-            )}
-            <span className="text-sm font-semibold truncate flex-1">{col.label}</span>
-            <span className="text-xs text-muted-foreground bg-muted rounded-full px-2 py-0.5">
-              {col.records.length}
-            </span>
-          </div>
-
-          {/* Cards */}
-          <div className="flex flex-col gap-2">
-            {col.records.map(record => (
-              <KanbanCard key={record.id} record={record} fields={fields} view={view} />
-            ))}
-          </div>
-
-          {/* Add record */}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start text-xs text-muted-foreground"
-            onClick={onAddRecord}
-          >
-            <Plus size={13} className="mr-1" /> Add record
-          </Button>
-        </div>
+          col={col}
+          fields={fields}
+          view={view}
+          onSetValue={onSetValue}
+          onAddRecord={onAddRecord}
+        />
       ))}
     </div>
   );
-}
-
-function KanbanCard({ record, fields, view }: { record: DynRecord; fields: Field[]; view: DynView }) {
-  const { users } = useUsers();
-  const usersById = useMemo(() => new Map(users.map(user => [user.id, user.name])), [users]);
-
-  const primaryField = fields.find(f => f.isPrimary) ?? fields[0];
-  const titleFv = primaryField ? record.fieldValues.find(v => v.fieldId === primaryField.id) : null;
-  const title = titleFv?.textValue ?? `Record #${record.rowNumber}`;
-
-  const hiddenIds = new Set<string>((view.config as any)?.hiddenFieldIds ?? []);
-  // Show all visible non-primary fields that aren't hidden in this view.
-  const previewFields = fields
-    .filter(f => !f.isPrimary && f.type !== 'id' && !hiddenIds.has(f.id));
-
-  return (
-    <div className="bg-card border rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
-      <p className="text-sm font-medium truncate mb-1">{title}</p>
-      {previewFields.map(field => {
-        const fv = record.fieldValues.find(v => v.fieldId === field.id);
-        if (!fv) return null;
-        const display = getDisplayValue(fv, field, usersById);
-        if (!display) return null;
-        return (
-          <div key={field.id} className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
-            <span className="font-medium shrink-0">{field.name}:</span>
-            <span className="truncate">{display}</span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function getDisplayValue(
-  fv: DynRecord['fieldValues'][number],
-  field: Field,
-  usersById: Map<string, string>,
-): string {
-  if (field.type === 'text' || field.type === 'url' || field.type === 'email') return fv.textValue ?? '';
-  if (field.type === 'number') return fv.numberValue ?? '';
-  if (field.type === 'checkbox') return fv.boolValue ? '✓' : '';
-  if (field.type === 'date') return fv.dateValue ? fv.dateValue.slice(0, 10) : '';
-  if (field.type === 'person') {
-    return (fv.personValue ?? []).map(id => usersById.get(id) ?? id).join(', ');
-  }
-  if (field.type === 'select') {
-    const opt = field.options?.find(o => o.id === fv.selectValue);
-    return opt?.label ?? fv.selectValue ?? '';
-  }
-  if (field.type === 'multi_select') {
-    return (fv.multiSelectValue ?? [])
-      .map(id => field.options?.find(o => o.id === id)?.label ?? id)
-      .join(', ');
-  }
-  return '';
 }
