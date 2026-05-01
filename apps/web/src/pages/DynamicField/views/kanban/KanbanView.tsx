@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { Plus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useUsers } from '../../hooks/useUsers';
 import type { DynRecord, DynView, Field, FieldValuePayload } from '../../types';
 
 interface KanbanViewProps {
@@ -141,15 +142,17 @@ export function KanbanView({ fields, records, loading, view, onAddRecord }: Kanb
 }
 
 function KanbanCard({ record, fields, view }: { record: DynRecord; fields: Field[]; view: DynView }) {
+  const { users } = useUsers();
+  const usersById = useMemo(() => new Map(users.map(user => [user.id, user.name])), [users]);
+
   const primaryField = fields.find(f => f.isPrimary) ?? fields[0];
   const titleFv = primaryField ? record.fieldValues.find(v => v.fieldId === primaryField.id) : null;
   const title = titleFv?.textValue ?? `Record #${record.rowNumber}`;
 
   const hiddenIds = new Set<string>((view.config as any)?.hiddenFieldIds ?? []);
-  // Show a few other non-primary fields that aren't hidden
+  // Show all visible non-primary fields that aren't hidden in this view.
   const previewFields = fields
-    .filter(f => !f.isPrimary && f.type !== 'id' && !hiddenIds.has(f.id))
-    .slice(0, 3);
+    .filter(f => !f.isPrimary && f.type !== 'id' && !hiddenIds.has(f.id));
 
   return (
     <div className="bg-card border rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
@@ -157,7 +160,7 @@ function KanbanCard({ record, fields, view }: { record: DynRecord; fields: Field
       {previewFields.map(field => {
         const fv = record.fieldValues.find(v => v.fieldId === field.id);
         if (!fv) return null;
-        const display = getDisplayValue(fv, field);
+        const display = getDisplayValue(fv, field, usersById);
         if (!display) return null;
         return (
           <div key={field.id} className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
@@ -170,11 +173,18 @@ function KanbanCard({ record, fields, view }: { record: DynRecord; fields: Field
   );
 }
 
-function getDisplayValue(fv: DynRecord['fieldValues'][number], field: Field): string {
+function getDisplayValue(
+  fv: DynRecord['fieldValues'][number],
+  field: Field,
+  usersById: Map<string, string>,
+): string {
   if (field.type === 'text' || field.type === 'url' || field.type === 'email') return fv.textValue ?? '';
   if (field.type === 'number') return fv.numberValue ?? '';
   if (field.type === 'checkbox') return fv.boolValue ? '✓' : '';
   if (field.type === 'date') return fv.dateValue ? fv.dateValue.slice(0, 10) : '';
+  if (field.type === 'person') {
+    return (fv.personValue ?? []).map(id => usersById.get(id) ?? id).join(', ');
+  }
   if (field.type === 'select') {
     const opt = field.options?.find(o => o.id === fv.selectValue);
     return opt?.label ?? fv.selectValue ?? '';
