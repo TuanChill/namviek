@@ -178,4 +178,61 @@ export function registerRecordTools(server: McpServer) {
       }
     }
   )
+
+  // ─── create_records_with_data ────────────────────────────────────────────────
+  server.registerTool(
+    'create_records_with_data',
+    {
+      description:
+        'Create one or more records and immediately populate their field values in a single call. ' +
+        'Each record entry contains a values array with field-value pairs. ' +
+        'This avoids the round-trip of create_record + bulk_set_values.',
+      inputSchema: {
+        databaseId: z.string().describe('Database ID'),
+        records: z.array(
+          z.object({
+            values: z.array(
+              z.object({
+                fieldId: z.string().describe('Field ID'),
+                textValue: z.string().nullable().optional(),
+                numberValue: z.number().nullable().optional(),
+                selectValue: z.string().nullable().optional(),
+                multiSelectValue: z.array(z.string()).optional(),
+                dateValue: z.string().nullable().optional().describe('ISO date string, e.g. 2026-04-29'),
+                boolValue: z.boolean().nullable().optional(),
+                personValue: z.array(z.string()).optional().describe('Array of user IDs'),
+              })
+            ).describe('Field values to set on this record'),
+          })
+        ).min(1).describe('Records to create, each with their initial field values'),
+      },
+    },
+    async ({ databaseId, records }) => {
+      const created: { recordId: string; valuesSet: number }[] = []
+
+      // Records must be created sequentially to avoid rowNumber race conditions.
+      // Field values within each record are set in parallel.
+      for (const { values } of records) {
+        const record = await apiPost<{ id: string }>(`/api/databases/${databaseId}/records`)
+        const recordId = record.id
+
+        if (values.length > 0) {
+          await Promise.all(
+            values.map(({ fieldId, ...valuePayload }) =>
+              apiPut(`/api/records/${recordId}/values/${fieldId}`, {
+                databaseId,
+                ...valuePayload,
+              })
+            )
+          )
+        }
+
+        created.push({ recordId, valuesSet: values.length })
+      }
+
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ created: created.length, records: created }, null, 2) }],
+      }
+    }
+  )
 }

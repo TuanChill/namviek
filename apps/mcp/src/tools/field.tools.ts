@@ -397,4 +397,111 @@ export function registerFieldTools(server: McpServer) {
       }
     }
   )
+
+  // ─── bulk_create_fields ──────────────────────────────────────────────────────
+  server.registerTool(
+    'bulk_create_fields',
+    {
+      description: 'Create multiple fields (columns) in a database at once. All fields are created in parallel.',
+      inputSchema: {
+        databaseId: z.string().describe('Database ID'),
+        fields: z.array(
+          z.object({
+            name: z.string().describe('Field name'),
+            type: z.enum(FIELD_TYPES).describe('Field type'),
+            required: z.boolean().optional().describe('Whether the field is required'),
+            richText: z.boolean().optional().describe('Only for text/url/email: rich text mode'),
+            dateFormat: z.enum(DATE_FORMATS).optional().describe('Only for date fields'),
+            includeTime: z.boolean().optional().describe('Only for date fields'),
+            numberFormat: z.enum(NUMBER_FORMATS).optional().describe('Only for number fields'),
+            precision: z.number().int().min(0).max(10).optional().describe('Only for number fields'),
+            showAs: z.enum(NUMBER_SHOW_AS).optional().describe('Only for number fields'),
+            divideBy: z.number().positive().optional().describe('Only for number fields when showAs=bar/ring'),
+            color: z.string().optional().describe('Only for number fields when showAs=bar/ring'),
+            showNumber: z.boolean().optional().describe('Only for number fields when showAs=bar/ring'),
+            allowMultiple: z.boolean().optional().describe('Only for person fields'),
+            allowedUserIds: z.array(z.string()).optional().describe('Only for person fields'),
+            allowMultipleFiles: z.boolean().optional().describe('Only for file fields'),
+            customIcon: z.string().optional().describe('Optional icon override for all field types'),
+          })
+        ).min(1).describe('List of fields to create'),
+      },
+    },
+    async ({ databaseId, fields }) => {
+      const results = await Promise.all(
+        fields.map((f) => {
+          const { name, type, required, ...rest } = f
+          const config = pickProvidedConfig(rest as Record<string, unknown>)
+          validateConfigByType(type, config)
+          return apiPost(`/api/databases/${databaseId}/fields`, {
+            name,
+            type,
+            required: required ?? false,
+            ...(Object.keys(config).length > 0 ? { config } : {}),
+          })
+        })
+      )
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ created: results.length, fields: results }, null, 2) }],
+      }
+    }
+  )
+
+  // ─── bulk_update_fields ──────────────────────────────────────────────────────
+  server.registerTool(
+    'bulk_update_fields',
+    {
+      description: 'Update multiple fields at once. All updates are applied in parallel.',
+      inputSchema: {
+        updates: z.array(
+          z.object({
+            fieldId: z.string().describe('Field ID'),
+            name: z.string().optional().describe('New field name'),
+            fieldType: z.enum(FIELD_TYPES).optional().describe('Optional field type hint to skip a fetch'),
+            richText: z.boolean().optional().describe('Only for text/url/email: rich text mode'),
+            dateFormat: z.enum(DATE_FORMATS).optional().describe('Only for date fields'),
+            includeTime: z.boolean().optional().describe('Only for date fields'),
+            numberFormat: z.enum(NUMBER_FORMATS).optional().describe('Only for number fields'),
+            precision: z.number().int().min(0).max(10).optional().describe('Only for number fields'),
+            showAs: z.enum(NUMBER_SHOW_AS).optional().describe('Only for number fields'),
+            divideBy: z.number().positive().optional().describe('Only for number fields when showAs=bar/ring'),
+            color: z.string().optional().describe('Only for number fields when showAs=bar/ring'),
+            showNumber: z.boolean().optional().describe('Only for number fields when showAs=bar/ring'),
+            allowMultiple: z.boolean().optional().describe('Only for person fields'),
+            allowedUserIds: z.array(z.string()).optional().describe('Only for person fields'),
+            allowMultipleFiles: z.boolean().optional().describe('Only for file fields'),
+            customIcon: z.string().optional().describe('Optional icon override for all field types'),
+          })
+        ).min(1).describe('List of field updates to apply'),
+      },
+    },
+    async ({ updates }) => {
+      const results = await Promise.all(
+        updates.map(async (u) => {
+          const { fieldId, name, fieldType, ...rest } = u
+
+          let resolvedType = fieldType as FieldType | undefined
+          if (!resolvedType) {
+            const currentField = await apiGet<{ type: FieldType }>(`/api/fields/${fieldId}`)
+            resolvedType = currentField.type
+          }
+
+          const config = pickProvidedConfig(rest as Record<string, unknown>)
+          validateConfigByType(resolvedType, config)
+
+          if (name === undefined && Object.keys(config).length === 0) {
+            throw new Error(`Nothing to update for field "${fieldId}". Provide name and/or one config key.`)
+          }
+
+          return apiPatch(`/api/fields/${fieldId}`, {
+            ...(name !== undefined ? { name } : {}),
+            ...(Object.keys(config).length > 0 ? { config } : {}),
+          })
+        })
+      )
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ updated: results.length, fields: results }, null, 2) }],
+      }
+    }
+  )
 }

@@ -128,16 +128,30 @@ export async function getDynRecords(databaseId: string) {
 
 /** Create an empty record in a database */
 export async function createDynRecord(databaseId: string) {
-    const maxRow = await prisma.dynRecord.aggregate({
-        where: { databaseId },
-        _max: { rowNumber: true },
-    });
-    const rowNumber = (maxRow._max.rowNumber ?? 0) + 1;
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+        const maxRow = await prisma.dynRecord.aggregate({
+            where: { databaseId },
+            _max: { rowNumber: true },
+        });
+        const rowNumber = (maxRow._max.rowNumber ?? 0) + 1;
 
-    return await prisma.dynRecord.create({
-        data: { databaseId, rowNumber },
-        include: { fieldValues: true },
-    });
+        try {
+            return await prisma.dynRecord.create({
+                data: { databaseId, rowNumber },
+                include: { fieldValues: true },
+            });
+        } catch (error) {
+            const errorCode = typeof error === "object" && error !== null && "code" in error
+                ? String(error.code)
+                : undefined;
+
+            if (errorCode !== "P2002" || attempt === 4) {
+                throw error;
+            }
+        }
+    }
+
+    throw new Error(`Failed to create record for database ${databaseId}`);
 }
 
 /** Delete one or more records */
