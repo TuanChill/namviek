@@ -21,7 +21,14 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { ICON_OPTIONS, getIconByName } from '../../constants';
-import type { DynView, DynViewType, Field, ViewConfig, ViewGroupByConfig } from '../../types';
+import type {
+  DynView,
+  DynViewType,
+  Field,
+  ViewCalendarConfig,
+  ViewConfig,
+  ViewGroupByConfig,
+} from '../../types';
 
 const VIEW_TYPE_META: Record<DynViewType, { label: string; Icon: React.FC<{ size?: number; className?: string }> }> = {
   spreadsheet: { label: 'Spreadsheet', Icon: Table2 },
@@ -35,6 +42,7 @@ const GROUPBY_FIELD_TYPES: Array<ViewGroupByConfig['fieldType']> = [
 ];
 const DATE_LIKE_TYPES: Array<ViewGroupByConfig['fieldType']> = ['date', 'created_time', 'updated_time'];
 const GRANULARITIES: Array<NonNullable<ViewGroupByConfig['granularity']>> = ['day', 'month', 'quarter'];
+const CALENDAR_MODE_OPTIONS: Array<NonNullable<ViewCalendarConfig['mode']>> = ['month', 'week'];
 
 interface ViewManagerTabBarProps {
   views: DynView[];
@@ -64,6 +72,15 @@ function EditViewDialog({ view, fields, isDefault, onClose, onSave, onSetDefault
   const [name, setName] = useState(view.name);
   const [selectedIcon, setSelectedIcon] = useState<string | null>(view.icon ?? null);
   const [groupByFieldId, setGroupByFieldId] = useState<string>(view.config?.groupBy?.fieldId ?? '');
+  const [calendarStartDateFieldId, setCalendarStartDateFieldId] = useState<string>(
+    view.config?.calendar?.startDateFieldId ?? ''
+  );
+  const [calendarEndDateFieldId, setCalendarEndDateFieldId] = useState<string>(
+    view.config?.calendar?.endDateFieldId ?? ''
+  );
+  const [calendarMode, setCalendarMode] = useState<NonNullable<ViewCalendarConfig['mode']>>(
+    view.config?.calendar?.mode ?? 'month'
+  );
   const [granularity, setGranularity] = useState<NonNullable<ViewGroupByConfig['granularity']>>(
     view.config?.groupBy?.granularity ?? 'day'
   );
@@ -80,6 +97,9 @@ function EditViewDialog({ view, fields, isDefault, onClose, onSave, onSetDefault
     });
 
   const groupableFields = fields.filter(f => GROUPBY_FIELD_TYPES.includes(f.type as ViewGroupByConfig['fieldType']));
+  const calendarDateFields = fields.filter(
+    f => f.type === 'date' || f.type === 'created_time' || f.type === 'updated_time'
+  );
   const selectedGroupField = groupableFields.find(f => f.id === groupByFieldId) ?? null;
   const isDateLike = selectedGroupField
     ? DATE_LIKE_TYPES.includes(selectedGroupField.type as ViewGroupByConfig['fieldType'])
@@ -96,6 +116,17 @@ function EditViewDialog({ view, fields, isDefault, onClose, onSave, onSetDefault
     } else {
       delete config.groupBy;
     }
+
+    if (view.type === 'calendar') {
+      config.calendar = {
+        mode: calendarMode,
+        ...(calendarStartDateFieldId ? { startDateFieldId: calendarStartDateFieldId } : {}),
+        ...(calendarEndDateFieldId ? { endDateFieldId: calendarEndDateFieldId } : {}),
+      };
+    } else {
+      delete config.calendar;
+    }
+
     if (view.type !== 'spreadsheet') {
       config.hiddenFieldIds = hiddenFieldIds.size > 0 ? Array.from(hiddenFieldIds) : undefined;
     }
@@ -205,8 +236,83 @@ function EditViewDialog({ view, fields, isDefault, onClose, onSave, onSetDefault
             </div>
           )}
 
-          {/* Field visibility (kanban / calendar / timeline) */}
-          {view.type !== 'spreadsheet' && fields.filter(f => !f.isPrimary && f.type !== 'id').length > 0 && (
+          {/* Calendar date mapping */}
+          {view.type === 'calendar' && (
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-medium">Calendar settings</label>
+              {calendarDateFields.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  No date fields available. Add a Date field, then set a Start date field here.
+                </p>
+              ) : (
+                <>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-muted-foreground">Start date field</label>
+                    <Select
+                      value={calendarStartDateFieldId || '__none__'}
+                      onValueChange={v => setCalendarStartDateFieldId(v === '__none__' ? '' : v)}
+                    >
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue placeholder="Select start date field" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">None</SelectItem>
+                        {calendarDateFields.map(f => (
+                          <SelectItem key={f.id} value={f.id}>
+                            {f.name}
+                            <span className="text-muted-foreground text-xs ml-1">({f.type.replace('_', ' ')})</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-muted-foreground">End date field (optional)</label>
+                    <Select
+                      value={calendarEndDateFieldId || '__none__'}
+                      onValueChange={v => setCalendarEndDateFieldId(v === '__none__' ? '' : v)}
+                    >
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue placeholder="Same as start date" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">Same as start date</SelectItem>
+                        {calendarDateFields.map(f => (
+                          <SelectItem key={f.id} value={f.id}>
+                            {f.name}
+                            <span className="text-muted-foreground text-xs ml-1">({f.type.replace('_', ' ')})</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-muted-foreground">Default mode</label>
+                    <Select
+                      value={calendarMode}
+                      onValueChange={v => setCalendarMode(v as NonNullable<ViewCalendarConfig['mode']>)}
+                    >
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CALENDAR_MODE_OPTIONS.map(mode => (
+                          <SelectItem key={mode} value={mode}>
+                            {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Field visibility (kanban / timeline) */}
+          {(view.type === 'kanban' || view.type === 'timeline') && fields.filter(f => !f.isPrimary && f.type !== 'id').length > 0 && (
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-medium">Fields shown on cards</label>
               <div className="flex flex-col gap-1">

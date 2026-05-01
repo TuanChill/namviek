@@ -226,7 +226,7 @@ export default function DynamicFieldPage() {
   const handleAddRecord = async () => {
     if (!selectedDb) return;
     const idFields = fields.filter(f => f.type === 'id');
-    await addRecord(selectedDb.id, idFields);
+    return await addRecord(selectedDb.id, idFields);
   };
 
   const handleSetValue = async (record: import('./DynamicField/types').DynRecord, field: Field, payload: FieldValuePayload) => {
@@ -289,7 +289,17 @@ export default function DynamicFieldPage() {
           />
         );
       case 'calendar':
-        return <CalendarView />;
+        return (
+          <CalendarView
+            fields={fields}
+            records={records}
+            loading={loading}
+            view={activeView!}
+            onUpdateView={(viewId, patch) => { void updateView(viewId, patch); }}
+            onAddRecord={handleAddRecord}
+            onSetValue={handleSetValue}
+          />
+        );
       case 'timeline':
         return <TimelineView />;
       case 'spreadsheet':

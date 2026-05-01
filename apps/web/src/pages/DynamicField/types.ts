@@ -110,8 +110,15 @@ export interface ViewGroupByConfig {
   granularity?: 'day' | 'month' | 'quarter';
 }
 
+export interface ViewCalendarConfig {
+  startDateFieldId?: string;
+  endDateFieldId?: string;
+  mode?: 'month' | 'week';
+}
+
 export interface ViewConfig {
   groupBy?: ViewGroupByConfig;
+  calendar?: ViewCalendarConfig;
   filter?: unknown;
   sort?: unknown;
   fieldOrder?: string[];
