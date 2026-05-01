@@ -184,6 +184,7 @@ export type DynDatabaseWhereInput = {
   updatedAt?: Prisma.DateTimeFilter<"DynDatabase"> | Date | string
   fields?: Prisma.FieldListRelationFilter
   records?: Prisma.DynRecordListRelationFilter
+  views?: Prisma.DynViewListRelationFilter
 }
 
 export type DynDatabaseOrderByWithRelationInput = {
@@ -194,6 +195,7 @@ export type DynDatabaseOrderByWithRelationInput = {
   updatedAt?: Prisma.SortOrder
   fields?: Prisma.FieldOrderByRelationAggregateInput
   records?: Prisma.DynRecordOrderByRelationAggregateInput
+  views?: Prisma.DynViewOrderByRelationAggregateInput
 }
 
 export type DynDatabaseWhereUniqueInput = Prisma.AtLeast<{
@@ -207,6 +209,7 @@ export type DynDatabaseWhereUniqueInput = Prisma.AtLeast<{
   updatedAt?: Prisma.DateTimeFilter<"DynDatabase"> | Date | string
   fields?: Prisma.FieldListRelationFilter
   records?: Prisma.DynRecordListRelationFilter
+  views?: Prisma.DynViewListRelationFilter
 }, "id">
 
 export type DynDatabaseOrderByWithAggregationInput = {
@@ -239,6 +242,7 @@ export type DynDatabaseCreateInput = {
   updatedAt?: Date | string
   fields?: Prisma.FieldCreateNestedManyWithoutDatabaseInput
   records?: Prisma.DynRecordCreateNestedManyWithoutDatabaseInput
+  views?: Prisma.DynViewCreateNestedManyWithoutDatabaseInput
 }
 
 export type DynDatabaseUncheckedCreateInput = {
@@ -249,6 +253,7 @@ export type DynDatabaseUncheckedCreateInput = {
   updatedAt?: Date | string
   fields?: Prisma.FieldUncheckedCreateNestedManyWithoutDatabaseInput
   records?: Prisma.DynRecordUncheckedCreateNestedManyWithoutDatabaseInput
+  views?: Prisma.DynViewUncheckedCreateNestedManyWithoutDatabaseInput
 }
 
 export type DynDatabaseUpdateInput = {
@@ -259,6 +264,7 @@ export type DynDatabaseUpdateInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   fields?: Prisma.FieldUpdateManyWithoutDatabaseNestedInput
   records?: Prisma.DynRecordUpdateManyWithoutDatabaseNestedInput
+  views?: Prisma.DynViewUpdateManyWithoutDatabaseNestedInput
 }
 
 export type DynDatabaseUncheckedUpdateInput = {
@@ -269,6 +275,7 @@ export type DynDatabaseUncheckedUpdateInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   fields?: Prisma.FieldUncheckedUpdateManyWithoutDatabaseNestedInput
   records?: Prisma.DynRecordUncheckedUpdateManyWithoutDatabaseNestedInput
+  views?: Prisma.DynViewUncheckedUpdateManyWithoutDatabaseNestedInput
 }
 
 export type DynDatabaseCreateManyInput = {
@@ -324,6 +331,20 @@ export type DynDatabaseScalarRelationFilter = {
   isNot?: Prisma.DynDatabaseWhereInput
 }
 
+export type DynDatabaseCreateNestedOneWithoutViewsInput = {
+  create?: Prisma.XOR<Prisma.DynDatabaseCreateWithoutViewsInput, Prisma.DynDatabaseUncheckedCreateWithoutViewsInput>
+  connectOrCreate?: Prisma.DynDatabaseCreateOrConnectWithoutViewsInput
+  connect?: Prisma.DynDatabaseWhereUniqueInput
+}
+
+export type DynDatabaseUpdateOneRequiredWithoutViewsNestedInput = {
+  create?: Prisma.XOR<Prisma.DynDatabaseCreateWithoutViewsInput, Prisma.DynDatabaseUncheckedCreateWithoutViewsInput>
+  connectOrCreate?: Prisma.DynDatabaseCreateOrConnectWithoutViewsInput
+  upsert?: Prisma.DynDatabaseUpsertWithoutViewsInput
+  connect?: Prisma.DynDatabaseWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.DynDatabaseUpdateToOneWithWhereWithoutViewsInput, Prisma.DynDatabaseUpdateWithoutViewsInput>, Prisma.DynDatabaseUncheckedUpdateWithoutViewsInput>
+}
+
 export type DynDatabaseCreateNestedOneWithoutFieldsInput = {
   create?: Prisma.XOR<Prisma.DynDatabaseCreateWithoutFieldsInput, Prisma.DynDatabaseUncheckedCreateWithoutFieldsInput>
   connectOrCreate?: Prisma.DynDatabaseCreateOrConnectWithoutFieldsInput
@@ -352,6 +373,62 @@ export type DynDatabaseUpdateOneRequiredWithoutRecordsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.DynDatabaseUpdateToOneWithWhereWithoutRecordsInput, Prisma.DynDatabaseUpdateWithoutRecordsInput>, Prisma.DynDatabaseUncheckedUpdateWithoutRecordsInput>
 }
 
+export type DynDatabaseCreateWithoutViewsInput = {
+  id?: string
+  name: string
+  description?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  fields?: Prisma.FieldCreateNestedManyWithoutDatabaseInput
+  records?: Prisma.DynRecordCreateNestedManyWithoutDatabaseInput
+}
+
+export type DynDatabaseUncheckedCreateWithoutViewsInput = {
+  id?: string
+  name: string
+  description?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  fields?: Prisma.FieldUncheckedCreateNestedManyWithoutDatabaseInput
+  records?: Prisma.DynRecordUncheckedCreateNestedManyWithoutDatabaseInput
+}
+
+export type DynDatabaseCreateOrConnectWithoutViewsInput = {
+  where: Prisma.DynDatabaseWhereUniqueInput
+  create: Prisma.XOR<Prisma.DynDatabaseCreateWithoutViewsInput, Prisma.DynDatabaseUncheckedCreateWithoutViewsInput>
+}
+
+export type DynDatabaseUpsertWithoutViewsInput = {
+  update: Prisma.XOR<Prisma.DynDatabaseUpdateWithoutViewsInput, Prisma.DynDatabaseUncheckedUpdateWithoutViewsInput>
+  create: Prisma.XOR<Prisma.DynDatabaseCreateWithoutViewsInput, Prisma.DynDatabaseUncheckedCreateWithoutViewsInput>
+  where?: Prisma.DynDatabaseWhereInput
+}
+
+export type DynDatabaseUpdateToOneWithWhereWithoutViewsInput = {
+  where?: Prisma.DynDatabaseWhereInput
+  data: Prisma.XOR<Prisma.DynDatabaseUpdateWithoutViewsInput, Prisma.DynDatabaseUncheckedUpdateWithoutViewsInput>
+}
+
+export type DynDatabaseUpdateWithoutViewsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  fields?: Prisma.FieldUpdateManyWithoutDatabaseNestedInput
+  records?: Prisma.DynRecordUpdateManyWithoutDatabaseNestedInput
+}
+
+export type DynDatabaseUncheckedUpdateWithoutViewsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  fields?: Prisma.FieldUncheckedUpdateManyWithoutDatabaseNestedInput
+  records?: Prisma.DynRecordUncheckedUpdateManyWithoutDatabaseNestedInput
+}
+
 export type DynDatabaseCreateWithoutFieldsInput = {
   id?: string
   name: string
@@ -359,6 +436,7 @@ export type DynDatabaseCreateWithoutFieldsInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   records?: Prisma.DynRecordCreateNestedManyWithoutDatabaseInput
+  views?: Prisma.DynViewCreateNestedManyWithoutDatabaseInput
 }
 
 export type DynDatabaseUncheckedCreateWithoutFieldsInput = {
@@ -368,6 +446,7 @@ export type DynDatabaseUncheckedCreateWithoutFieldsInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   records?: Prisma.DynRecordUncheckedCreateNestedManyWithoutDatabaseInput
+  views?: Prisma.DynViewUncheckedCreateNestedManyWithoutDatabaseInput
 }
 
 export type DynDatabaseCreateOrConnectWithoutFieldsInput = {
@@ -393,6 +472,7 @@ export type DynDatabaseUpdateWithoutFieldsInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   records?: Prisma.DynRecordUpdateManyWithoutDatabaseNestedInput
+  views?: Prisma.DynViewUpdateManyWithoutDatabaseNestedInput
 }
 
 export type DynDatabaseUncheckedUpdateWithoutFieldsInput = {
@@ -402,6 +482,7 @@ export type DynDatabaseUncheckedUpdateWithoutFieldsInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   records?: Prisma.DynRecordUncheckedUpdateManyWithoutDatabaseNestedInput
+  views?: Prisma.DynViewUncheckedUpdateManyWithoutDatabaseNestedInput
 }
 
 export type DynDatabaseCreateWithoutRecordsInput = {
@@ -411,6 +492,7 @@ export type DynDatabaseCreateWithoutRecordsInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   fields?: Prisma.FieldCreateNestedManyWithoutDatabaseInput
+  views?: Prisma.DynViewCreateNestedManyWithoutDatabaseInput
 }
 
 export type DynDatabaseUncheckedCreateWithoutRecordsInput = {
@@ -420,6 +502,7 @@ export type DynDatabaseUncheckedCreateWithoutRecordsInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   fields?: Prisma.FieldUncheckedCreateNestedManyWithoutDatabaseInput
+  views?: Prisma.DynViewUncheckedCreateNestedManyWithoutDatabaseInput
 }
 
 export type DynDatabaseCreateOrConnectWithoutRecordsInput = {
@@ -445,6 +528,7 @@ export type DynDatabaseUpdateWithoutRecordsInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   fields?: Prisma.FieldUpdateManyWithoutDatabaseNestedInput
+  views?: Prisma.DynViewUpdateManyWithoutDatabaseNestedInput
 }
 
 export type DynDatabaseUncheckedUpdateWithoutRecordsInput = {
@@ -454,6 +538,7 @@ export type DynDatabaseUncheckedUpdateWithoutRecordsInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   fields?: Prisma.FieldUncheckedUpdateManyWithoutDatabaseNestedInput
+  views?: Prisma.DynViewUncheckedUpdateManyWithoutDatabaseNestedInput
 }
 
 
@@ -464,11 +549,13 @@ export type DynDatabaseUncheckedUpdateWithoutRecordsInput = {
 export type DynDatabaseCountOutputType = {
   fields: number
   records: number
+  views: number
 }
 
 export type DynDatabaseCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   fields?: boolean | DynDatabaseCountOutputTypeCountFieldsArgs
   records?: boolean | DynDatabaseCountOutputTypeCountRecordsArgs
+  views?: boolean | DynDatabaseCountOutputTypeCountViewsArgs
 }
 
 /**
@@ -495,6 +582,13 @@ export type DynDatabaseCountOutputTypeCountRecordsArgs<ExtArgs extends runtime.T
   where?: Prisma.DynRecordWhereInput
 }
 
+/**
+ * DynDatabaseCountOutputType without action
+ */
+export type DynDatabaseCountOutputTypeCountViewsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.DynViewWhereInput
+}
+
 
 export type DynDatabaseSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -504,6 +598,7 @@ export type DynDatabaseSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   updatedAt?: boolean
   fields?: boolean | Prisma.DynDatabase$fieldsArgs<ExtArgs>
   records?: boolean | Prisma.DynDatabase$recordsArgs<ExtArgs>
+  views?: boolean | Prisma.DynDatabase$viewsArgs<ExtArgs>
   _count?: boolean | Prisma.DynDatabaseCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["dynDatabase"]>
 
@@ -535,6 +630,7 @@ export type DynDatabaseOmit<ExtArgs extends runtime.Types.Extensions.InternalArg
 export type DynDatabaseInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   fields?: boolean | Prisma.DynDatabase$fieldsArgs<ExtArgs>
   records?: boolean | Prisma.DynDatabase$recordsArgs<ExtArgs>
+  views?: boolean | Prisma.DynDatabase$viewsArgs<ExtArgs>
   _count?: boolean | Prisma.DynDatabaseCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type DynDatabaseIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -545,6 +641,7 @@ export type $DynDatabasePayload<ExtArgs extends runtime.Types.Extensions.Interna
   objects: {
     fields: Prisma.$FieldPayload<ExtArgs>[]
     records: Prisma.$DynRecordPayload<ExtArgs>[]
+    views: Prisma.$DynViewPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -948,6 +1045,7 @@ export interface Prisma__DynDatabaseClient<T, Null = never, ExtArgs extends runt
   readonly [Symbol.toStringTag]: "PrismaPromise"
   fields<T extends Prisma.DynDatabase$fieldsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.DynDatabase$fieldsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$FieldPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   records<T extends Prisma.DynDatabase$recordsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.DynDatabase$recordsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DynRecordPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  views<T extends Prisma.DynDatabase$viewsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.DynDatabase$viewsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DynViewPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1415,6 +1513,30 @@ export type DynDatabase$recordsArgs<ExtArgs extends runtime.Types.Extensions.Int
   take?: number
   skip?: number
   distinct?: Prisma.DynRecordScalarFieldEnum | Prisma.DynRecordScalarFieldEnum[]
+}
+
+/**
+ * DynDatabase.views
+ */
+export type DynDatabase$viewsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the DynView
+   */
+  select?: Prisma.DynViewSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the DynView
+   */
+  omit?: Prisma.DynViewOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.DynViewInclude<ExtArgs> | null
+  where?: Prisma.DynViewWhereInput
+  orderBy?: Prisma.DynViewOrderByWithRelationInput | Prisma.DynViewOrderByWithRelationInput[]
+  cursor?: Prisma.DynViewWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.DynViewScalarFieldEnum | Prisma.DynViewScalarFieldEnum[]
 }
 
 /**

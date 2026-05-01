@@ -52,6 +52,13 @@ enum FieldType {
   updated_by
 }
 
+enum DynViewType {
+  spreadsheet
+  kanban
+  calendar
+  timeline
+}
+
 model DynDatabase {
   id          String   @id @default(uuid())
   name        String
@@ -61,8 +68,28 @@ model DynDatabase {
 
   fields  Field[]
   records DynRecord[]
+  views   DynView[]
 
   @@map("dyn_databases")
+}
+
+model DynView {
+  id         String      @id @default(uuid())
+  databaseId String
+  name       String
+  icon       String?
+  type       DynViewType
+  position   Int
+  isDefault  Boolean     @default(false)
+  config     Json?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  database DynDatabase @relation(fields: [databaseId], references: [id], onDelete: Cascade)
+
+  @@index([databaseId, position])
+  @@index([databaseId, type])
+  @@map("dyn_views")
 }
 
 model Field {

@@ -28,3 +28,13 @@ export const FieldType = {
 } as const
 
 export type FieldType = (typeof FieldType)[keyof typeof FieldType]
+
+
+export const DynViewType = {
+  spreadsheet: 'spreadsheet',
+  kanban: 'kanban',
+  calendar: 'calendar',
+  timeline: 'timeline'
+} as const
+
+export type DynViewType = (typeof DynViewType)[keyof typeof DynViewType]

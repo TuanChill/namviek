@@ -18,6 +18,15 @@ import {
   deleteDynRecords,
   deleteDynDatabase,
   getDatabaseStats,
+  getDatabaseViews,
+  createDatabaseView,
+  updateDatabaseView,
+  deleteDatabaseView,
+  setDefaultDatabaseView,
+  reorderDatabaseViews,
+  ensureDefaultView,
+  createField,
+  ensurePrimaryField,
 } from '@local/database'
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
 import crypto from 'crypto'
@@ -210,6 +219,17 @@ app.post('/api/databases', async (c) => {
     const body = await c.req.json()
     if (!body.name?.trim()) return c.json({ error: 'name is required' }, 400)
     const db = await createDynDatabase(body.name.trim(), body.description)
+    // Create primary text (title) field
+    await createField(db.id, 'Name', 'text', { isPrimary: true })
+    // Create default view (use provided or fallback to Spreadsheet)
+    await createDatabaseView({
+      databaseId: db.id,
+      name: body.defaultView?.name ?? 'Spreadsheet',
+      type: body.defaultView?.type ?? 'spreadsheet',
+      icon: body.defaultView?.icon,
+      config: body.defaultView?.config,
+      isDefault: true,
+    })
     dbEvents.publish(GLOBAL_DATABASE_STREAM_ID, 'DATABASE_CREATED', db)
     return c.json(db, 201)
   } catch (error) {
@@ -249,6 +269,112 @@ app.get('/api/databases/:id/stats', async (c) => {
 
 // /api/fields routes are handled in field.service.ts to keep things organized
 registerFieldRoutes(app, dbEvents)
+
+// ─── View routes ───────────────────────────────────────────────────────────────
+
+const VALID_VIEW_TYPES = ['spreadsheet', 'kanban', 'calendar', 'timeline'] as const
+const VALID_GROUPBY_FIELD_TYPES = ['select', 'multi_select', 'date', 'created_time', 'updated_time'] as const
+const VALID_GRANULARITIES = ['day', 'month', 'quarter'] as const
+
+// GET /api/databases/:id/views
+app.get('/api/databases/:id/views', async (c) => {
+  try {
+    const views = await getDatabaseViews(c.req.param('id'))
+    return c.json(views)
+  } catch (error) {
+    console.error(error)
+    return c.json({ error: 'Failed to fetch views' }, 500)
+  }
+})
+
+// POST /api/databases/:id/views
+app.post('/api/databases/:id/views', async (c) => {
+  try {
+    const databaseId = c.req.param('id')
+    const body = await c.req.json()
+    if (!body.name?.trim()) return c.json({ error: 'name is required' }, 400)
+    if (!VALID_VIEW_TYPES.includes(body.type)) {
+      return c.json({ error: `type must be one of: ${VALID_VIEW_TYPES.join(', ')}` }, 400)
+    }
+    if (body.config?.groupBy) {
+      if (!VALID_GROUPBY_FIELD_TYPES.includes(body.config.groupBy.fieldType)) {
+        return c.json({ error: `groupBy fieldType must be one of: ${VALID_GROUPBY_FIELD_TYPES.join(', ')}` }, 400)
+      }
+      const isDateLike = ['date', 'created_time', 'updated_time'].includes(body.config.groupBy.fieldType)
+      if (isDateLike && !VALID_GRANULARITIES.includes(body.config.groupBy.granularity)) {
+        return c.json({ error: `granularity must be one of: ${VALID_GRANULARITIES.join(', ')}` }, 400)
+      }
+    }
+    const view = await createDatabaseView({
+      databaseId,
+      name: body.name.trim(),
+      type: body.type,
+      icon: body.icon,
+      config: body.config,
+    })
+    return c.json(view, 201)
+  } catch (error) {
+    console.error(error)
+    return c.json({ error: 'Failed to create view' }, 500)
+  }
+})
+
+// PATCH /api/views/:viewId
+app.patch('/api/views/:viewId', async (c) => {
+  try {
+    const viewId = c.req.param('viewId')
+    const body = await c.req.json()
+    const patch: Record<string, unknown> = {}
+    if (body.name !== undefined) patch.name = body.name
+    if (body.icon !== undefined) patch.icon = body.icon
+    if (body.config !== undefined) patch.config = body.config
+    const view = await updateDatabaseView(viewId, patch)
+    return c.json(view)
+  } catch (error) {
+    console.error(error)
+    return c.json({ error: 'Failed to update view' }, 500)
+  }
+})
+
+// DELETE /api/views/:viewId
+app.delete('/api/views/:viewId', async (c) => {
+  try {
+    const view = await deleteDatabaseView(c.req.param('viewId'))
+    return c.json(view)
+  } catch (error: any) {
+    if (error?.message === 'Cannot delete the last remaining view' || error?.message === 'Cannot delete the default view') {
+      return c.json({ error: error.message }, 400)
+    }
+    console.error(error)
+    return c.json({ error: 'Failed to delete view' }, 500)
+  }
+})
+
+// POST /api/databases/:id/views/reorder
+app.post('/api/databases/:id/views/reorder', async (c) => {
+  try {
+    const databaseId = c.req.param('id')
+    const body = await c.req.json()
+    if (!Array.isArray(body.viewIds)) return c.json({ error: 'viewIds array is required' }, 400)
+    await reorderDatabaseViews(databaseId, body.viewIds)
+    return c.json({ success: true })
+  } catch (error) {
+    console.error(error)
+    return c.json({ error: 'Failed to reorder views' }, 500)
+  }
+})
+
+// POST /api/databases/:id/views/:viewId/default
+app.post('/api/databases/:id/views/:viewId/default', async (c) => {
+  try {
+    const { id: databaseId, viewId } = c.req.param()
+    await setDefaultDatabaseView(databaseId, viewId)
+    return c.json({ success: true })
+  } catch (error) {
+    console.error(error)
+    return c.json({ error: 'Failed to set default view' }, 500)
+  }
+})
 
 // GET /api/databases/:id/records — list records with field values
 app.get('/api/databases/:id/records', async (c) => {

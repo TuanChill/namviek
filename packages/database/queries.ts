@@ -246,8 +246,11 @@ export async function updateFieldConfig(fieldId: string, config: Prisma.InputJso
     });
 }
 
-/** Delete a field and all its values */
+/** Delete a field and all its values — throws if the field is the primary field */
 export async function deleteField(fieldId: string) {
+    const field = await prisma.field.findUnique({ where: { id: fieldId } });
+    if (!field) throw new Error('Field not found');
+    if (field.isPrimary) throw new Error('Cannot delete the primary field');
     return await prisma.field.delete({ where: { id: fieldId } });
 }
 
@@ -423,4 +426,154 @@ export async function backfillIdField(fieldId: string, databaseId: string) {
         await prisma.fieldValue.createMany({ data: toCreate });
     }
     return toCreate.length;
+}
+
+// ─── DynView queries ───────────────────────────────────────────────────────────
+
+import type { DynViewType, Prisma as PrismaTypes } from "./generated/client/client.js";
+
+/** List all views for a database ordered by position */
+export async function getDatabaseViews(databaseId: string) {
+    return await prisma.dynView.findMany({
+        where: { databaseId },
+        orderBy: { position: "asc" },
+    });
+}
+
+/** Create a view in a database */
+export async function createDatabaseView(input: {
+    databaseId: string;
+    name: string;
+    type: DynViewType;
+    icon?: string;
+    isDefault?: boolean;
+    config?: PrismaTypes.InputJsonValue;
+}) {
+    const maxPos = await prisma.dynView.aggregate({
+        where: { databaseId: input.databaseId },
+        _max: { position: true },
+    });
+    const position = (maxPos._max.position ?? -1) + 1;
+
+    return await prisma.dynView.create({
+        data: {
+            databaseId: input.databaseId,
+            name: input.name,
+            type: input.type,
+            icon: input.icon ?? null,
+            position,
+            isDefault: input.isDefault ?? false,
+            ...(input.config !== undefined && { config: input.config }),
+        },
+    });
+}
+
+/** Update a view's metadata */
+export async function updateDatabaseView(
+    viewId: string,
+    patch: {
+        name?: string;
+        icon?: string | null;
+        isDefault?: boolean;
+        config?: PrismaTypes.InputJsonValue | PrismaTypes.NullableJsonNullValueInput;
+    }
+) {
+    return await prisma.dynView.update({
+        where: { id: viewId },
+        data: patch,
+    });
+}
+
+/** Delete a view — throws if it is the last view or the default view */
+export async function deleteDatabaseView(viewId: string) {
+    const view = await prisma.dynView.findUnique({ where: { id: viewId } });
+    if (!view) throw new Error("View not found");
+    if (view.isDefault) throw new Error("Cannot delete the default view");
+
+    const count = await prisma.dynView.count({ where: { databaseId: view.databaseId } });
+    if (count <= 1) throw new Error("Cannot delete the last remaining view");
+
+    return await prisma.dynView.delete({ where: { id: viewId } });
+}
+
+/** Set a view as the default for its database (single transaction) */
+export async function setDefaultDatabaseView(databaseId: string, viewId: string) {
+    return await prisma.$transaction([
+        prisma.dynView.updateMany({
+            where: { databaseId, isDefault: true },
+            data: { isDefault: false },
+        }),
+        prisma.dynView.update({
+            where: { id: viewId },
+            data: { isDefault: true },
+        }),
+    ]);
+}
+
+/** Reorder views by providing the full ordered list of view IDs */
+export async function reorderDatabaseViews(databaseId: string, orderedViewIds: string[]) {
+    const updates = orderedViewIds.map((id, idx) =>
+        prisma.dynView.update({ where: { id }, data: { position: idx } })
+    );
+    return await prisma.$transaction(updates);
+}
+
+/** Ensure at least one default view exists for a database; creates a Spreadsheet view if not */
+export async function ensureDefaultView(databaseId: string) {
+    const existing = await prisma.dynView.findFirst({
+        where: { databaseId, isDefault: true },
+    });
+    if (existing) return existing;
+
+    const anyView = await prisma.dynView.findFirst({ where: { databaseId } });
+    if (anyView) {
+        return await prisma.dynView.update({
+            where: { id: anyView.id },
+            data: { isDefault: true },
+        });
+    }
+
+    return await createDatabaseView({
+        databaseId,
+        name: "Spreadsheet",
+        type: "spreadsheet",
+        isDefault: true,
+    });
+}
+
+/**
+ * Ensure at least one primary (title) field exists for a database.
+ * If a text field already exists, marks the first one as primary.
+ * Otherwise creates a "Name" text field at position -1 (sorts before all others).
+ */
+export async function ensurePrimaryField(databaseId: string) {
+    const existing = await prisma.field.findFirst({
+        where: { databaseId, isPrimary: true },
+    });
+    if (existing) return existing;
+
+    // Try to promote the first text field
+    const firstText = await prisma.field.findFirst({
+        where: { databaseId, type: 'text' },
+        orderBy: { position: 'asc' },
+    });
+    if (firstText) {
+        return await prisma.field.update({
+            where: { id: firstText.id },
+            data: { isPrimary: true },
+            include: { options: { orderBy: { position: 'asc' } } },
+        });
+    }
+
+    // No text field — create a Name field at position -1 so it sorts first
+    return await prisma.field.create({
+        data: {
+            databaseId,
+            name: 'Name',
+            type: 'text',
+            position: -1,
+            isPrimary: true,
+        },
+        include: { options: { orderBy: { position: 'asc' } } },
+    });
 }

@@ -387,6 +387,7 @@ export const ModelName = {
   Test: 'Test',
   DynUser: 'DynUser',
   DynDatabase: 'DynDatabase',
+  DynView: 'DynView',
   Field: 'Field',
   FieldOption: 'FieldOption',
   DynRecord: 'DynRecord',
@@ -406,7 +407,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "test" | "dynUser" | "dynDatabase" | "field" | "fieldOption" | "dynRecord" | "fieldValue"
+    modelProps: "test" | "dynUser" | "dynDatabase" | "dynView" | "field" | "fieldOption" | "dynRecord" | "fieldValue"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -629,6 +630,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.DynDatabaseCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.DynDatabaseCountAggregateOutputType> | number
+        }
+      }
+    }
+    DynView: {
+      payload: Prisma.$DynViewPayload<ExtArgs>
+      fields: Prisma.DynViewFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.DynViewFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DynViewPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.DynViewFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DynViewPayload>
+        }
+        findFirst: {
+          args: Prisma.DynViewFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DynViewPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.DynViewFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DynViewPayload>
+        }
+        findMany: {
+          args: Prisma.DynViewFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DynViewPayload>[]
+        }
+        create: {
+          args: Prisma.DynViewCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DynViewPayload>
+        }
+        createMany: {
+          args: Prisma.DynViewCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.DynViewCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DynViewPayload>[]
+        }
+        delete: {
+          args: Prisma.DynViewDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DynViewPayload>
+        }
+        update: {
+          args: Prisma.DynViewUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DynViewPayload>
+        }
+        deleteMany: {
+          args: Prisma.DynViewDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.DynViewUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.DynViewUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DynViewPayload>[]
+        }
+        upsert: {
+          args: Prisma.DynViewUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DynViewPayload>
+        }
+        aggregate: {
+          args: Prisma.DynViewAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateDynView>
+        }
+        groupBy: {
+          args: Prisma.DynViewGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.DynViewGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.DynViewCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.DynViewCountAggregateOutputType> | number
         }
       }
     }
@@ -1000,6 +1075,22 @@ export const DynDatabaseScalarFieldEnum = {
 export type DynDatabaseScalarFieldEnum = (typeof DynDatabaseScalarFieldEnum)[keyof typeof DynDatabaseScalarFieldEnum]
 
 
+export const DynViewScalarFieldEnum = {
+  id: 'id',
+  databaseId: 'databaseId',
+  name: 'name',
+  icon: 'icon',
+  type: 'type',
+  position: 'position',
+  isDefault: 'isDefault',
+  config: 'config',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type DynViewScalarFieldEnum = (typeof DynViewScalarFieldEnum)[keyof typeof DynViewScalarFieldEnum]
+
+
 export const FieldScalarFieldEnum = {
   id: 'id',
   databaseId: 'databaseId',
@@ -1146,16 +1237,16 @@ export type ListDateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaM
 
 
 /**
- * Reference to a field of type 'FieldType'
+ * Reference to a field of type 'DynViewType'
  */
-export type EnumFieldTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'FieldType'>
+export type EnumDynViewTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DynViewType'>
     
 
 
 /**
- * Reference to a field of type 'FieldType[]'
+ * Reference to a field of type 'DynViewType[]'
  */
-export type ListEnumFieldTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'FieldType[]'>
+export type ListEnumDynViewTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DynViewType[]'>
     
 
 
@@ -1177,6 +1268,20 @@ export type JsonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'J
  * Reference to a field of type 'QueryMode'
  */
 export type EnumQueryModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QueryMode'>
+    
+
+
+/**
+ * Reference to a field of type 'FieldType'
+ */
+export type EnumFieldTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'FieldType'>
+    
+
+
+/**
+ * Reference to a field of type 'FieldType[]'
+ */
+export type ListEnumFieldTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'FieldType[]'>
     
 
 
@@ -1289,6 +1394,7 @@ export type GlobalOmitConfig = {
   test?: Prisma.TestOmit
   dynUser?: Prisma.DynUserOmit
   dynDatabase?: Prisma.DynDatabaseOmit
+  dynView?: Prisma.DynViewOmit
   field?: Prisma.FieldOmit
   fieldOption?: Prisma.FieldOptionOmit
   dynRecord?: Prisma.DynRecordOmit

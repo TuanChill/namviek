@@ -54,6 +54,7 @@ export const ModelName = {
   Test: 'Test',
   DynUser: 'DynUser',
   DynDatabase: 'DynDatabase',
+  DynView: 'DynView',
   Field: 'Field',
   FieldOption: 'FieldOption',
   DynRecord: 'DynRecord',
@@ -107,6 +108,22 @@ export const DynDatabaseScalarFieldEnum = {
 } as const
 
 export type DynDatabaseScalarFieldEnum = (typeof DynDatabaseScalarFieldEnum)[keyof typeof DynDatabaseScalarFieldEnum]
+
+
+export const DynViewScalarFieldEnum = {
+  id: 'id',
+  databaseId: 'databaseId',
+  name: 'name',
+  icon: 'icon',
+  type: 'type',
+  position: 'position',
+  isDefault: 'isDefault',
+  config: 'config',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type DynViewScalarFieldEnum = (typeof DynViewScalarFieldEnum)[keyof typeof DynViewScalarFieldEnum]
 
 
 export const FieldScalarFieldEnum = {

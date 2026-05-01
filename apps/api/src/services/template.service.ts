@@ -6,6 +6,7 @@ import {
   setFieldValue,
   createFieldOption,
   getUsers,
+  ensureDefaultView,
 } from '@local/database'
 import { TEMPLATES } from '../config/templates.js'
 
@@ -48,8 +49,9 @@ export async function createDatabaseFromTemplate(templateId: string, name?: stri
   const fields = []
   const fieldIdToOptionsMap: Record<string, string[]> = {}
 
-  for (const tField of template.fields) {
-    const field = await createField(db.id, tField.name, tField.type)
+  for (const [idx, tField] of template.fields.entries()) {
+    const isFirst = idx === 0 && tField.type === 'text'
+    const field = await createField(db.id, tField.name, tField.type, { isPrimary: isFirst })
     fields.push({ ...tField, createdId: field.id })
 
     // If it's a select field, create options with random distinct colors
@@ -135,5 +137,6 @@ export async function createDatabaseFromTemplate(templateId: string, name?: stri
 
   console.log(`[Template] Done.`);
   if (onProgress) await onProgress(`Done`)
+  await ensureDefaultView(db.id)
   return db
 }

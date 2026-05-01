@@ -99,3 +99,35 @@ export type FieldValuePayload = {
   personValue?: string[];
   boolValue?: boolean | null;
 };
+
+// ─── View system ──────────────────────────────────────────────────────────────
+
+export type DynViewType = 'spreadsheet' | 'kanban' | 'calendar' | 'timeline';
+
+export interface ViewGroupByConfig {
+  fieldId: string;
+  fieldType: 'select' | 'multi_select' | 'date' | 'created_time' | 'updated_time';
+  granularity?: 'day' | 'month' | 'quarter';
+}
+
+export interface ViewConfig {
+  groupBy?: ViewGroupByConfig;
+  filter?: unknown;
+  sort?: unknown;
+  fieldOrder?: string[];
+  fieldWidths?: Record<string, number>;
+  hiddenFieldIds?: string[];
+}
+
+export interface DynView {
+  id: string;
+  databaseId: string;
+  name: string;
+  icon?: string | null;
+  type: DynViewType;
+  position: number;
+  isDefault: boolean;
+  config?: ViewConfig | null;
+  createdAt: string;
+  updatedAt: string;
+}

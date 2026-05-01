@@ -320,7 +320,10 @@ export function registerFieldRoutes(app: Hono, dbEvents: DbEventPublisher) {
         dbEvents.publish(databaseId, 'FIELD_DELETED', { id: c.req.param('fieldId') })
       }
       return c.json({ success: true })
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.message === 'Cannot delete the primary field') {
+        return c.json({ error: error.message }, 400)
+      }
       console.error(error)
       return c.json({ error: 'Failed to delete field' }, 500)
     }

@@ -11,6 +11,7 @@
 export type * from './models/Test.js'
 export type * from './models/DynUser.js'
 export type * from './models/DynDatabase.js'
+export type * from './models/DynView.js'
 export type * from './models/Field.js'
 export type * from './models/FieldOption.js'
 export type * from './models/DynRecord.js'

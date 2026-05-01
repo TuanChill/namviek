@@ -1,24 +1,18 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import {
-  Plus, Database, Loader2,
-  ChevronLeft, ChevronRight, Copy, Trash2, Pencil, Smile, Settings2
+  Plus, Database, Trash2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
   AlertDialogHeader, AlertDialogTitle
 } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import {
-  ContextMenu, ContextMenuContent, ContextMenuItem,
-  ContextMenuSeparator, ContextMenuTrigger,
-} from '@/components/ui/context-menu';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   Sidebar,
   SidebarContent,
@@ -34,7 +28,6 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 
-import { CellEditor } from './DynamicField/CellEditors';
 import { AddFieldDrawer } from './DynamicField/AddFieldDrawer';
 import { EditFieldDrawer } from './DynamicField/EditFieldDrawer';
 import { TemplateDialog } from './DynamicField/components/TemplateDialog';
@@ -44,15 +37,21 @@ import { useDatabase } from './DynamicField/hooks/useDatabase';
 import { useFields } from './DynamicField/hooks/useFields';
 import { useRecords } from './DynamicField/hooks/useRecords';
 import { useDatabaseStream } from './DynamicField/hooks/useDatabaseStream';
+import { useViews } from './DynamicField/hooks/useViews';
 
-import type { DynDatabase, Field, FieldConfig, FieldType, FieldValuePayload } from './DynamicField/types';
+import { SpreadsheetView } from './DynamicField/views/spreadsheet/SpreadsheetView';
+import { KanbanView } from './DynamicField/views/kanban/KanbanView';
+import { CalendarView } from './DynamicField/views/calendar/CalendarView';
+import { TimelineView } from './DynamicField/views/timeline/TimelineView';
+import { ViewManagerTabBar } from './DynamicField/views/components/ViewManagerTabBar';
 
-const COL_WIDTH = 180;
+import type { DynDatabase, DynViewType, Field, FieldConfig, FieldType, FieldValuePayload } from './DynamicField/types';
 
 export default function DynamicFieldPage() {
   const { databases, selectedDb, setSelectedDb, createDatabase, deleteDatabase, upsertDatabase, removeDatabase } = useDatabase();
   const { fields, setFields, loadFields, addField, renameField, deleteField, moveField, duplicateField, changeIcon, updateField } = useFields();
   const { records, setRecords, loadRecords, addRecord, setValue, removeFieldValues, reloadRecords, deleteRecords } = useRecords();
+  const { views, activeView, setActiveView, loadViews, createView, updateView, deleteView, setDefaultView, moveView } = useViews();
 
   const { databaseId } = useParams();
   const navigate = useNavigate();
@@ -150,12 +149,12 @@ export default function DynamicFieldPage() {
     setSelectedRecords(new Set());
     setLoading(true);
     try {
-      await Promise.all([loadFields(db.id), loadRecords(db.id)]);
+      await Promise.all([loadFields(db.id), loadRecords(db.id), loadViews(db.id)]);
       if (updateUrl && databaseId !== db.id) navigate(`/test/${db.id}`);
     } finally {
       setLoading(false);
     }
-  }, [setSelectedDb, loadFields, loadRecords, databaseId, navigate]);
+  }, [setSelectedDb, loadFields, loadRecords, loadViews, databaseId, navigate]);
 
   // Initial load from URL
   useEffect(() => {
@@ -251,6 +250,81 @@ export default function DynamicFieldPage() {
       setSelectedRecords(new Set(records.map(r => r.id)));
     } else {
       setSelectedRecords(new Set());
+    }
+  };
+
+  // ── View handlers ─────────────────────────────────────────────────────────
+  const handleCreateView = async (name: string, type: DynViewType) => {
+    if (!selectedDb) return;
+    const view = await createView(selectedDb.id, name, type);
+    setActiveView(view);
+  };
+
+  const handleRenameView = async (viewId: string, name: string) => {
+    await updateView(viewId, { name });
+  };
+
+  const handleDeleteView = async (viewId: string) => {
+    await deleteView(viewId);
+  };
+
+  const handleSetDefaultView = async (viewId: string) => {
+    if (!selectedDb) return;
+    await setDefaultView(selectedDb.id, viewId);
+  };
+
+  // Render the correct view component for the active view type
+  const renderViewContent = () => {
+    const viewType = activeView?.type ?? 'spreadsheet';
+    switch (viewType) {
+      case 'kanban':
+        return (
+          <KanbanView
+            fields={fields}
+            records={records}
+            loading={loading}
+            view={activeView!}
+            onSetValue={handleSetValue}
+            onAddRecord={handleAddRecord}
+          />
+        );
+      case 'calendar':
+        return <CalendarView />;
+      case 'timeline':
+        return <TimelineView />;
+      case 'spreadsheet':
+      default:
+        return (
+          <SpreadsheetView
+            fields={fields}
+            records={records}
+            loading={loading}
+            selectedRecords={selectedRecords}
+            activeCell={activeCell}
+            renamingFieldId={renamingFieldId}
+            renameValue={renameValue}
+            iconPickerFieldId={iconPickerFieldId}
+            onSetActiveCell={setActiveCell}
+            onToggleAll={handleToggleAll}
+            onToggleRecord={(id, checked) => {
+              const newSet = new Set(selectedRecords);
+              if (checked) newSet.add(id); else newSet.delete(id);
+              setSelectedRecords(newSet);
+            }}
+            onSetValue={handleSetValue}
+            onAddRecord={handleAddRecord}
+            onEditField={setEditingField}
+            onStartRename={(field) => { setRenamingFieldId(field.id); setRenameValue(field.name); }}
+            onRenameChange={setRenameValue}
+            onCommitRename={commitRename}
+            onCancelRename={() => setRenamingFieldId(null)}
+            onOpenIconPicker={setIconPickerFieldId}
+            onMoveField={handleMoveField}
+            onDuplicateField={handleDuplicate}
+            onDeleteField={setDeletingFieldId}
+            onAddField={() => setShowAddField(true)}
+          />
+        );
     }
   };
 
@@ -368,160 +442,41 @@ export default function DynamicFieldPage() {
                 >
                   <Trash2 size={14} className="mr-1.5" /> Delete DB
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => setShowAddField(true)}>
-                  <Plus size={14} /> Add field
-                </Button>
-                {selectedRecords.size > 0 && (
-                  <Button size="sm" variant="destructive" onClick={handleDeleteSelectedRecords}>
-                    <Trash2 size={14} className="mr-1.5" /> Delete {selectedRecords.size}
-                  </Button>
+                {activeView?.type === 'spreadsheet' && (
+                  <>
+                    <Button size="sm" variant="outline" onClick={() => setShowAddField(true)}>
+                      <Plus size={14} /> Add field
+                    </Button>
+                    {selectedRecords.size > 0 && (
+                      <Button size="sm" variant="destructive" onClick={handleDeleteSelectedRecords}>
+                        <Trash2 size={14} className="mr-1.5" /> Delete {selectedRecords.size}
+                      </Button>
+                    )}
+                  </>
                 )}
                 <Button size="sm" onClick={handleAddRecord}>
                   <Plus size={14} /> Add record
                 </Button>
               </header>
 
-              {/* Table */}
-              {loading ? (
-                <div className="flex flex-1 items-center justify-center">
-                  <Loader2 size={22} className="animate-spin text-muted-foreground" />
-                </div>
-              ) : fields.length === 0 ? (
-                <div className="flex flex-1 flex-col items-center justify-center gap-2 text-muted-foreground">
-                  <p className="text-sm">No fields yet.</p>
-                  <Button size="sm" variant="outline" onClick={() => setShowAddField(true)}>
-                    <Plus size={14} /> Add your first field
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex-1 overflow-auto">
-                  <table className="text-sm border-collapse" style={{ tableLayout: 'fixed' }}>
-                    <colgroup>
-                      <col style={{ width: '48px' }} />
-                      {fields.map(f => <col key={f.id} style={{ width: `${COL_WIDTH}px` }} />)}
-                    </colgroup>
-                    <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
-                      <tr>
-                        <th className="px-3 py-2 text-center text-xs font-medium text-muted-foreground border-b border-r border-border/40">
-                          <Checkbox
-                            checked={records.length > 0 && selectedRecords.size === records.length}
-                            onCheckedChange={handleToggleAll}
-                            className="translate-y-[2px]"
-                          />
-                        </th>
-                        {fields.map((field, idx) => {
-                          const { Icon: DefaultIcon } = getFieldMeta(field.type);
-                          const Icon = field.config?.customIcon ? getIconByName(field.config.customIcon) : DefaultIcon;
-                          return (
-                            <ContextMenu key={field.id}>
-                              <ContextMenuTrigger asChild>
-                                <th className="px-3 py-2 text-left border-b border-r border-border/40 cursor-context-menu select-none" style={{ width: COL_WIDTH }}>
-                                  {renamingFieldId === field.id ? (
-                                    <Input autoFocus value={renameValue} onChange={e => setRenameValue(e.target.value)}
-                                      onBlur={commitRename}
-                                      onKeyDown={e => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') setRenamingFieldId(null); }}
-                                      className="h-6 text-xs px-1 font-normal" />
-                                  ) : (
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                                          <Icon size={12} className="shrink-0" />
-                                          <span className="truncate">{field.name}</span>
-                                        </div>
-                                      </TooltipTrigger>
-                                      <TooltipContent side="bottom" className="text-xs">
-                                        {field.type.replace('_', ' ')}{field.options?.length ? ` · ${field.options.length} options` : ''}
-                                        {' '}· Right-click to edit
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  )}
-                                </th>
-                              </ContextMenuTrigger>
-                              <ContextMenuContent className='w-[180px]'>
-                                <ContextMenuItem onClick={() => setEditingField(field)}>
-                                  <Settings2 size={13} className="mr-2" /> Edit field
-                                </ContextMenuItem>
-                                <ContextMenuItem onClick={() => { setRenamingFieldId(field.id); setRenameValue(field.name); }}>
-                                  <Pencil size={13} className="mr-2" /> Rename
-                                </ContextMenuItem>
-                                <ContextMenuItem onClick={() => setIconPickerFieldId(field.id)}>
-                                  <Smile size={13} className="mr-2" /> Change icon
-                                </ContextMenuItem>
-                                <ContextMenuSeparator />
-                                <ContextMenuItem disabled={idx === 0} onClick={() => handleMoveField(field.id, 'left')}>
-                                  <ChevronLeft size={13} className="mr-2" /> Move left
-                                </ContextMenuItem>
-                                <ContextMenuItem disabled={idx === fields.length - 1} onClick={() => handleMoveField(field.id, 'right')}>
-                                  <ChevronRight size={13} className="mr-2" /> Move right
-                                </ContextMenuItem>
-                                <ContextMenuSeparator />
-                                <ContextMenuItem onClick={() => handleDuplicate(field.id)}>
-                                  <Copy size={13} className="mr-2" /> Duplicate field
-                                </ContextMenuItem>
-                                <ContextMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeletingFieldId(field.id)}>
-                                  <Trash2 size={13} className="mr-2" /> Delete field
-                                </ContextMenuItem>
-                              </ContextMenuContent>
-                            </ContextMenu>
-                          );
-                        })}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {records.length === 0 ? (
-                        <tr>
-                          <td colSpan={fields.length + 1} className="px-4 py-8 text-center text-sm text-muted-foreground">
-                            No records. Click <strong>+ Add record</strong> to create a row.
-                          </td>
-                        </tr>
-                      ) : records.map(record => (
-                        <tr key={record.id} className="border-b hover:bg-muted/30 transition-colors">
-                          <td className="px-3 py-2 text-center border-r border-b align-middle">
-                            <Checkbox
-                              checked={selectedRecords.has(record.id)}
-                              onCheckedChange={(checked) => {
-                                const newSet = new Set(selectedRecords);
-                                if (checked) newSet.add(record.id);
-                                else newSet.delete(record.id);
-                                setSelectedRecords(newSet);
-                              }}
-                              className="translate-y-[2px]"
-                            />
-                          </td>
-                          {fields.map(field => {
-                            const fv = record.fieldValues.find(v => v.fieldId === field.id);
-                            const cellKey = `${record.id}:${field.id}`;
-                            const isActive = activeCell?.recordId === record.id && activeCell?.fieldId === field.id;
-                            return (
-                              <td
-                                key={field.id}
-                                className={`px-3 py-2 border-r border-b align-middle transition-all ${isActive ? 'outline outline-2 outline-primary outline-offset-[-2px]' : ''}`}
-                                style={{ width: COL_WIDTH, maxWidth: COL_WIDTH, overflow: 'hidden', position: 'relative' }}
-                                onClick={e => { e.stopPropagation(); setActiveCell({ recordId: record.id, fieldId: field.id }); }}
-                              >
-                                <CellEditor
-                                  key={cellKey}
-                                  field={field}
-                                  value={fv}
-                                  record={record}
-                                  isActive={isActive}
-                                  onActivate={() => setActiveCell({ recordId: record.id, fieldId: field.id })}
-                                  onDeactivate={() => setActiveCell(null)}
-                                  onSave={payload => handleSetValue(record, field, payload)}
-                                />
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <button onClick={handleAddRecord}
-                    className="w-full px-3 py-2.5 text-left text-xs text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors flex items-center gap-1.5">
-                    <Plus size={13} /> Add record
-                  </button>
-                </div>
+              {/* View Manager Tab Bar */}
+              {views.length > 0 && (
+                <ViewManagerTabBar
+                  views={views}
+                  activeView={activeView}
+                  fields={fields}
+                  onSelectView={setActiveView}
+                  onCreateView={handleCreateView}
+                  onUpdateView={(viewId, patch) => updateView(viewId, patch)}
+                  onMoveView={moveView}
+                  onRenameView={handleRenameView}
+                  onDeleteView={handleDeleteView}
+                  onSetDefault={handleSetDefaultView}
+                />
               )}
+
+              {/* Active view content */}
+              {renderViewContent()}
             </>
           )}
         </TooltipProvider>

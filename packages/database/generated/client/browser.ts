@@ -33,6 +33,11 @@ export type DynUser = Prisma.DynUserModel
  */
 export type DynDatabase = Prisma.DynDatabaseModel
 /**
+ * Model DynView
+ * 
+ */
+export type DynView = Prisma.DynViewModel
+/**
  * Model Field
  * 
  */

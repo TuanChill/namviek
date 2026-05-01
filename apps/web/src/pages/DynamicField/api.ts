@@ -1,4 +1,4 @@
-import type { DynDatabase, DynRecord, DynUser, Field, FieldOption, FieldValue, FieldValuePayload, FileAttachment } from './types';
+import type { DynDatabase, DynRecord, DynUser, DynView, DynViewType, Field, FieldOption, FieldValue, FieldValuePayload, FileAttachment, ViewConfig } from './types';
 import type { FieldType } from './types';
 
 export interface TemplateField {
@@ -71,6 +71,18 @@ export const api = {
   users: {
     list: () => apiFetch<DynUser[]>('/users'),
     search: (q: string) => apiFetch<DynUser[]>(`/users?q=${encodeURIComponent(q)}`),
+  },
+  views: {
+    list: (dbId: string) => apiFetch<DynView[]>(`/databases/${dbId}/views`),
+    create: (dbId: string, name: string, type: DynViewType, options?: { icon?: string; config?: ViewConfig }) =>
+      apiFetch<DynView>(`/databases/${dbId}/views`, { method: 'POST', body: JSON.stringify({ name, type, ...options }) }),
+    update: (viewId: string, patch: { name?: string; icon?: string | null; config?: ViewConfig }) =>
+      apiFetch<DynView>(`/views/${viewId}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+    delete: (viewId: string) => apiFetch<DynView>(`/views/${viewId}`, { method: 'DELETE' }),
+    setDefault: (dbId: string, viewId: string) =>
+      apiFetch<{ success: boolean }>(`/databases/${dbId}/views/${viewId}/default`, { method: 'POST' }),
+    reorder: (dbId: string, viewIds: string[]) =>
+      apiFetch<{ success: boolean }>(`/databases/${dbId}/views/reorder`, { method: 'POST', body: JSON.stringify({ viewIds }) }),
   },
   upload: {
     file: async (file: File): Promise<FileAttachment> => {
