@@ -25,14 +25,15 @@ export function SelectCell({ field, value, onSave }: CellProps) {
           <>
             {selectedOpt && (
               <button onClick={() => { onSave({ selectValue: null }); setOpen(false); }}
-                className="flex items-center gap-1.5 w-full px-2 py-1.5 text-xs rounded hover:bg-accent text-muted-foreground">
+                className="flex items-center gap-1.5 w-full px-2 py-1.5 text-xs rounded-2xl hover:bg-accent text-muted-foreground">
                 <X size={12} /> Clear
               </button>
             )}
             {field.options?.map(opt => (
               <button key={opt.id} onClick={() => { onSave({ selectValue: opt.id }); setOpen(false); }}
-                className={`flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-accent ${opt.id === selectedId ? 'bg-accent' : ''}`}>
-                <OptionChip label={opt.label} color={opt.color} />
+                className={`flex items-center gap-2 w-full px-2 py-1.5 rounded-2xl hover:bg-accent ${opt.id === selectedId ? 'bg-accent' : ''}`}>
+                <span className='w-3 h-3 rounded-full' style={{ backgroundColor: opt.color || '' }}></span>
+                <span className='text-foreground text-xs'>{opt.label}</span>
               </button>
             ))}
           </>
