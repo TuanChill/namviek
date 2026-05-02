@@ -301,7 +301,14 @@ export default function DynamicFieldPage() {
           />
         );
       case 'timeline':
-        return <TimelineView />;
+        return (
+          <TimelineView
+            fields={fields}
+            records={records}
+            loading={loading}
+            view={activeView!}
+          />
+        );
       case 'spreadsheet':
       default:
         return (
@@ -422,7 +429,7 @@ export default function DynamicFieldPage() {
       </Sidebar>
 
       {/* ── Main content (SidebarInset) ───────────────────────── */}
-      <SidebarInset onClick={() => setActiveCell(null)}>
+      <SidebarInset className='overflow-hidden' onClick={() => setActiveCell(null)}>
         <TooltipProvider>
           {!selectedDb ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-3 text-muted-foreground h-full">

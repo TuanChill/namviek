@@ -116,9 +116,19 @@ export interface ViewCalendarConfig {
   mode?: 'month' | 'week';
 }
 
+export interface ViewTimelineConfig {
+  startDateFieldId?: string;
+  endDateFieldId?: string;
+  groupHeight?: number;
+  assigneeFieldId?: string;
+  colorFieldId?: string;
+  highlightedWeekdays?: number[];
+}
+
 export interface ViewConfig {
   groupBy?: ViewGroupByConfig;
   calendar?: ViewCalendarConfig;
+  timeline?: ViewTimelineConfig;
   filter?: unknown;
   sort?: unknown;
   fieldOrder?: string[];

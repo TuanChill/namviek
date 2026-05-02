@@ -275,6 +275,80 @@ registerFieldRoutes(app, dbEvents)
 const VALID_VIEW_TYPES = ['spreadsheet', 'kanban', 'calendar', 'timeline'] as const
 const VALID_GROUPBY_FIELD_TYPES = ['select', 'multi_select', 'date', 'created_time', 'updated_time'] as const
 const VALID_GRANULARITIES = ['day', 'month', 'quarter'] as const
+const VALID_CALENDAR_MODES = ['month', 'week'] as const
+
+function validateViewConfig(config: any): string | null {
+  if (!config || typeof config !== 'object') return null
+
+  if (config.groupBy !== undefined) {
+    if (!config.groupBy || typeof config.groupBy !== 'object') {
+      return 'groupBy must be an object'
+    }
+
+    if (!VALID_GROUPBY_FIELD_TYPES.includes(config.groupBy.fieldType)) {
+      return `groupBy fieldType must be one of: ${VALID_GROUPBY_FIELD_TYPES.join(', ')}`
+    }
+
+    const isDateLike = ['date', 'created_time', 'updated_time'].includes(config.groupBy.fieldType)
+    if (isDateLike && !VALID_GRANULARITIES.includes(config.groupBy.granularity)) {
+      return `granularity must be one of: ${VALID_GRANULARITIES.join(', ')}`
+    }
+  }
+
+  if (config.calendar !== undefined) {
+    if (!config.calendar || typeof config.calendar !== 'object') {
+      return 'calendar must be an object'
+    }
+    if (config.calendar.mode !== undefined && !VALID_CALENDAR_MODES.includes(config.calendar.mode)) {
+      return `calendar mode must be one of: ${VALID_CALENDAR_MODES.join(', ')}`
+    }
+    if (config.calendar.startDateFieldId !== undefined && typeof config.calendar.startDateFieldId !== 'string') {
+      return 'calendar startDateFieldId must be a string'
+    }
+    if (config.calendar.endDateFieldId !== undefined && typeof config.calendar.endDateFieldId !== 'string') {
+      return 'calendar endDateFieldId must be a string'
+    }
+  }
+
+  if (config.timeline !== undefined) {
+    if (!config.timeline || typeof config.timeline !== 'object') {
+      return 'timeline must be an object'
+    }
+    if (config.timeline.startDateFieldId !== undefined && typeof config.timeline.startDateFieldId !== 'string') {
+      return 'timeline startDateFieldId must be a string'
+    }
+    if (config.timeline.endDateFieldId !== undefined && typeof config.timeline.endDateFieldId !== 'string') {
+      return 'timeline endDateFieldId must be a string'
+    }
+    if (config.timeline.assigneeFieldId !== undefined && typeof config.timeline.assigneeFieldId !== 'string') {
+      return 'timeline assigneeFieldId must be a string'
+    }
+    if (config.timeline.colorFieldId !== undefined && typeof config.timeline.colorFieldId !== 'string') {
+      return 'timeline colorFieldId must be a string'
+    }
+    if (config.timeline.highlightedWeekdays !== undefined) {
+      if (!Array.isArray(config.timeline.highlightedWeekdays)) {
+        return 'timeline highlightedWeekdays must be an array'
+      }
+      const invalid = config.timeline.highlightedWeekdays.some((day: unknown) =>
+        typeof day !== 'number' || Number.isNaN(day) || day < 0 || day > 6
+      )
+      if (invalid) {
+        return 'timeline highlightedWeekdays must contain numbers between 0 and 6'
+      }
+    }
+    if (config.timeline.groupHeight !== undefined) {
+      if (typeof config.timeline.groupHeight !== 'number' || Number.isNaN(config.timeline.groupHeight)) {
+        return 'timeline groupHeight must be a number'
+      }
+      if (config.timeline.groupHeight < 120 || config.timeline.groupHeight > 1200) {
+        return 'timeline groupHeight must be between 120 and 1200'
+      }
+    }
+  }
+
+  return null
+}
 
 // GET /api/databases/:id/views
 app.get('/api/databases/:id/views', async (c) => {
@@ -296,14 +370,9 @@ app.post('/api/databases/:id/views', async (c) => {
     if (!VALID_VIEW_TYPES.includes(body.type)) {
       return c.json({ error: `type must be one of: ${VALID_VIEW_TYPES.join(', ')}` }, 400)
     }
-    if (body.config?.groupBy) {
-      if (!VALID_GROUPBY_FIELD_TYPES.includes(body.config.groupBy.fieldType)) {
-        return c.json({ error: `groupBy fieldType must be one of: ${VALID_GROUPBY_FIELD_TYPES.join(', ')}` }, 400)
-      }
-      const isDateLike = ['date', 'created_time', 'updated_time'].includes(body.config.groupBy.fieldType)
-      if (isDateLike && !VALID_GRANULARITIES.includes(body.config.groupBy.granularity)) {
-        return c.json({ error: `granularity must be one of: ${VALID_GRANULARITIES.join(', ')}` }, 400)
-      }
+    const validationError = validateViewConfig(body.config)
+    if (validationError) {
+      return c.json({ error: validationError }, 400)
     }
     const view = await createDatabaseView({
       databaseId,
@@ -327,7 +396,13 @@ app.patch('/api/views/:viewId', async (c) => {
     const patch: Record<string, unknown> = {}
     if (body.name !== undefined) patch.name = body.name
     if (body.icon !== undefined) patch.icon = body.icon
-    if (body.config !== undefined) patch.config = body.config
+    if (body.config !== undefined) {
+      const validationError = validateViewConfig(body.config)
+      if (validationError) {
+        return c.json({ error: validationError }, 400)
+      }
+      patch.config = body.config
+    }
     const view = await updateDatabaseView(viewId, patch)
     return c.json(view)
   } catch (error) {

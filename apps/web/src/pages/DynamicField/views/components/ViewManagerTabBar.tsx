@@ -43,6 +43,16 @@ const GROUPBY_FIELD_TYPES: Array<ViewGroupByConfig['fieldType']> = [
 const DATE_LIKE_TYPES: Array<ViewGroupByConfig['fieldType']> = ['date', 'created_time', 'updated_time'];
 const GRANULARITIES: Array<NonNullable<ViewGroupByConfig['granularity']>> = ['day', 'month', 'quarter'];
 const CALENDAR_MODE_OPTIONS: Array<NonNullable<ViewCalendarConfig['mode']>> = ['month', 'week'];
+const DEFAULT_TIMELINE_GROUP_HEIGHT = 300;
+const WEEKDAY_OPTIONS: Array<{ value: number; label: string }> = [
+  { value: 0, label: 'Sunday' },
+  { value: 1, label: 'Monday' },
+  { value: 2, label: 'Tuesday' },
+  { value: 3, label: 'Wednesday' },
+  { value: 4, label: 'Thursday' },
+  { value: 5, label: 'Friday' },
+  { value: 6, label: 'Saturday' },
+];
 
 interface ViewManagerTabBarProps {
   views: DynView[];
@@ -81,6 +91,24 @@ function EditViewDialog({ view, fields, isDefault, onClose, onSave, onSetDefault
   const [calendarMode, setCalendarMode] = useState<NonNullable<ViewCalendarConfig['mode']>>(
     view.config?.calendar?.mode ?? 'month'
   );
+  const [timelineStartDateFieldId, setTimelineStartDateFieldId] = useState<string>(
+    view.config?.timeline?.startDateFieldId ?? ''
+  );
+  const [timelineEndDateFieldId, setTimelineEndDateFieldId] = useState<string>(
+    view.config?.timeline?.endDateFieldId ?? ''
+  );
+  const [timelineGroupHeight, setTimelineGroupHeight] = useState<string>(
+    String(view.config?.timeline?.groupHeight ?? DEFAULT_TIMELINE_GROUP_HEIGHT)
+  );
+  const [timelineAssigneeFieldId, setTimelineAssigneeFieldId] = useState<string>(
+    view.config?.timeline?.assigneeFieldId ?? ''
+  );
+  const [timelineColorFieldId, setTimelineColorFieldId] = useState<string>(
+    view.config?.timeline?.colorFieldId ?? ''
+  );
+  const [timelineHighlightedWeekdays, setTimelineHighlightedWeekdays] = useState<Set<number>>(
+    new Set(view.config?.timeline?.highlightedWeekdays ?? [0, 2])
+  );
   const [granularity, setGranularity] = useState<NonNullable<ViewGroupByConfig['granularity']>>(
     view.config?.groupBy?.granularity ?? 'day'
   );
@@ -100,10 +128,19 @@ function EditViewDialog({ view, fields, isDefault, onClose, onSave, onSetDefault
   const calendarDateFields = fields.filter(
     f => f.type === 'date' || f.type === 'created_time' || f.type === 'updated_time'
   );
+  const personFields = fields.filter(f => f.type === 'person');
+  const selectLikeFields = fields.filter(f => f.type === 'select' || f.type === 'multi_select');
   const selectedGroupField = groupableFields.find(f => f.id === groupByFieldId) ?? null;
   const isDateLike = selectedGroupField
     ? DATE_LIKE_TYPES.includes(selectedGroupField.type as ViewGroupByConfig['fieldType'])
     : false;
+  const toggleHighlightedWeekday = (weekday: number) => {
+    setTimelineHighlightedWeekdays(prev => {
+      const next = new Set(prev);
+      if (next.has(weekday)) next.delete(weekday); else next.add(weekday);
+      return next;
+    });
+  };
 
   const handleSave = () => {
     const config: ViewConfig = { ...(view.config ?? {}) };
@@ -125,6 +162,26 @@ function EditViewDialog({ view, fields, isDefault, onClose, onSave, onSetDefault
       };
     } else {
       delete config.calendar;
+    }
+
+    if (view.type === 'timeline') {
+      const parsedHeight = Number.parseInt(timelineGroupHeight, 10);
+      const normalizedGroupHeight = Number.isFinite(parsedHeight)
+        ? Math.max(180, Math.min(900, parsedHeight))
+        : DEFAULT_TIMELINE_GROUP_HEIGHT;
+
+      config.timeline = {
+        groupHeight: normalizedGroupHeight,
+        ...(timelineStartDateFieldId ? { startDateFieldId: timelineStartDateFieldId } : {}),
+        ...(timelineEndDateFieldId ? { endDateFieldId: timelineEndDateFieldId } : {}),
+        ...(timelineAssigneeFieldId ? { assigneeFieldId: timelineAssigneeFieldId } : {}),
+        ...(timelineColorFieldId ? { colorFieldId: timelineColorFieldId } : {}),
+        highlightedWeekdays: timelineHighlightedWeekdays.size > 0
+          ? Array.from(timelineHighlightedWeekdays).sort((a, b) => a - b)
+          : [],
+      };
+    } else {
+      delete config.timeline;
     }
 
     if (view.type !== 'spreadsheet') {
@@ -305,6 +362,132 @@ function EditViewDialog({ view, fields, isDefault, onClose, onSave, onSetDefault
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Timeline date mapping and layout */}
+          {view.type === 'timeline' && (
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-medium">Timeline settings</label>
+              {calendarDateFields.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  No date fields available. Add a Date field, then set Start date and End date fields here.
+                </p>
+              ) : (
+                <>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-muted-foreground">Start date field</label>
+                    <Select
+                      value={timelineStartDateFieldId || '__none__'}
+                      onValueChange={v => setTimelineStartDateFieldId(v === '__none__' ? '' : v)}
+                    >
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue placeholder="Select start date field" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">None</SelectItem>
+                        {calendarDateFields.map(f => (
+                          <SelectItem key={f.id} value={f.id}>
+                            {f.name}
+                            <span className="text-muted-foreground text-xs ml-1">({f.type.replace('_', ' ')})</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-muted-foreground">End date field</label>
+                    <Select
+                      value={timelineEndDateFieldId || '__none__'}
+                      onValueChange={v => setTimelineEndDateFieldId(v === '__none__' ? '' : v)}
+                    >
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue placeholder="Same as start date" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">Same as start date</SelectItem>
+                        {calendarDateFields.map(f => (
+                          <SelectItem key={f.id} value={f.id}>
+                            {f.name}
+                            <span className="text-muted-foreground text-xs ml-1">({f.type.replace('_', ' ')})</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-muted-foreground">Max group height (px)</label>
+                    <Input
+                      type="number"
+                      min={180}
+                      max={900}
+                      step={10}
+                      value={timelineGroupHeight}
+                      onChange={e => setTimelineGroupHeight(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      Applied only when Timeline has grouping and more than one group. Rows scroll vertically after this height.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-muted-foreground">Assignee field (person)</label>
+                    <Select
+                      value={timelineAssigneeFieldId || '__none__'}
+                      onValueChange={v => setTimelineAssigneeFieldId(v === '__none__' ? '' : v)}
+                    >
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue placeholder="None" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">None</SelectItem>
+                        {personFields.map(f => (
+                          <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-muted-foreground">Dash color field (select)</label>
+                    <Select
+                      value={timelineColorFieldId || '__none__'}
+                      onValueChange={v => setTimelineColorFieldId(v === '__none__' ? '' : v)}
+                    >
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue placeholder="None" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">None</SelectItem>
+                        {selectLikeFields.map(f => (
+                          <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs text-muted-foreground">Highlight weekdays</label>
+                    <div className="grid grid-cols-2 gap-1">
+                      {WEEKDAY_OPTIONS.map(opt => (
+                        <label key={opt.value} className="flex items-center justify-between rounded border px-2 py-1.5 text-xs">
+                          <span>{opt.label}</span>
+                          <Switch
+                            checked={timelineHighlightedWeekdays.has(opt.value)}
+                            onCheckedChange={() => toggleHighlightedWeekday(opt.value)}
+                          />
+                        </label>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Defaults to Sunday and Tuesday.
+                    </p>
                   </div>
                 </>
               )}
