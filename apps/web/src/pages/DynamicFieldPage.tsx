@@ -429,7 +429,7 @@ export default function DynamicFieldPage() {
       </Sidebar>
 
       {/* ── Main content (SidebarInset) ───────────────────────── */}
-      <SidebarInset className='overflow-hidden' onClick={() => setActiveCell(null)}>
+      <SidebarInset className='h-svh overflow-hidden' onClick={() => setActiveCell(null)}>
         <TooltipProvider>
           {!selectedDb ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-3 text-muted-foreground h-full">
@@ -437,7 +437,7 @@ export default function DynamicFieldPage() {
               <p className="text-sm font-medium">Select or create a database</p>
             </div>
           ) : (
-            <>
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
               {/* Toolbar */}
               <header
                 className="flex h-12 shrink-0 items-center gap-3 border-b px-4"
@@ -493,8 +493,8 @@ export default function DynamicFieldPage() {
               )}
 
               {/* Active view content */}
-              {renderViewContent()}
-            </>
+              <div className="min-h-0 flex-1 overflow-hidden">{renderViewContent()}</div>
+            </div>
           )}
         </TooltipProvider>
       </SidebarInset>

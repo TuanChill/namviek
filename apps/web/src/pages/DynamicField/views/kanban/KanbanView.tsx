@@ -92,7 +92,7 @@ export function KanbanView({ fields, records, loading, view, onSetValue, onAddRe
   }
 
   return (
-    <div className="flex flex-1 overflow-x-auto gap-4 p-4">
+    <div className="flex h-full min-h-0 flex-1 items-stretch gap-1 overflow-x-auto overflow-y-hidden p-4">
       {columns.map(col => (
         <KanbanColumn
           key={col.key}

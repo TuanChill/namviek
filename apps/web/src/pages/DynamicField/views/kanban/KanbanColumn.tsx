@@ -1,5 +1,6 @@
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { KanbanCard } from './KanbanCard';
 import type { DynRecord, DynView, Field, FieldValuePayload } from '../../types';
 
@@ -20,9 +21,9 @@ interface KanbanColumnProps {
 
 export function KanbanColumn({ col, fields, view, onSetValue, onAddRecord }: KanbanColumnProps) {
   return (
-    <div className="flex flex-col gap-2 min-w-[260px] max-w-[260px]">
+    <div className="flex h-full min-h-0 min-w-[300px] max-w-[300px] flex-col gap-2 bg-accent pt-3 rounded-lg">
       {/* Column header */}
-      <div className="flex items-center gap-2 px-1">
+      <div className="flex items-center gap-3 pl-3 pr-3">
         {col.color && (
           <span
             className="w-3 h-3 rounded-full shrink-0"
@@ -36,17 +37,19 @@ export function KanbanColumn({ col, fields, view, onSetValue, onAddRecord }: Kan
       </div>
 
       {/* Cards */}
-      <div className="flex flex-col gap-2">
-        {col.records.map(record => (
-          <KanbanCard
-            key={record.id}
-            record={record}
-            fields={fields}
-            view={view}
-            onSetValue={onSetValue}
-          />
-        ))}
-      </div>
+      <ScrollArea className="min-h-0 h-full flex-1 px-1">
+        <div className="flex flex-col gap-2 pl-2 pr-2">
+          {col.records.map(record => (
+            <KanbanCard
+              key={record.id}
+              record={record}
+              fields={fields}
+              view={view}
+              onSetValue={onSetValue}
+            />
+          ))}
+        </div>
+      </ScrollArea>
 
       {/* Add record */}
       <Button
