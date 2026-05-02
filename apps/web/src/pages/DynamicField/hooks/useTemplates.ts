@@ -42,6 +42,11 @@ export function useTemplates() {
       if (variables.name) {
         url += `&name=${encodeURIComponent(variables.name)}`;
       }
+      // Pass API key as query parameter since EventSource doesn't support custom headers
+      const apiKey = import.meta.env.DEV ? 'namviek-mcp-dev-key' : undefined;
+      if (apiKey) {
+        url += `&x-api-key=${encodeURIComponent(apiKey)}`;
+      }
 
       const eventSource = new EventSource(url);
 

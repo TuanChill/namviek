@@ -59,7 +59,9 @@ app.use('/*', cors({
 // Protect all /api/* routes with a fixed API key (for MCP server access)
 const MCP_API_KEY = process.env.MCP_API_KEY || 'namviek-mcp-dev-key'
 app.use('/api/*', async (c, next) => {
-  const key = c.req.header('x-api-key')
+  const key = c.req.header('x-api-key') || c.req.query('x-api-key')
+  console.log(`[API] Incoming request: ${c.req.method} ${c.req.url} ${key}`)
+
   if (!key || key !== MCP_API_KEY) {
     return c.json({ error: 'Unauthorized: invalid or missing x-api-key' }, 401)
   }
