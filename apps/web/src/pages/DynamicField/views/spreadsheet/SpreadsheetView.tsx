@@ -138,27 +138,27 @@ export function SpreadsheetView({
                     </ContextMenuTrigger>
                     <ContextMenuContent className="w-[180px]">
                       <ContextMenuItem onClick={() => onEditField(field)}>
-                        <Settings2 size={13} className="mr-2" /> Edit field
+                        <Settings2 size={13} className="mr-1" /> Edit field
                       </ContextMenuItem>
                       <ContextMenuItem onClick={() => onStartRename(field)}>
-                        <Pencil size={13} className="mr-2" /> Rename
+                        <Pencil size={13} className="mr-1" /> Rename
                       </ContextMenuItem>
                       <ContextMenuItem onClick={() => onOpenIconPicker(field.id)}>
-                        <Smile size={13} className="mr-2" /> Change icon
+                        <Smile size={13} className="mr-1" /> Change icon
                       </ContextMenuItem>
                       <ContextMenuSeparator />
                       <ContextMenuItem disabled={idx === 0} onClick={() => onMoveField(field.id, 'left')}>
-                        <ChevronLeft size={13} className="mr-2" /> Move left
+                        <ChevronLeft size={13} className="mr-1" /> Move left
                       </ContextMenuItem>
                       <ContextMenuItem disabled={idx === fields.length - 1} onClick={() => onMoveField(field.id, 'right')}>
-                        <ChevronRight size={13} className="mr-2" /> Move right
+                        <ChevronRight size={13} className="mr-1" /> Move right
                       </ContextMenuItem>
                       <ContextMenuSeparator />
                       <ContextMenuItem onClick={() => onDuplicateField(field.id)}>
-                        <Copy size={13} className="mr-2" /> Duplicate field
+                        <Copy size={13} className="mr-1" /> Duplicate field
                       </ContextMenuItem>
                       <ContextMenuItem className="text-destructive focus:text-destructive" disabled={field.isPrimary} onClick={() => !field.isPrimary && onDeleteField(field.id)}>
-                        <Trash2 size={13} className="mr-2" /> Delete field
+                        <Trash2 size={13} className="mr-1" /> Delete field
                       </ContextMenuItem>
                     </ContextMenuContent>
                   </ContextMenu>
