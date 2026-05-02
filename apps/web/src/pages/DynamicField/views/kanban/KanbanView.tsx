@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { Loader2 } from 'lucide-react';
 import { KanbanColumn } from './KanbanColumn';
 import type { KanbanColumnData } from './KanbanColumn';
-import type { DynRecord, DynView, Field, FieldValuePayload } from '../../types';
+import type { DynRecord, DynView, Field, FieldValuePayload, ViewGroupByConfig } from '../../types';
 
 interface KanbanViewProps {
   fields: Field[];
@@ -13,24 +13,65 @@ interface KanbanViewProps {
   onAddRecord: () => void;
 }
 
-function getRecordGroupKey(record: DynRecord, field: Field): string {
+function getDateGroupKey(
+  dateStr: string,
+  granularity: NonNullable<ViewGroupByConfig['granularity']> | undefined,
+): string {
+  const year = dateStr.slice(0, 4);
+  const month = dateStr.slice(5, 7);
+
+  if (granularity === 'month') {
+    return `${year}-${month}`;
+  }
+
+  if (granularity === 'quarter') {
+    const monthNum = Number.parseInt(month, 10);
+    if (Number.isNaN(monthNum) || monthNum < 1 || monthNum > 12) {
+      return dateStr.slice(0, 10);
+    }
+    const quarter = Math.floor((monthNum - 1) / 3) + 1;
+    return `${year}-Q${quarter}`;
+  }
+
+  return dateStr.slice(0, 10);
+}
+
+function getRecordGroupKey(
+  record: DynRecord,
+  field: Field,
+  granularity: NonNullable<ViewGroupByConfig['granularity']> | undefined,
+): string {
   const fv = record.fieldValues.find(v => v.fieldId === field.id);
   if (!fv) return '__none__';
   if (field.type === 'select') return fv.selectValue ?? '__none__';
   if (field.type === 'multi_select') return fv.multiSelectValue?.[0] ?? '__none__';
   if (field.type === 'date' || field.type === 'created_time' || field.type === 'updated_time') {
     const dateStr = fv.dateValue ?? (field.type === 'created_time' ? record.createdAt : field.type === 'updated_time' ? record.updatedAt : null);
-    return dateStr ? dateStr.slice(0, 10) : '__none__';
+    return dateStr ? getDateGroupKey(dateStr, granularity) : '__none__';
   }
   return '__none__';
 }
 
-function buildColumns(records: DynRecord[], groupField: Field): KanbanColumnData[] {
+function buildColumns(
+  records: DynRecord[],
+  groupField: Field,
+  granularity: NonNullable<ViewGroupByConfig['granularity']> | undefined,
+): KanbanColumnData[] {
   const columns: Map<string, KanbanColumnData> = new Map();
 
   if (groupField.type === 'select' || groupField.type === 'multi_select') {
     // Build ordered columns from field options (No value goes last)
-    for (const opt of groupField.options ?? []) {
+    const orderedOptions = [...(groupField.options ?? [])].sort((a, b) => {
+      const aPos = Number.isFinite(a.position) ? a.position : Number.MAX_SAFE_INTEGER;
+      const bPos = Number.isFinite(b.position) ? b.position : Number.MAX_SAFE_INTEGER;
+      if (aPos !== bPos) return aPos - bPos;
+
+      const labelCompare = a.label.localeCompare(b.label);
+      if (labelCompare !== 0) return labelCompare;
+
+      return a.id.localeCompare(b.id);
+    });
+    for (const opt of orderedOptions) {
       columns.set(opt.id, { key: opt.id, label: opt.label, color: opt.color, records: [] });
     }
     columns.set('__none__', { key: '__none__', label: 'No value', color: null, records: [] });
@@ -45,9 +86,9 @@ function buildColumns(records: DynRecord[], groupField: Field): KanbanColumnData
       }
     }
   } else {
-    // Date grouping by day (No date goes last)
+    // Date grouping by selected granularity (No date goes last)
     for (const record of records) {
-      const key = getRecordGroupKey(record, groupField);
+      const key = getRecordGroupKey(record, groupField, granularity);
       if (key !== '__none__' && !columns.has(key)) {
         columns.set(key, { key, label: key, color: null, records: [] });
       }
@@ -68,7 +109,7 @@ function buildColumns(records: DynRecord[], groupField: Field): KanbanColumnData
 }
 
 export function KanbanView({ fields, records, loading, view, onSetValue, onAddRecord }: KanbanViewProps) {
-  const groupByConfig = (view.config as any)?.groupBy;
+  const groupByConfig = view.config?.groupBy;
   const groupField = useMemo(() => {
     if (!groupByConfig?.fieldId) {
       // Default to first select/multi_select field
@@ -79,8 +120,8 @@ export function KanbanView({ fields, records, loading, view, onSetValue, onAddRe
 
   const columns = useMemo(() => {
     if (!groupField) return [];
-    return buildColumns(records, groupField);
-  }, [records, groupField]);
+    return buildColumns(records, groupField, groupByConfig?.granularity);
+  }, [records, groupField, groupByConfig?.granularity]);
 
   if (loading) {
     return (

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ChevronsUpDown, Check } from 'lucide-react';
+import { ChevronsUpDown, Check, Loader2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,6 +37,15 @@ interface Props {
   onSaved: (updated: Field) => void;
 }
 
+function toEditableOptions(options: FieldOption[]): EditableSelectOption[] {
+  return options.map((opt, index) => ({
+    id: opt.id,
+    label: opt.label,
+    color: opt.color ?? OPTION_COLORS[0],
+    position: index + 1,
+  }));
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function EditFieldDrawer({ open, field, onClose, onSaved }: Props) {
@@ -47,6 +56,7 @@ export function EditFieldDrawer({ open, field, onClose, onSaved }: Props) {
 
   const [originalOptions, setOriginalOptions] = useState<FieldOption[]>([]);
   const [optionDrafts, setOptionDrafts] = useState<EditableSelectOption[]>([]);
+  const [optionsLoading, setOptionsLoading] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const [allUsers, setAllUsers] = useState<DynUser[]>([]);
@@ -54,6 +64,7 @@ export function EditFieldDrawer({ open, field, onClose, onSaved }: Props) {
   // ── Initialise form when field changes ──────────────────────────────────────
   useEffect(() => {
     if (!field || !open) return;
+    let cancelled = false;
 
     setName(field.name);
     setConfig(field.config ?? {});
@@ -61,28 +72,27 @@ export function EditFieldDrawer({ open, field, onClose, onSaved }: Props) {
 
     // Load the latest options from the API for select types
     if (field.type === 'select' || field.type === 'multi_select') {
-      const initialOptions = (field.options ?? []).map(opt => ({
-        id: opt.id,
-        label: opt.label,
-        color: opt.color ?? OPTION_COLORS[0],
-        position: opt.position,
-      }));
+      setOptionsLoading(true);
+      const initialOptions = toEditableOptions(field.options ?? []);
       setOriginalOptions(field.options ?? []);
       setOptionDrafts(initialOptions);
 
       api.options
         .list(field.id)
         .then((latest) => {
+          if (cancelled) return;
           setOriginalOptions(latest);
-          setOptionDrafts(latest.map(opt => ({
-            id: opt.id,
-            label: opt.label,
-            color: opt.color ?? OPTION_COLORS[0],
-            position: opt.position,
-          })));
+          setOptionDrafts(toEditableOptions(latest));
         })
-        .catch(console.error);
+        .catch((err) => {
+          if (cancelled) return;
+          console.error(err);
+        })
+        .finally(() => {
+          if (!cancelled) setOptionsLoading(false);
+        });
     } else {
+      setOptionsLoading(false);
       setOriginalOptions([]);
       setOptionDrafts([]);
     }
@@ -91,6 +101,10 @@ export function EditFieldDrawer({ open, field, onClose, onSaved }: Props) {
     if (field.type === 'person') {
       api.users.list().then(setAllUsers).catch(console.error);
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, [field, open]);
 
   if (!field) return null;
@@ -131,11 +145,19 @@ export function EditFieldDrawer({ open, field, onClose, onSaved }: Props) {
         .filter((opt) => {
           const original = originalById.get(opt.id);
           if (!original) return false;
-          return original.position !== opt.position || (original.color ?? null) !== (opt.color ?? null);
+          return (
+            original.label !== opt.label
+            || original.position !== opt.position
+            || (original.color ?? null) !== (opt.color ?? null)
+          );
         });
 
       await Promise.all(
-        updatePayloads.map(opt => api.options.update(field.id, opt.id, { color: opt.color, position: opt.position }))
+        updatePayloads.map(opt => api.options.update(field.id, opt.id, {
+          label: opt.label,
+          color: opt.color,
+          position: opt.position,
+        }))
       );
 
       const createPayloads = optionDrafts.filter(opt => !opt.id);
@@ -234,11 +256,18 @@ export function EditFieldDrawer({ open, field, onClose, onSaved }: Props) {
 
           {/* Select / Multi-select: options manager */}
           {isSelectType && (
-            <SelectOptionsEditor
-              options={optionDrafts}
-              onChange={setOptionDrafts}
-              addPlaceholder="New option label"
-            />
+            optionsLoading ? (
+              <div className="flex items-center gap-2 rounded-md border p-3 text-xs text-muted-foreground">
+                <Loader2 size={14} className="animate-spin" />
+                Loading options...
+              </div>
+            ) : (
+              <SelectOptionsEditor
+                options={optionDrafts}
+                onChange={setOptionDrafts}
+                addPlaceholder="New option label"
+              />
+            )
           )}
 
           {/* Date: format + include time */}
@@ -508,7 +537,7 @@ export function EditFieldDrawer({ open, field, onClose, onSaved }: Props) {
 
         {/* Footer */}
         <div className="px-5 py-4 border-t flex gap-2">
-          <Button onClick={handleSave} disabled={saving || !name.trim()} className="flex-1">
+          <Button onClick={handleSave} disabled={saving || !name.trim() || (isSelectType && optionsLoading)} className="flex-1">
             {saving ? 'Saving…' : 'Save changes'}
           </Button>
           <Button variant="outline" onClick={onClose}>Cancel</Button>

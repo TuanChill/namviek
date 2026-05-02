@@ -19,7 +19,11 @@ interface SelectOptionsEditorProps {
   addPlaceholder?: string;
 }
 
-function moveOptionWithFloatPosition(
+function normalizeOptionPositions(options: EditableSelectOption[]): EditableSelectOption[] {
+  return options.map((opt, index) => ({ ...opt, position: index + 1 }));
+}
+
+function moveOptionWithNormalizedPosition(
   options: EditableSelectOption[],
   index: number,
   direction: 'up' | 'down'
@@ -30,21 +34,7 @@ function moveOptionWithFloatPosition(
   const next = [...options];
   const [moved] = next.splice(index, 1);
   next.splice(targetIndex, 0, moved);
-
-  const prevNeighbor = next[targetIndex - 1];
-  const nextNeighbor = next[targetIndex + 1];
-
-  let newPosition = moved.position;
-  if (prevNeighbor && nextNeighbor) {
-    newPosition = (prevNeighbor.position + nextNeighbor.position) / 2;
-  } else if (!prevNeighbor && nextNeighbor) {
-    newPosition = nextNeighbor.position - 1;
-  } else if (prevNeighbor && !nextNeighbor) {
-    newPosition = prevNeighbor.position + 1;
-  }
-
-  next[targetIndex] = { ...moved, position: newPosition };
-  return next;
+  return normalizeOptionPositions(next);
 }
 
 export function SelectOptionsEditor({
@@ -59,24 +49,24 @@ export function SelectOptionsEditor({
     const label = optLabel.trim();
     if (!label) return;
 
-    const maxPosition = options.reduce((max, item) => Math.max(max, item.position), -1);
+    const normalized = normalizeOptionPositions(options);
     const nextOption: EditableSelectOption = {
       label,
       color: optColor,
-      position: maxPosition + 1,
+      position: normalized.length + 1,
     };
 
-    onChange([...options, nextOption]);
+    onChange([...normalized, nextOption]);
     setOptLabel('');
     setOptColor(OPTION_COLORS[(options.length + 1) % OPTION_COLORS.length]);
   };
 
   const removeOption = (index: number) => {
-    onChange(options.filter((_, i) => i !== index));
+    onChange(normalizeOptionPositions(options.filter((_, i) => i !== index)));
   };
 
   const moveOption = (index: number, direction: 'up' | 'down') => {
-    onChange(moveOptionWithFloatPosition(options, index, direction));
+    onChange(moveOptionWithNormalizedPosition(options, index, direction));
   };
 
   const updateOptionColor = (index: number, color: string) => {
