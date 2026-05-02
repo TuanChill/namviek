@@ -444,9 +444,9 @@ export default function DynamicFieldPage() {
                 onClick={e => e.stopPropagation()}
               >
                 <SidebarTrigger className="-ml-1" />
-                <Separator orientation="vertical" className="h-4" />
+                <Separator orientation="vertical" className="!h-4 !self-center shrink-0" />
                 <span className="font-semibold">{selectedDb.name}</span>
-                <Separator orientation="vertical" className="h-4" />
+                <Separator orientation="vertical" className="!h-4 !self-center shrink-0" />
                 <span className="text-xs text-muted-foreground">
                   {fields.length} fields · {records.length} records
                 </span>
