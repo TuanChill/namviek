@@ -223,7 +223,7 @@ export function EditViewDialog({ view, fields, isDefault, onClose, onSave, onSet
                     value={groupByFieldId || '__none__'}
                     onValueChange={v => setGroupByFieldId(v === '__none__' ? '' : v)}
                   >
-                    <SelectTrigger className="h-8 text-sm">
+                    <SelectTrigger className="h-8 w-full text-sm">
                       <SelectValue placeholder="None" />
                     </SelectTrigger>
                     <SelectContent>
@@ -244,7 +244,7 @@ export function EditViewDialog({ view, fields, isDefault, onClose, onSave, onSet
                         value={granularity}
                         onValueChange={v => setGranularity(v as NonNullable<ViewGroupByConfig['granularity']>)}
                       >
-                        <SelectTrigger className="h-8 text-sm">
+                        <SelectTrigger className="h-8 w-full text-sm">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -461,10 +461,10 @@ export function EditViewDialog({ view, fields, isDefault, onClose, onSave, onSet
             </div>
           )}
 
-          {(view.type === 'kanban' || view.type === 'timeline') && cardVisibleFields.length > 0 && (
+          {(view.type === 'kanban') && cardVisibleFields.length > 0 && (
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-medium">Fields shown on cards</label>
-              <div className="flex flex-col gap-1">
+              <div className="grid grid-cols-2 gap-1">
                 {cardVisibleFields.map(f => (
                   <div key={f.id} className="flex items-center justify-between py-1 px-2 rounded hover:bg-muted">
                     <span className="text-xs">{f.name}</span>

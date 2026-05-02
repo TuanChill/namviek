@@ -118,7 +118,7 @@ model FieldOption {
   fieldId  String
   label    String
   color    String?
-  position Int
+  position Float
 
   field Field @relation(fields: [fieldId], references: [id], onDelete: Cascade)
 

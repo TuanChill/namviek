@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, X, Palette, ChevronsUpDown, Check } from 'lucide-react';
+import { ChevronsUpDown, Check } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,12 +16,12 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
-import { OptionChip } from './CellEditors';
 import { FIELD_TYPES, OPTION_COLORS, DATE_FORMATS, NUMBER_FORMATS } from './constants';
+import { SelectOptionsEditor, type EditableSelectOption } from './components/SelectOptionsEditor';
 import { api } from './api';
 import type { FieldType, FieldConfig, DynUser } from './types';
 
-interface PendingOption { label: string; color: string; }
+interface PendingOption { label: string; color: string; position?: number; }
 
 interface Props {
   open: boolean;
@@ -33,9 +33,7 @@ export function AddFieldDrawer({ open, onClose, onSubmit }: Props) {
   const [name, setName] = useState('');
   const [type, setType] = useState<FieldType>('text');
   const [config, setConfig] = useState<FieldConfig>({});
-  const [options, setOptions] = useState<{ label: string; color: string }[]>([]);
-  const [optLabel, setOptLabel] = useState('');
-  const [optColor, setOptColor] = useState(OPTION_COLORS[0]);
+  const [options, setOptions] = useState<EditableSelectOption[]>([]);
   const [saving, setSaving] = useState(false);
   const [allUsers, setAllUsers] = useState<DynUser[]>([]);
   const [restrictUsers, setRestrictUsers] = useState(false);
@@ -49,19 +47,11 @@ export function AddFieldDrawer({ open, onClose, onSubmit }: Props) {
 
   const patch = (partial: Partial<FieldConfig>) => setConfig(c => ({ ...c, ...partial }));
 
-  const addOption = () => {
-    if (!optLabel.trim()) return;
-    setOptions(prev => [...prev, { label: optLabel.trim(), color: optColor }]);
-    setOptLabel('');
-    setOptColor(OPTION_COLORS[options.length % OPTION_COLORS.length]);
-  };
-
   const reset = () => {
     setName('');
     setType('text');
     setConfig({});
     setOptions([]);
-    setOptLabel('');
     setRestrictUsers(false);
   };
 
@@ -69,7 +59,11 @@ export function AddFieldDrawer({ open, onClose, onSubmit }: Props) {
     if (!name.trim()) return;
     setSaving(true);
     try {
-      await onSubmit(name.trim(), type, config, options);
+      await onSubmit(name.trim(), type, config, options.map((opt, index) => ({
+        label: opt.label,
+        color: opt.color,
+        position: opt.position ?? index,
+      })));
       reset();
       onClose();
     } finally {
@@ -126,48 +120,11 @@ export function AddFieldDrawer({ open, onClose, onSubmit }: Props) {
 
           {/* Select / Multi-select: options manager */}
           {isSelectType && (
-            <div className="flex flex-col gap-3">
-              <Label>Options</Label>
-              {options.length > 0 && (
-                <div className="flex flex-col gap-1">
-                  {options.map((opt, i) => (
-                    <div key={i} className="flex items-center justify-between">
-                      <OptionChip label={opt.label} color={opt.color} />
-                      <button onClick={() => setOptions(p => p.filter((_, j) => j !== i))}
-                        className="text-muted-foreground hover:text-destructive transition-colors">
-                        <X size={13} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div className="flex gap-2">
-                <Input
-                  value={optLabel}
-                  onChange={e => setOptLabel(e.target.value)}
-                  placeholder="Option label"
-                  className="h-8 text-xs"
-                  onKeyDown={e => e.key === 'Enter' && addOption()}
-                />
-                <div className="relative">
-                  <button className="w-8 h-8 rounded-md border flex items-center justify-center" title="Pick color">
-                    <Palette size={14} style={{ color: optColor }} />
-                    <input type="color" value={optColor} onChange={e => setOptColor(e.target.value)}
-                      className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
-                  </button>
-                </div>
-                <Button size="sm" variant="outline" className="h-8 px-2" onClick={addOption}>
-                  <Plus size={13} />
-                </Button>
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {OPTION_COLORS.map(c => (
-                  <button key={c} onClick={() => setOptColor(c)}
-                    className={`w-5 h-5 rounded-full border-2 transition-transform hover:scale-110 ${optColor === c ? 'border-foreground' : 'border-transparent'}`}
-                    style={{ background: c }} />
-                ))}
-              </div>
-            </div>
+            <SelectOptionsEditor
+              options={options}
+              onChange={setOptions}
+              addPlaceholder="Option label"
+            />
           )}
 
           {/* Date: format + include time */}

@@ -16,10 +16,10 @@ export function useFields() {
     name: string,
     type: FieldType,
     config: FieldConfig,
-    pendingOptions: { label: string; color: string }[]
+    pendingOptions: { label: string; color: string; position?: number }[]
   ) => {
     const field = await api.fields.create(dbId, name, type, config);
-    const opts = await Promise.all(pendingOptions.map(o => api.options.create(field.id, o.label, o.color)));
+    const opts = await Promise.all(pendingOptions.map(o => api.options.create(field.id, o.label, o.color, o.position)));
     const newField = { ...field, options: opts, config: config as Field['config'] };
 
     // Auto-backfill id fields immediately

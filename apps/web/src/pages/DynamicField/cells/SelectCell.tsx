@@ -18,7 +18,7 @@ export function SelectCell({ field, value, onSave }: CellProps) {
           </CellTrigger>
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-48 p-1" align="start">
+      <PopoverContent className="w-48 p-1 gap-1" align="start">
         {(field.options?.length ?? 0) === 0 ? (
           <p className="text-xs text-muted-foreground px-2 py-1.5">No options defined</p>
         ) : (

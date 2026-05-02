@@ -31,7 +31,7 @@ import {
 import { AddFieldDrawer } from './DynamicField/AddFieldDrawer';
 import { EditFieldDrawer } from './DynamicField/EditFieldDrawer';
 import { TemplateDialog } from './DynamicField/components/TemplateDialog';
-import { getFieldMeta, ICON_OPTIONS, getIconByName } from './DynamicField/constants';
+import { ICON_OPTIONS } from './DynamicField/constants';
 
 import { useDatabase } from './DynamicField/hooks/useDatabase';
 import { useFields } from './DynamicField/hooks/useFields';
@@ -181,7 +181,7 @@ export default function DynamicFieldPage() {
     navigate('/test');
   };
 
-  const handleAddField = async (name: string, type: FieldType, config: FieldConfig, pendingOptions: { label: string; color: string }[]) => {
+  const handleAddField = async (name: string, type: FieldType, config: FieldConfig, pendingOptions: { label: string; color: string; position?: number }[]) => {
     if (!selectedDb) return;
     await addField(selectedDb.id, name, type, config, pendingOptions);
     // If id-type, reload records so backfilled values show up

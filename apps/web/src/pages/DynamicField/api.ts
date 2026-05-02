@@ -63,8 +63,10 @@ export const api = {
   },
   options: {
     list: (fieldId: string) => apiFetch<FieldOption[]>(`/fields/${fieldId}/options`),
-    create: (fieldId: string, label: string, color: string) =>
-      apiFetch<FieldOption>(`/fields/${fieldId}/options`, { method: 'POST', body: JSON.stringify({ label, color }) }),
+    create: (fieldId: string, label: string, color: string, position?: number) =>
+      apiFetch<FieldOption>(`/fields/${fieldId}/options`, { method: 'POST', body: JSON.stringify({ label, color, position }) }),
+    update: (fieldId: string, optionId: string, data: { label?: string; color?: string | null; position?: number }) =>
+      apiFetch<FieldOption>(`/fields/${fieldId}/options/${optionId}`, { method: 'PATCH', body: JSON.stringify(data) }),
     delete: (fieldId: string, optionId: string) =>
       apiFetch(`/fields/${fieldId}/options/${optionId}`, { method: 'DELETE' }),
   },

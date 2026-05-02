@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, X, Palette, ChevronsUpDown, Check } from 'lucide-react';
+import { ChevronsUpDown, Check } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,7 +17,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
-import { OptionChip } from './CellEditors';
+import { SelectOptionsEditor, type EditableSelectOption } from './components/SelectOptionsEditor';
 import {
   OPTION_COLORS,
   DATE_FORMATS,
@@ -28,13 +28,6 @@ import {
 } from './constants';
 import { api } from './api';
 import type { Field, FieldConfig, FieldOption, DynUser } from './types';
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface PendingOption {
-  label: string;
-  color: string;
-}
 
 interface Props {
   open: boolean;
@@ -52,14 +45,8 @@ export function EditFieldDrawer({ open, field, onClose, onSaved }: Props) {
   const [config, setConfig] = useState<FieldConfig>({});
   const [iconName, setIconName] = useState<string | undefined>(undefined);
 
-  // Existing options fetched from API (for select / multi_select)
-  const [savedOptions, setSavedOptions] = useState<FieldOption[]>([]);
-  const [removedOptionIds, setRemovedOptionIds] = useState<Set<string>>(new Set());
-
-  // New options to add
-  const [pendingOptions, setPendingOptions] = useState<PendingOption[]>([]);
-  const [optLabel, setOptLabel] = useState('');
-  const [optColor, setOptColor] = useState(OPTION_COLORS[0]);
+  const [originalOptions, setOriginalOptions] = useState<FieldOption[]>([]);
+  const [optionDrafts, setOptionDrafts] = useState<EditableSelectOption[]>([]);
 
   const [saving, setSaving] = useState(false);
   const [allUsers, setAllUsers] = useState<DynUser[]>([]);
@@ -71,21 +58,33 @@ export function EditFieldDrawer({ open, field, onClose, onSaved }: Props) {
     setName(field.name);
     setConfig(field.config ?? {});
     setIconName(field.config?.customIcon);
-    setRemovedOptionIds(new Set());
-    setPendingOptions([]);
-    setOptLabel('');
-    setOptColor(OPTION_COLORS[0]);
 
     // Load the latest options from the API for select types
     if (field.type === 'select' || field.type === 'multi_select') {
-      // Start with what we already have in state (fast), then sync with server
-      setSavedOptions(field.options ?? []);
+      const initialOptions = (field.options ?? []).map(opt => ({
+        id: opt.id,
+        label: opt.label,
+        color: opt.color ?? OPTION_COLORS[0],
+        position: opt.position,
+      }));
+      setOriginalOptions(field.options ?? []);
+      setOptionDrafts(initialOptions);
+
       api.options
         .list(field.id)
-        .then(setSavedOptions)
+        .then((latest) => {
+          setOriginalOptions(latest);
+          setOptionDrafts(latest.map(opt => ({
+            id: opt.id,
+            label: opt.label,
+            color: opt.color ?? OPTION_COLORS[0],
+            position: opt.position,
+          })));
+        })
         .catch(console.error);
     } else {
-      setSavedOptions([]);
+      setOriginalOptions([]);
+      setOptionDrafts([]);
     }
 
     // Load users for person fields
@@ -101,21 +100,6 @@ export function EditFieldDrawer({ open, field, onClose, onSaved }: Props) {
     setConfig(c => ({ ...c, ...partial }));
 
   const isSelectType = field.type === 'select' || field.type === 'multi_select';
-
-  const addPendingOption = () => {
-    if (!optLabel.trim()) return;
-    setPendingOptions(prev => [...prev, { label: optLabel.trim(), color: optColor }]);
-    setOptLabel('');
-    setOptColor(OPTION_COLORS[(savedOptions.length + pendingOptions.length + 1) % OPTION_COLORS.length]);
-  };
-
-  const toggleRemoveOption = (optionId: string) => {
-    setRemovedOptionIds(prev => {
-      const next = new Set(prev);
-      if (next.has(optionId)) next.delete(optionId); else next.add(optionId);
-      return next;
-    });
-  };
 
   const selectIcon = (name: string) => {
     setIconName(name);
@@ -133,19 +117,46 @@ export function EditFieldDrawer({ open, field, onClose, onSaved }: Props) {
         config: { ...config, customIcon: iconName },
       });
 
-      // 2. Remove deleted options
+      const originalById = new Map(originalOptions.map(opt => [opt.id, opt]));
+      const draftIds = new Set(optionDrafts.filter(opt => opt.id).map(opt => opt.id as string));
+
+      const removedOptionIds = originalOptions
+        .filter(opt => !draftIds.has(opt.id))
+        .map(opt => opt.id);
+
+      await Promise.all(removedOptionIds.map(optId => api.options.delete(field.id, optId)));
+
+      const updatePayloads = optionDrafts
+        .filter((opt): opt is EditableSelectOption & { id: string } => !!opt.id)
+        .filter((opt) => {
+          const original = originalById.get(opt.id);
+          if (!original) return false;
+          return original.position !== opt.position || (original.color ?? null) !== (opt.color ?? null);
+        });
+
       await Promise.all(
-        [...removedOptionIds].map(optId => api.options.delete(field.id, optId))
+        updatePayloads.map(opt => api.options.update(field.id, opt.id, { color: opt.color, position: opt.position }))
       );
 
-      // 3. Add new pending options
-      const newOptions = await Promise.all(
-        pendingOptions.map(o => api.options.create(field.id, o.label, o.color))
+      const createPayloads = optionDrafts.filter(opt => !opt.id);
+      const createdOptions = await Promise.all(
+        createPayloads.map(opt => api.options.create(field.id, opt.label, opt.color, opt.position))
       );
 
-      // 4. Build the final options list to hand back to the parent
-      const remainingOptions = savedOptions.filter(o => !removedOptionIds.has(o.id));
-      const finalOptions: FieldOption[] = [...remainingOptions, ...newOptions];
+      let createdCursor = 0;
+      const finalOptions: FieldOption[] = optionDrafts.map((opt) => {
+        if (opt.id) {
+          return {
+            id: opt.id,
+            label: opt.label,
+            color: opt.color,
+            position: opt.position,
+          };
+        }
+
+        const created = createdOptions[createdCursor++];
+        return created;
+      });
 
       onSaved({ ...updatedField, options: finalOptions });
       onClose();
@@ -223,97 +234,11 @@ export function EditFieldDrawer({ open, field, onClose, onSaved }: Props) {
 
           {/* Select / Multi-select: options manager */}
           {isSelectType && (
-            <div className="flex flex-col gap-3">
-              <Label>Options</Label>
-
-              {/* Existing options */}
-              {savedOptions.length > 0 && (
-                <div className="flex flex-col gap-1">
-                  {savedOptions.map(opt => {
-                    const isRemoved = removedOptionIds.has(opt.id);
-                    return (
-                      <div
-                        key={opt.id}
-                        className={`flex items-center justify-between transition-opacity ${isRemoved ? 'opacity-40' : ''}`}
-                      >
-                        <OptionChip label={opt.label} color={opt.color ?? '#6366f1'} />
-                        <button
-                          onClick={() => toggleRemoveOption(opt.id)}
-                          className={`transition-colors ${
-                            isRemoved
-                              ? 'text-muted-foreground hover:text-foreground'
-                              : 'text-muted-foreground hover:text-destructive'
-                          }`}
-                          title={isRemoved ? 'Undo remove' : 'Remove option'}
-                        >
-                          <X size={13} />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Pending new options */}
-              {pendingOptions.length > 0 && (
-                <div className="flex flex-col gap-1">
-                  <p className="text-xs text-muted-foreground">New (not saved yet)</p>
-                  {pendingOptions.map((opt, i) => (
-                    <div key={i} className="flex items-center justify-between">
-                      <OptionChip label={opt.label} color={opt.color} />
-                      <button
-                        onClick={() => setPendingOptions(p => p.filter((_, j) => j !== i))}
-                        className="text-muted-foreground hover:text-destructive transition-colors"
-                      >
-                        <X size={13} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Add new option row */}
-              <div className="flex gap-2">
-                <Input
-                  value={optLabel}
-                  onChange={e => setOptLabel(e.target.value)}
-                  placeholder="New option label"
-                  className="h-8 text-xs"
-                  onKeyDown={e => e.key === 'Enter' && addPendingOption()}
-                />
-                <div className="relative">
-                  <button
-                    className="w-8 h-8 rounded-md border flex items-center justify-center"
-                    title="Pick color"
-                  >
-                    <Palette size={14} style={{ color: optColor }} />
-                    <input
-                      type="color"
-                      value={optColor}
-                      onChange={e => setOptColor(e.target.value)}
-                      className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                    />
-                  </button>
-                </div>
-                <Button size="sm" variant="outline" className="h-8 px-2" onClick={addPendingOption}>
-                  <Plus size={13} />
-                </Button>
-              </div>
-
-              {/* Color palette swatches */}
-              <div className="flex flex-wrap gap-1">
-                {OPTION_COLORS.map(c => (
-                  <button
-                    key={c}
-                    onClick={() => setOptColor(c)}
-                    className={`w-5 h-5 rounded-full border-2 transition-transform hover:scale-110 ${
-                      optColor === c ? 'border-foreground' : 'border-transparent'
-                    }`}
-                    style={{ background: c }}
-                  />
-                ))}
-              </div>
-            </div>
+            <SelectOptionsEditor
+              options={optionDrafts}
+              onChange={setOptionDrafts}
+              addPlaceholder="New option label"
+            />
           )}
 
           {/* Date: format + include time */}

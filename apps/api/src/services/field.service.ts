@@ -5,6 +5,7 @@ import {
   createField,
   getFieldOptions,
   createFieldOption,
+  updateFieldOption,
   deleteFieldOption,
   deleteField,
   updateField,
@@ -288,15 +289,67 @@ export function registerFieldRoutes(app: Hono, dbEvents: DbEventPublisher) {
     try {
       const body = await c.req.json()
       if (!body.label?.trim()) return c.json({ error: 'label is required' }, 400)
+      if (body.position !== undefined) {
+        assertNumber('position', body.position)
+      }
       const option = await createFieldOption(
         c.req.param('fieldId'),
         body.label.trim(),
-        body.color
+        body.color,
+        body.position
       )
       return c.json(option, 201)
     } catch (error) {
+      if (error instanceof ValidationError) {
+        return c.json({ error: error.message }, 400)
+      }
       console.error(error)
       return c.json({ error: 'Failed to create option' }, 500)
+    }
+  })
+
+  // PATCH /api/fields/:fieldId/options/:optionId — update option
+  app.patch('/api/fields/:fieldId/options/:optionId', async (c) => {
+    try {
+      const body = await c.req.json()
+      if (!isObject(body)) return c.json({ error: 'Invalid request body' }, 400)
+
+      const payload: { label?: string; color?: string | null; position?: number } = {}
+
+      if (body.label !== undefined) {
+        if (typeof body.label !== 'string' || !body.label.trim()) {
+          return c.json({ error: 'label must be a non-empty string' }, 400)
+        }
+        payload.label = body.label.trim()
+      }
+
+      if (body.color !== undefined) {
+        if (body.color !== null && typeof body.color !== 'string') {
+          return c.json({ error: 'color must be a string or null' }, 400)
+        }
+        payload.color = body.color
+      }
+
+      if (body.position !== undefined) {
+        assertNumber('position', body.position)
+        payload.position = body.position
+      }
+
+      if (Object.keys(payload).length === 0) {
+        return c.json({ error: 'At least one of label, color, or position must be provided' }, 400)
+      }
+
+      const option = await updateFieldOption(c.req.param('fieldId'), c.req.param('optionId'), payload)
+      return c.json(option)
+    } catch (error: any) {
+      if (error instanceof ValidationError) {
+        return c.json({ error: error.message }, 400)
+      }
+      if (error?.message === 'Field option not found') {
+        return c.json({ error: error.message }, 404)
+      }
+      console.error(error)
+      return c.json({ error: 'Failed to update option' }, 500)
     }
   })
 

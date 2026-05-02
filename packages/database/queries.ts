@@ -222,14 +222,31 @@ export async function getFieldOptions(fieldId: string) {
 }
 
 /** Add an option to a select/multi_select field */
-export async function createFieldOption(fieldId: string, label: string, color?: string) {
+export async function createFieldOption(fieldId: string, label: string, color?: string, position?: number) {
     const agg = await prisma.fieldOption.aggregate({
         where: { fieldId },
         _max: { position: true },
     });
-    const position = (agg._max.position ?? -1) + 1;
+    const nextPosition = position ?? ((agg._max.position ?? -1) + 1);
     return await prisma.fieldOption.create({
-        data: { fieldId, label, color: color ?? null, position },
+        data: { fieldId, label, color: color ?? null, position: nextPosition },
+    });
+}
+
+/** Update an existing field option */
+export async function updateFieldOption(
+    fieldId: string,
+    optionId: string,
+    data: { label?: string; color?: string | null; position?: number }
+) {
+    const option = await prisma.fieldOption.findUnique({ where: { id: optionId } });
+    if (!option || option.fieldId !== fieldId) {
+        throw new Error('Field option not found');
+    }
+
+    return await prisma.fieldOption.update({
+        where: { id: optionId },
+        data,
     });
 }
 

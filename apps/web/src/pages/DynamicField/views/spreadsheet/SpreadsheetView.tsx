@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/context-menu';
 import { Checkbox } from '@/components/ui/checkbox';
 import { CellEditor } from '../../CellEditors';
-import { getFieldMeta, ICON_OPTIONS, getIconByName } from '../../constants';
+import { getFieldMeta, getIconByName } from '../../constants';
 import type { DynRecord, Field, FieldValuePayload } from '../../types';
 
 const COL_WIDTH = 180;
@@ -94,7 +94,7 @@ export function SpreadsheetView({
           </colgroup>
           <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
             <tr>
-              <th className="px-3 py-2 text-center text-xs font-medium text-muted-foreground border-b border-r border-border/40">
+              <th className="px-3 py-2 text-center text-xs font-medium text-muted-foreground border-b border-r border-border/80">
                 <Checkbox
                   checked={records.length > 0 && selectedRecords.size === records.length}
                   onCheckedChange={onToggleAll}
@@ -107,7 +107,7 @@ export function SpreadsheetView({
                 return (
                   <ContextMenu key={field.id}>
                     <ContextMenuTrigger asChild>
-                      <th className="px-3 py-2 text-left border-b border-r border-border/40 cursor-context-menu select-none" style={{ width: COL_WIDTH }}>
+                      <th className="px-3 py-2 text-left border-b border-r !border-border/80 cursor-context-menu select-none" style={{ width: COL_WIDTH }}>
                         {renamingFieldId === field.id ? (
                           <Input
                             autoFocus
