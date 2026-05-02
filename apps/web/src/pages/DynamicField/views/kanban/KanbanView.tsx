@@ -29,11 +29,11 @@ function buildColumns(records: DynRecord[], groupField: Field): KanbanColumnData
   const columns: Map<string, KanbanColumnData> = new Map();
 
   if (groupField.type === 'select' || groupField.type === 'multi_select') {
-    // Build ordered columns from field options
-    columns.set('__none__', { key: '__none__', label: 'No value', color: null, records: [] });
+    // Build ordered columns from field options (No value goes last)
     for (const opt of groupField.options ?? []) {
       columns.set(opt.id, { key: opt.id, label: opt.label, color: opt.color, records: [] });
     }
+    columns.set('__none__', { key: '__none__', label: 'No value', color: null, records: [] });
     for (const record of records) {
       const fv = record.fieldValues.find(v => v.fieldId === groupField.id);
       const key = groupField.type === 'select' ? (fv?.selectValue ?? '__none__') : (fv?.multiSelectValue?.[0] ?? '__none__');
@@ -45,14 +45,22 @@ function buildColumns(records: DynRecord[], groupField: Field): KanbanColumnData
       }
     }
   } else {
-    // Date grouping by day
-    columns.set('__none__', { key: '__none__', label: 'No date', color: null, records: [] });
+    // Date grouping by day (No date goes last)
     for (const record of records) {
       const key = getRecordGroupKey(record, groupField);
-      if (!columns.has(key)) {
-        columns.set(key, { key, label: key === '__none__' ? 'No date' : key, color: null, records: [] });
+      if (key !== '__none__' && !columns.has(key)) {
+        columns.set(key, { key, label: key, color: null, records: [] });
+      }
+      if (key === '__none__') {
+        if (!columns.has('__none__')) columns.set('__none__', { key: '__none__', label: 'No date', color: null, records: [] });
       }
       columns.get(key)!.records.push(record);
+    }
+    // Ensure No date is last
+    if (columns.has('__none__')) {
+      const noDate = columns.get('__none__')!;
+      columns.delete('__none__');
+      columns.set('__none__', noDate);
     }
   }
 
