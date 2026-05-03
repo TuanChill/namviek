@@ -226,7 +226,7 @@ export function CustomizeKanbanCardDialog({ view, fields, onClose, onSave }: Cus
           </ScrollArea>
 
           {/* Right: sticky live preview */}
-          <div className="flex w-[300px] shrink-0 flex-col gap-4 overflow-y-auto bg-muted/20 px-4 py-5">
+          <div className="flex w-[400px] shrink-0 flex-col items-center gap-4 overflow-y-auto bg-muted/20 px-4 py-5">
             <div className="flex items-center gap-2">
               <Sparkles size={15} className="text-primary" />
               <div>
@@ -234,8 +234,8 @@ export function CustomizeKanbanCardDialog({ view, fields, onClose, onSave }: Cus
                 <p className="text-xs text-muted-foreground">Uses dummy data.</p>
               </div>
             </div>
-            <div className="rounded-2xl border border-dashed bg-background/80 p-3">
-              <div style={{ width: '260px' }}>
+            <div className="">
+              <div style={{ width: '300px' }}>
                 <KanbanCardContent
                   record={previewRecord}
                   fields={fields}
