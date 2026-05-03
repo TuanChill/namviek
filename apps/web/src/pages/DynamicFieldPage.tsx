@@ -223,10 +223,10 @@ export default function DynamicFieldPage() {
     setEditingField(null);
   };
 
-  const handleAddRecord = async () => {
+  const handleAddRecord = async (initialValues: Array<{ field: Field; payload: FieldValuePayload }> = []) => {
     if (!selectedDb) return;
     const idFields = fields.filter(f => f.type === 'id');
-    return await addRecord(selectedDb.id, idFields);
+    return await addRecord(selectedDb.id, idFields, initialValues);
   };
 
   const handleSetValue = async (record: import('./DynamicField/types').DynRecord, field: Field, payload: FieldValuePayload) => {
@@ -471,7 +471,7 @@ export default function DynamicFieldPage() {
                     )}
                   </>
                 )}
-                <Button size="sm" onClick={handleAddRecord}>
+                <Button size="sm" onClick={() => { void handleAddRecord(); }}>
                   <Plus size={14} /> Add record
                 </Button>
               </header>

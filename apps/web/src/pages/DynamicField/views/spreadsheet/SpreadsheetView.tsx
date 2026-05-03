@@ -3,6 +3,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   ContextMenu, ContextMenuContent, ContextMenuItem,
@@ -86,8 +87,9 @@ export function SpreadsheetView({
 
   return (
     <TooltipProvider>
-      <div className="flex-1 overflow-auto">
-        <table className="text-sm border-collapse" style={{ tableLayout: 'fixed' }}>
+      <ScrollArea className="h-[calc(100vh-140px)] w-full" type="always">
+        <div className="">
+          <table className="text-sm border-collapse" style={{ tableLayout: 'fixed' }}>
           <colgroup>
             <col style={{ width: '48px' }} />
             {fields.map(f => <col key={f.id} style={{ width: `${COL_WIDTH}px` }} />)}
@@ -107,7 +109,7 @@ export function SpreadsheetView({
                 return (
                   <ContextMenu key={field.id}>
                     <ContextMenuTrigger asChild>
-                      <th className="px-3 py-2 text-left border-b border-r !border-border/80 cursor-context-menu select-none" style={{ width: COL_WIDTH }}>
+                      <th className="px-3 py-2 text-left border-b border-r !border-border cursor-context-menu select-none" style={{ width: COL_WIDTH }}>
                         {renamingFieldId === field.id ? (
                           <Input
                             autoFocus
@@ -209,14 +211,16 @@ export function SpreadsheetView({
               </tr>
             ))}
           </tbody>
-        </table>
-        <button
-          onClick={onAddRecord}
-          className="w-full px-3 py-2.5 text-left text-xs text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors flex items-center gap-1.5"
-        >
-          <Plus size={13} /> Add record
-        </button>
-      </div>
+          </table>
+
+        </div>
+      </ScrollArea>
+                <button
+            onClick={onAddRecord}
+            className="w-full px-3 py-2.5 text-left text-xs text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors flex items-center gap-1.5"
+          >
+            <Plus size={13} /> Add record
+          </button>
     </TooltipProvider>
   );
 }

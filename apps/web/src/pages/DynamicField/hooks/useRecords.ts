@@ -2,6 +2,11 @@ import { useState, useCallback } from 'react';
 import { api } from '../api';
 import type { DynRecord, Field, FieldValue, FieldValuePayload } from '../types';
 
+interface AddRecordInitialValue {
+  field: Field;
+  payload: FieldValuePayload;
+}
+
 export function useRecords() {
   const [records, setRecords] = useState<DynRecord[]>([]);
 
@@ -11,17 +16,27 @@ export function useRecords() {
     return r;
   }, []);
 
-  /** Add a new empty record and auto-fill id-type fields */
-  const addRecord = useCallback(async (dbId: string, idFields: Field[]) => {
+  /** Add a new empty record and auto-fill id-type fields plus optional initial values */
+  const addRecord = useCallback(async (dbId: string, idFields: Field[], initialValues: AddRecordInitialValue[] = []) => {
     const record = await api.records.create(dbId);
     let fieldValues: FieldValue[] = [];
 
-    // For each id-type field, immediately write rowNumber as textValue
-    if (idFields.length > 0) {
+    const writes: Array<{ field: Field; payload: FieldValuePayload }> = [
+      ...idFields.map(field => ({ field, payload: { textValue: String(record.rowNumber) } })),
+      ...initialValues,
+    ];
+
+    if (writes.length > 0) {
+      const deduped = new Map<string, { field: Field; payload: FieldValuePayload }>();
+      for (const write of writes) {
+        deduped.set(write.field.id, write);
+      }
+
+      const writeList = Array.from(deduped.values());
       const results = await Promise.all(
-        idFields.map(f => api.values.set(dbId, record.id, f.id, { textValue: String(record.rowNumber) }))
+        writeList.map(write => api.values.set(dbId, record.id, write.field.id, write.payload))
       );
-      fieldValues = results.map((fv, i) => ({ ...fv, field: idFields[i] }));
+      fieldValues = results.map((fv, i) => ({ ...fv, field: writeList[i].field }));
     }
 
     setRecords(prev => {

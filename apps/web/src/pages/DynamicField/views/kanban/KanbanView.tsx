@@ -10,7 +10,58 @@ interface KanbanViewProps {
   loading: boolean;
   view: DynView;
   onSetValue: (record: DynRecord, field: Field, payload: FieldValuePayload) => void;
-  onAddRecord: () => void;
+  onAddRecord: (initialValues?: Array<{ field: Field; payload: FieldValuePayload }>) => void;
+}
+
+function getDateValueForColumn(
+  columnKey: string,
+  granularity: NonNullable<ViewGroupByConfig['granularity']> | undefined,
+): string | null {
+  if (granularity === 'month') {
+    if (!/^\d{4}-\d{2}$/.test(columnKey)) return null;
+    return `${columnKey}-01`;
+  }
+
+  if (granularity === 'quarter') {
+    const match = columnKey.match(/^(\d{4})-Q([1-4])$/);
+    if (!match) return null;
+    const year = match[1];
+    const quarter = Number.parseInt(match[2], 10);
+    const month = String((quarter - 1) * 3 + 1).padStart(2, '0');
+    return `${year}-${month}-01`;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(columnKey)) {
+    return columnKey;
+  }
+
+  return null;
+}
+
+function getInitialValuesForColumn(
+  groupField: Field,
+  columnKey: string,
+  granularity: NonNullable<ViewGroupByConfig['granularity']> | undefined,
+): Array<{ field: Field; payload: FieldValuePayload }> {
+  if (columnKey === '__none__') {
+    return [];
+  }
+
+  if (groupField.type === 'select') {
+    return [{ field: groupField, payload: { selectValue: columnKey } }];
+  }
+
+  if (groupField.type === 'multi_select') {
+    return [{ field: groupField, payload: { multiSelectValue: [columnKey] } }];
+  }
+
+  if (groupField.type === 'date') {
+    const dateValue = getDateValueForColumn(columnKey, granularity);
+    if (!dateValue) return [];
+    return [{ field: groupField, payload: { dateValue } }];
+  }
+
+  return [];
 }
 
 function getDateGroupKey(
@@ -149,7 +200,10 @@ export function KanbanView({ fields, records, loading, view, onSetValue, onAddRe
           fields={fields}
           view={view}
           onSetValue={onSetValue}
-          onAddRecord={onAddRecord}
+          onAddRecord={() => {
+            const initialValues = getInitialValuesForColumn(groupField, col.key, groupByConfig?.granularity);
+            onAddRecord(initialValues);
+          }}
         />
       ))}
     </div>
