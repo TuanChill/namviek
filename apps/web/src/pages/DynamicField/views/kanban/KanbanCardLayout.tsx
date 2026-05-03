@@ -28,7 +28,8 @@ export function KanbanCardContent({ record, fields, view, users = [], className 
   const title = titleValue?.textValue ?? `Record #${record.rowNumber}`;
   const layout = getKanbanCardLayout(view.config, fields);
   const headerFields = layout.header.map(fieldId => fields.find(field => field.id === fieldId)).filter(Boolean) as Field[];
-  const footerFields = layout.footer.map(fieldId => fields.find(field => field.id === fieldId)).filter(Boolean) as Field[];
+  const footerLeftFields = layout.footerLeft.map(fieldId => fields.find(field => field.id === fieldId)).filter(Boolean) as Field[];
+  const footerRightFields = layout.footerRight.map(fieldId => fields.find(field => field.id === fieldId)).filter(Boolean) as Field[];
 
   return (
     <div className={['bg-card border rounded-lg p-3 shadow-sm transition-shadow', className].filter(Boolean).join(' ')}>
@@ -49,26 +50,31 @@ export function KanbanCardContent({ record, fields, view, users = [], className 
 
       <p className="text-sm font-medium leading-5 text-foreground">{title}</p>
 
-      {footerFields.length > 0 && (
-        <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-xs text-muted-foreground">
-            {footerFields.map(field => {
-            const content = renderFieldValue({ field, record, users, section: 'footer' });
-            if (!content) return null;
-
-            const { Icon } = getFieldMeta(field.type);
-            const isSpecialContent = field.type === 'select' || field.type === 'multi_select' || field.type === 'person';
-
-            return (
-              <Fragment key={field.id}>
-                <div className="flex min-w-0 items-center gap-1.5">
-                  {!isSpecialContent && <Icon size={13} className="shrink-0 text-muted-foreground/80" />}
-                  <div className="min-w-0">{content}</div>
-                </div>
-              </Fragment>
-            );
-          })}
+      {(footerLeftFields.length > 0 || footerRightFields.length > 0) && (
+        <div className="mt-3 flex items-center justify-between gap-4 text-xs text-muted-foreground">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1.5">
+            {footerLeftFields.map(field => renderFooterField(field, record, users, 'footerLeft'))}
+          </div>
+          <div className="flex min-w-0 shrink-0 flex-wrap items-center justify-end gap-x-2 gap-y-1.5 text-right">
+            {footerRightFields.map(field => renderFooterField(field, record, users, 'footerRight'))}
+          </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function renderFooterField(field: Field, record: DynRecord, users: DynUser[], section: CardSection) {
+  const content = renderFieldValue({ field, record, users, section });
+  if (!content) return null;
+
+  const { Icon } = getFieldMeta(field.type);
+  const isSpecialContent = field.type === 'select' || field.type === 'multi_select' || field.type === 'person';
+
+  return (
+    <div key={field.id} className="flex min-w-0 items-center gap-1.5">
+      {!isSpecialContent && <Icon size={13} className="shrink-0 text-muted-foreground/80" />}
+      <div className="min-w-0">{content}</div>
     </div>
   );
 }
@@ -120,7 +126,7 @@ function renderFieldValue({
     return <KanbanAvatarStack users={people} />;
   }
 
-  if (section === 'header') {
+  if (section === 'header' || section === 'footerLeft' || section === 'footerRight') {
     const headerDateValue = getHeaderDateValue(record, field, fieldValue);
     if (headerDateValue) {
       const shortDate = formatKanbanHeaderDate(headerDateValue);

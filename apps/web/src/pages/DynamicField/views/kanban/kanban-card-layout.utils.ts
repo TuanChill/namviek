@@ -10,10 +10,11 @@ import type {
 } from '../../types';
 
 type ConfigWithLegacyKanbanLayout = ViewConfig & {
-  card_layout?: ViewKanbanCardLayout;
+  card_layout?: ViewKanbanCardLayout & { footer?: string[] };
+  cardLayout?: ViewKanbanCardLayout & { footer?: string[] };
 };
 
-export type CardSection = 'header' | 'footer';
+export type CardSection = 'header' | 'footerLeft' | 'footerRight';
 
 interface PreviewRecordOptions {
   primaryTitle?: string;
@@ -50,7 +51,8 @@ export function getKanbanCardLayout(config: ViewConfig | null | undefined, field
   if (!layout) {
     return {
       header: [],
-      footer: eligibleFields.filter(field => !fallbackHiddenIds.has(field.id)).map(field => field.id),
+      footerLeft: eligibleFields.filter(field => !fallbackHiddenIds.has(field.id)).map(field => field.id),
+      footerRight: [],
     };
   }
 
@@ -68,13 +70,16 @@ export function getKanbanCardLayout(config: ViewConfig | null | undefined, field
 
   const header = dedupe(layout.header);
   const headerIds = new Set(header);
-  const footer = dedupe(layout.footer).filter(fieldId => !headerIds.has(fieldId));
+  const legacyFooter = 'footer' in layout ? layout.footer : undefined;
+  const footerLeft = dedupe(layout.footerLeft ?? legacyFooter).filter(fieldId => !headerIds.has(fieldId));
+  const footerLeftIds = new Set(footerLeft);
+  const footerRight = dedupe(layout.footerRight).filter(fieldId => !headerIds.has(fieldId) && !footerLeftIds.has(fieldId));
 
-  return { header, footer };
+  return { header, footerLeft, footerRight };
 }
 
 export function getKanbanAvailableFields(fields: Field[], layout: ViewKanbanCardLayout): Field[] {
-  const used = new Set([...layout.header, ...layout.footer]);
+  const used = new Set([...layout.header, ...layout.footerLeft, ...layout.footerRight]);
   return fields.filter(field => !field.isPrimary && field.type !== 'id' && !used.has(field.id));
 }
 
@@ -163,11 +168,15 @@ export function buildKanbanPreviewRecord(fields: Field[], options?: PreviewRecor
 }
 
 export function getSectionLabel(section: CardSection) {
-  return section === 'header' ? 'Header' : 'Footer';
+  if (section === 'header') return 'Header';
+  if (section === 'footerLeft') return 'Footer Left';
+  return 'Footer Right';
 }
 
 export function getSectionActionLabel(section: CardSection) {
-  return section === 'header' ? 'Add to header' : 'Add to footer';
+  if (section === 'header') return 'Add to header';
+  if (section === 'footerLeft') return 'Add footer left';
+  return 'Add footer right';
 }
 
 export function getFieldSectionIcon(field: Field) {

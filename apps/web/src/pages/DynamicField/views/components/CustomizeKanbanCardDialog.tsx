@@ -81,14 +81,38 @@ export function CustomizeKanbanCardDialog({ view, fields, onClose, onSave }: Cus
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid min-h-[640px] grid-cols-1 xl:grid-cols-[1.2fr_0.8fr]">
-          <ScrollArea className="min-h-0 border-r">
+        <div className="min-h-[640px]">
+          <ScrollArea className="min-h-0">
             <div className="flex flex-col gap-6 px-6 py-5">
+              <section className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles size={15} className="text-primary" />
+                  <div>
+                    <h3 className="text-sm font-medium">Live Preview</h3>
+                    <p className="text-xs text-muted-foreground">Preview uses dummy data with the current layout.</p>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-dashed bg-muted/30 p-5">
+                  <div className="mx-auto max-w-sm rounded-2xl border border-dashed bg-background/80 p-5">
+                    <KanbanCardContent
+                      record={previewRecord}
+                      fields={fields}
+                      view={previewView}
+                      users={KANBAN_PREVIEW_USERS}
+                      className="shadow-md"
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <Separator />
+
               <section className="space-y-3">
                 <div>
                   <h3 className="text-sm font-medium">Available Fields</h3>
                   <p className="text-xs text-muted-foreground">
-                    Add fields to the header or footer. The record title is always shown in the card body.
+                    Add fields to the header, footer left, or footer right. The record title is always shown in the card body.
                   </p>
                 </div>
                 <div className="grid gap-2 md:grid-cols-2">
@@ -112,8 +136,11 @@ export function CustomizeKanbanCardDialog({ view, fields, onClose, onSave }: Cus
                             <Button size="sm" variant="outline" onClick={() => addField('header', field.id)}>
                               <Plus size={12} className="mr-1" /> {getSectionActionLabel('header')}
                             </Button>
-                            <Button size="sm" variant="outline" onClick={() => addField('footer', field.id)}>
-                              <Plus size={12} className="mr-1" /> {getSectionActionLabel('footer')}
+                            <Button size="sm" variant="outline" onClick={() => addField('footerLeft', field.id)}>
+                              <Plus size={12} className="mr-1" /> {getSectionActionLabel('footerLeft')}
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => addField('footerRight', field.id)}>
+                              <Plus size={12} className="mr-1" /> {getSectionActionLabel('footerRight')}
                             </Button>
                           </div>
                         </div>
@@ -134,8 +161,15 @@ export function CustomizeKanbanCardDialog({ view, fields, onClose, onSave }: Cus
                   onRemove={removeField}
                 />
                 <CardSectionEditor
-                  section="footer"
-                  fieldIds={layout.footer}
+                  section="footerLeft"
+                  fieldIds={layout.footerLeft}
+                  fields={fields}
+                  onMove={moveField}
+                  onRemove={removeField}
+                />
+                <CardSectionEditor
+                  section="footerRight"
+                  fieldIds={layout.footerRight}
                   fields={fields}
                   onMove={moveField}
                   onRemove={removeField}
@@ -143,28 +177,6 @@ export function CustomizeKanbanCardDialog({ view, fields, onClose, onSave }: Cus
               </section>
             </div>
           </ScrollArea>
-
-          <div className="bg-muted/30 px-6 py-5">
-            <div className="mb-4 flex items-center gap-2">
-              <Sparkles size={15} className="text-primary" />
-              <div>
-                <h3 className="text-sm font-medium">Live Preview</h3>
-                <p className="text-xs text-muted-foreground">Preview uses dummy data with the current layout.</p>
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-dashed bg-background/80 p-5">
-              <div className="mx-auto max-w-sm">
-                <KanbanCardContent
-                  record={previewRecord}
-                  fields={fields}
-                  view={previewView}
-                  users={KANBAN_PREVIEW_USERS}
-                  className="shadow-md"
-                />
-              </div>
-            </div>
-          </div>
         </div>
 
         <DialogFooter className="border-t px-6 py-4">
@@ -192,7 +204,9 @@ function CardSectionEditor({ section, fieldIds, fields, onMove, onRemove }: Card
         <p className="text-xs text-muted-foreground">
           {section === 'header'
             ? 'Fields render inline above the title.'
-            : 'Fields render below the title as detail rows.'}
+            : section === 'footerLeft'
+              ? 'Fields render on the left side of the footer.'
+              : 'Fields render on the right side of the footer.'}
         </p>
       </div>
 

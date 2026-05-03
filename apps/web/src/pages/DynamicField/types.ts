@@ -127,7 +127,8 @@ export interface ViewTimelineConfig {
 
 export interface ViewKanbanCardLayout {
   header: string[];
-  footer: string[];
+  footerLeft: string[];
+  footerRight: string[];
 }
 
 export interface ViewConfig {
