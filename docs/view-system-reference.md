@@ -72,13 +72,23 @@ Template creation behavior in `apps/api/src/services/template.service.ts`:
   - features:
     - Add view dropdown (no create modal)
     - Per-tab menu: Edit, Rename, Move left/right, Set default, Delete
+    - Active Kanban view includes `Customize Card` action
     - Delete disabled for default and last view
-    - Edit dialog: name, icon, groupBy, date granularity, default toggle, fields shown on cards
+    - Edit dialog: name, icon, groupBy, date granularity, default toggle
+  - Kanban customization dialog:
+    - `apps/web/src/pages/DynamicField/views/components/CustomizeKanbanCardDialog.tsx`
+    - layout editor sections: Header, Footer Left, Footer Right
+    - supports add/remove/reorder per section
+    - live preview is shown at top of dialog
 - Kanban rendering:
   - `apps/web/src/pages/DynamicField/views/kanban/KanbanView.tsx`
   - `apps/web/src/pages/DynamicField/views/kanban/KanbanCard.tsx`
   - `apps/web/src/pages/DynamicField/views/kanban/KanbanColumn.tsx`
-  - card preview respects `view.config.hiddenFieldIds`
+  - `apps/web/src/pages/DynamicField/views/kanban/KanbanCardLayout.tsx`
+  - `apps/web/src/pages/DynamicField/views/kanban/kanban-card-layout.utils.ts`
+  - card rendering uses per-view `view.config.cardLayout`
+  - main title (primary field) is always shown
+  - header and footer date-like fields render as short labels (e.g. `Wed 5/20`) with full datetime in hover title
 - Timeline rendering:
   - `apps/web/src/pages/DynamicField/views/timeline/TimelineView.tsx`
   - props: `fields, records, loading, view`
@@ -112,7 +122,13 @@ Defined in `apps/web/src/pages/DynamicField/types.ts`:
   - `fieldType`: `select | multi_select | date | created_time | updated_time`
   - `granularity`: `day | month | quarter` (date-like only)
 - `hiddenFieldIds?: string[]`
-  - used by Kanban card preview to hide fields per view
+  - legacy support; older Kanban configs may still contain this
+- `cardLayout?: ViewKanbanCardLayout`
+  - `header: string[]`
+  - `footerLeft: string[]`
+  - `footerRight: string[]`
+  - per-view Kanban card layout (field IDs only)
+  - legacy `footer` is auto-mapped to `footerLeft` when loading old saved configs
 - `calendar?: ViewCalendarConfig`
   - `startDateFieldId?: string` — field used to place records on the grid
   - `endDateFieldId?: string` — optional field for record end date
@@ -135,6 +151,7 @@ Stored in DB as `DynView.config` JSON.
 - Default view cannot be deleted.
 - Last remaining view cannot be deleted.
 - Primary field cannot be deleted.
+- Kanban card layout is view-scoped (`DynView.config`), so each Kanban view can have a different card structure.
 - Every database should have:
   - at least one default view
   - one primary text field
@@ -147,7 +164,10 @@ If you need to change view behavior:
 3. Update persistence query in `packages/database/queries.ts`.
 4. Update UI in:
    - `apps/web/src/pages/DynamicField/views/components/ViewManagerTabBar.tsx`
+  - `apps/web/src/pages/DynamicField/views/components/CustomizeKanbanCardDialog.tsx`
    - `apps/web/src/pages/DynamicField/views/components/EditViewDialog.tsx`
+  - `apps/web/src/pages/DynamicField/views/kanban/KanbanCardLayout.tsx`
+  - `apps/web/src/pages/DynamicField/views/kanban/kanban-card-layout.utils.ts`
    - `apps/web/src/pages/DynamicField/views/kanban/KanbanView.tsx`
    - `apps/web/src/pages/DynamicField/views/calendar/CalendarView.tsx`
    - `apps/web/src/pages/DynamicField/views/timeline/TimelineView.tsx`
@@ -162,11 +182,17 @@ If you need to change view behavior:
 ### Timeline-specific notes
 - Edit View dialog shows timeline settings only when `view.type === 'timeline'`:
   - Start date field, End date field, Max group height, Assignee field, Dash color field, Highlight weekdays.
-- "Fields shown on cards" section is shown for timeline (same as kanban); respects `view.config.hiddenFieldIds`.
+- "Fields shown on cards" section is shown for timeline; respects `view.config.hiddenFieldIds`.
 - Edit View dialog uses a scrollable body (`ScrollArea`) with a fixed header and footer; necessary because timeline settings are long.
 - `ViewTimelineConfig` is defined in `apps/web/src/pages/DynamicField/types.ts`.
 - `DynamicFieldPage.tsx` passes only `fields, records, loading, view` to `TimelineView` (no add-record or set-value callbacks).
 - `EditViewDialog` is extracted to `apps/web/src/pages/DynamicField/views/components/EditViewDialog.tsx`.
+
+### Kanban-specific notes
+- Kanban card layout editor lives in `apps/web/src/pages/DynamicField/views/components/CustomizeKanbanCardDialog.tsx`.
+- Layout config is `view.config.cardLayout` with `header`, `footerLeft`, `footerRight` arrays.
+- Live preview uses `KanbanCardContent` and dummy data from `kanban-card-layout.utils.ts`.
+- `KanbanCardLayout.tsx` renders footer as left/right lanes and keeps primary title fixed.
 
 ## 5) Useful Commands
 

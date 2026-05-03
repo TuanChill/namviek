@@ -185,7 +185,7 @@ function getFieldTextValue(record: DynRecord, field: Field, fieldValue?: FieldVa
       return fieldValue?.boolValue === true ? 'Checked' : fieldValue?.boolValue === false ? 'Unchecked' : null;
     case 'file': {
       const attachments = Array.isArray(fieldValue?.jsonValue) ? fieldValue.jsonValue : [];
-      return attachments.length > 0 ? `${attachments.length} file${attachments.length === 1 ? '' : 's'}` : null;
+      return attachments.length > 0 ? attachments.length : null;
     }
     case 'created_time':
       return formatDateValue(record.createdAt, {});
