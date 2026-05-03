@@ -14,7 +14,7 @@ type ConfigWithLegacyKanbanLayout = ViewConfig & {
   cardLayout?: ViewKanbanCardLayout & { footer?: string[] };
 };
 
-export type CardSection = 'header' | 'footerLeft' | 'footerRight';
+export type CardSection = 'header' | 'headerRight' | 'middle' | 'footerLeft' | 'footerRight';
 
 interface PreviewRecordOptions {
   primaryTitle?: string;
@@ -51,6 +51,8 @@ export function getKanbanCardLayout(config: ViewConfig | null | undefined, field
   if (!layout) {
     return {
       header: [],
+      headerRight: [],
+      middle: [],
       footerLeft: eligibleFields.filter(field => !fallbackHiddenIds.has(field.id)).map(field => field.id),
       footerRight: [],
     };
@@ -69,17 +71,20 @@ export function getKanbanCardLayout(config: ViewConfig | null | undefined, field
   };
 
   const header = dedupe(layout.header);
-  const headerIds = new Set(header);
+  const headerRight = dedupe(layout.headerRight ?? []);
+  const headerIds = new Set([...header, ...headerRight]);
+  const middle = dedupe(layout.middle ?? []).filter(fieldId => !headerIds.has(fieldId));
+  const middleIds = new Set(middle);
   const legacyFooter = 'footer' in layout ? layout.footer : undefined;
-  const footerLeft = dedupe(layout.footerLeft ?? legacyFooter).filter(fieldId => !headerIds.has(fieldId));
+  const footerLeft = dedupe(layout.footerLeft ?? legacyFooter).filter(fieldId => !headerIds.has(fieldId) && !middleIds.has(fieldId));
   const footerLeftIds = new Set(footerLeft);
-  const footerRight = dedupe(layout.footerRight).filter(fieldId => !headerIds.has(fieldId) && !footerLeftIds.has(fieldId));
+  const footerRight = dedupe(layout.footerRight).filter(fieldId => !headerIds.has(fieldId) && !middleIds.has(fieldId) && !footerLeftIds.has(fieldId));
 
-  return { header, footerLeft, footerRight };
+  return { header, headerRight, middle, footerLeft, footerRight, filePreviewFieldId: layout.filePreviewFieldId };
 }
 
 export function getKanbanAvailableFields(fields: Field[], layout: ViewKanbanCardLayout): Field[] {
-  const used = new Set([...layout.header, ...layout.footerLeft, ...layout.footerRight]);
+  const used = new Set([...layout.header, ...layout.headerRight, ...layout.middle, ...layout.footerLeft, ...layout.footerRight]);
   return fields.filter(field => !field.isPrimary && field.type !== 'id' && !used.has(field.id));
 }
 
@@ -139,6 +144,7 @@ export function buildKanbanPreviewRecord(fields: Field[], options?: PreviewRecor
         fieldValues.push({
           ...baseValue,
           jsonValue: [
+            { name: 'preview.jpg', url: 'https://picsum.photos/seed/kanban/400/120', size: 48000, type: 'image/jpeg' },
             { name: 'spec-v3.pdf', url: 'https://example.com/spec-v3.pdf', size: 124000, type: 'application/pdf' },
           ],
         });
@@ -168,13 +174,17 @@ export function buildKanbanPreviewRecord(fields: Field[], options?: PreviewRecor
 }
 
 export function getSectionLabel(section: CardSection) {
-  if (section === 'header') return 'Header';
+  if (section === 'header') return 'Header Left';
+  if (section === 'headerRight') return 'Header Right';
+  if (section === 'middle') return 'Middle';
   if (section === 'footerLeft') return 'Footer Left';
   return 'Footer Right';
 }
 
 export function getSectionActionLabel(section: CardSection) {
-  if (section === 'header') return 'Add to header';
+  if (section === 'header') return 'Add header left';
+  if (section === 'headerRight') return 'Add header right';
+  if (section === 'middle') return 'Add to middle';
   if (section === 'footerLeft') return 'Add footer left';
   return 'Add footer right';
 }

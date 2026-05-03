@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ArrowDown, ArrowUp, Plus, Sparkles, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Image, Plus, Sparkles, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -15,9 +15,16 @@ import {
   getSectionActionLabel,
   getSectionLabel,
   KANBAN_PREVIEW_USERS,
+  type CardSection,
 } from '../kanban/kanban-card-layout.utils';
 
-type CardSection = keyof ViewKanbanCardLayout;
+const SECTION_ABBREV: Record<CardSection, string> = {
+  header: 'H.Left',
+  headerRight: 'H.Right',
+  middle: 'Mid',
+  footerLeft: 'F.Left',
+  footerRight: 'F.Right',
+};
 
 interface CustomizeKanbanCardDialogProps {
   view: DynView;
@@ -28,6 +35,7 @@ interface CustomizeKanbanCardDialogProps {
 
 export function CustomizeKanbanCardDialog({ view, fields, onClose, onSave }: CustomizeKanbanCardDialogProps) {
   const [layout, setLayout] = useState<ViewKanbanCardLayout>(() => getKanbanCardLayout(view.config, fields));
+  const fileFields = useMemo(() => fields.filter(field => field.type === 'file'), [fields]);
 
   const availableFields = useMemo(() => getKanbanAvailableFields(fields, layout), [fields, layout]);
   const previewRecord = useMemo(() => buildKanbanPreviewRecord(fields), [fields]);
@@ -46,6 +54,10 @@ export function CustomizeKanbanCardDialog({ view, fields, onClose, onSave }: Cus
 
   const removeField = (section: CardSection, fieldId: string) => {
     updateSection(section, current => current.filter(id => id !== fieldId));
+  };
+
+  const setFilePreview = (fieldId: string | undefined) => {
+    setLayout(current => ({ ...current, filePreviewFieldId: fieldId }));
   };
 
   const moveField = (section: CardSection, fieldId: string, direction: 'up' | 'down') => {
@@ -81,33 +93,10 @@ export function CustomizeKanbanCardDialog({ view, fields, onClose, onSave }: Cus
           </DialogDescription>
         </DialogHeader>
 
-        <div className="min-h-[640px]">
-          <ScrollArea className="min-h-0">
+        <div className="flex h-[640px] overflow-hidden">
+          {/* Left: scrollable config */}
+          <ScrollArea className="flex-1 border-r">
             <div className="flex flex-col gap-6 px-6 py-5">
-              <section className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <Sparkles size={15} className="text-primary" />
-                  <div>
-                    <h3 className="text-sm font-medium">Live Preview</h3>
-                    <p className="text-xs text-muted-foreground">Preview uses dummy data with the current layout.</p>
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-dashed bg-muted/30 p-5">
-                  <div className="mx-auto max-w-sm rounded-2xl border border-dashed bg-background/80 p-5">
-                    <KanbanCardContent
-                      record={previewRecord}
-                      fields={fields}
-                      view={previewView}
-                      users={KANBAN_PREVIEW_USERS}
-                      className="shadow-md"
-                    />
-                  </div>
-                </div>
-              </section>
-
-              <Separator />
-
               <section className="space-y-3">
                 <div>
                   <h3 className="text-sm font-medium">Available Fields</h3>
@@ -132,16 +121,18 @@ export function CustomizeKanbanCardDialog({ view, fields, onClose, onSave }: Cus
                               <div className="text-xs text-muted-foreground">{field.type.replace('_', ' ')}</div>
                             </div>
                           </div>
-                          <div className="mt-3 flex gap-2">
-                            <Button size="sm" variant="outline" onClick={() => addField('header', field.id)}>
-                              <Plus size={12} className="mr-1" /> {getSectionActionLabel('header')}
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => addField('footerLeft', field.id)}>
-                              <Plus size={12} className="mr-1" /> {getSectionActionLabel('footerLeft')}
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => addField('footerRight', field.id)}>
-                              <Plus size={12} className="mr-1" /> {getSectionActionLabel('footerRight')}
-                            </Button>
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            {(['header', 'headerRight', 'middle', 'footerLeft', 'footerRight'] as const).map(section => (
+                              <button
+                                key={section}
+                                title={getSectionActionLabel(section)}
+                                onClick={() => addField(section, field.id)}
+                                className="inline-flex items-center gap-1 rounded-md border bg-background px-2 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                              >
+                                <Plus size={10} />
+                                {SECTION_ABBREV[section]}
+                              </button>
+                            ))}
                           </div>
                         </div>
                       );
@@ -152,10 +143,66 @@ export function CustomizeKanbanCardDialog({ view, fields, onClose, onSave }: Cus
 
               <Separator />
 
+              <section className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Image size={15} className="text-primary" />
+                  <div>
+                    <h3 className="text-sm font-medium">File Preview</h3>
+                    <p className="text-xs text-muted-foreground">Pick a file field to show an image at the top of the card.</p>
+                  </div>
+                </div>
+                {fileFields.length === 0 ? (
+                  <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                    No file fields in this database.
+                  </div>
+                ) : (
+                  <div className="grid gap-2 md:grid-cols-2">
+                    {fileFields.map(field => {
+                      const { Icon } = getFieldMeta(field.type);
+                      const isSelected = layout.filePreviewFieldId === field.id;
+                      return (
+                        <div key={field.id} className={['flex items-center gap-3 rounded-lg border p-3', isSelected ? 'border-primary bg-primary/5' : 'bg-card'].join(' ')}>
+                          <Icon size={14} className="shrink-0 text-muted-foreground" />
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-sm font-medium">{field.name}</div>
+                            <div className="text-xs text-muted-foreground">file</div>
+                          </div>
+                          {isSelected ? (
+                            <Button size="sm" variant="ghost" onClick={() => setFilePreview(undefined)}>
+                              <X size={12} className="mr-1" /> Remove
+                            </Button>
+                          ) : (
+                            <Button size="sm" variant="outline" onClick={() => setFilePreview(field.id)}>
+                              Set preview
+                            </Button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
+
+              <Separator />
+
               <section className="grid gap-6 lg:grid-cols-2">
                 <CardSectionEditor
                   section="header"
                   fieldIds={layout.header}
+                  fields={fields}
+                  onMove={moveField}
+                  onRemove={removeField}
+                />
+                <CardSectionEditor
+                  section="headerRight"
+                  fieldIds={layout.headerRight}
+                  fields={fields}
+                  onMove={moveField}
+                  onRemove={removeField}
+                />
+                <CardSectionEditor
+                  section="middle"
+                  fieldIds={layout.middle}
                   fields={fields}
                   onMove={moveField}
                   onRemove={removeField}
@@ -177,6 +224,28 @@ export function CustomizeKanbanCardDialog({ view, fields, onClose, onSave }: Cus
               </section>
             </div>
           </ScrollArea>
+
+          {/* Right: sticky live preview */}
+          <div className="flex w-[300px] shrink-0 flex-col gap-4 overflow-y-auto bg-muted/20 px-4 py-5">
+            <div className="flex items-center gap-2">
+              <Sparkles size={15} className="text-primary" />
+              <div>
+                <h3 className="text-sm font-medium">Live Preview</h3>
+                <p className="text-xs text-muted-foreground">Uses dummy data.</p>
+              </div>
+            </div>
+            <div className="rounded-2xl border border-dashed bg-background/80 p-3">
+              <div style={{ width: '260px' }}>
+                <KanbanCardContent
+                  record={previewRecord}
+                  fields={fields}
+                  view={previewView}
+                  users={KANBAN_PREVIEW_USERS}
+                  className="shadow-md"
+                />
+              </div>
+            </div>
+          </div>
         </div>
 
         <DialogFooter className="border-t px-6 py-4">
@@ -203,10 +272,14 @@ function CardSectionEditor({ section, fieldIds, fields, onMove, onRemove }: Card
         <h3 className="text-sm font-medium">{getSectionLabel(section)}</h3>
         <p className="text-xs text-muted-foreground">
           {section === 'header'
-            ? 'Fields render inline above the title.'
-            : section === 'footerLeft'
-              ? 'Fields render on the left side of the footer.'
-              : 'Fields render on the right side of the footer.'}
+            ? 'Fields render inline on the left above the title.'
+            : section === 'headerRight'
+              ? 'Fields render inline on the right above the title.'
+              : section === 'middle'
+                ? 'Fields render as stacked text between header and title.'
+                : section === 'footerLeft'
+                  ? 'Fields render on the left side of the footer.'
+                  : 'Fields render on the right side of the footer.'}
         </p>
       </div>
 

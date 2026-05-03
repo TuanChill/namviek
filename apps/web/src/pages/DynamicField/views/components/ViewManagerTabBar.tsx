@@ -128,7 +128,7 @@ export function ViewManagerTabBar({
                   <DropdownMenuItem onClick={() => setEditingView(view)}>
                     <Settings2 size={13} className="mr-2" /> Edit view
                   </DropdownMenuItem>
-                  {view.type === 'kanban' && activeView?.id === view.id && (
+                  {view.type === 'kanban' && (
                     <DropdownMenuItem onClick={() => setCustomizingView(view)}>
                       <Palette size={13} className="mr-2" /> Customize Card
                     </DropdownMenuItem>

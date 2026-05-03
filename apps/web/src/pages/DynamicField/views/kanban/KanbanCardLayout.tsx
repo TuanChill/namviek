@@ -8,6 +8,7 @@ import type {
   DynView,
   Field,
   FieldValue,
+  FileAttachment,
 } from '../../types';
 import type { CardSection } from './kanban-card-layout.utils';
 import { getKanbanCardLayout } from './kanban-card-layout.utils';
@@ -28,27 +29,51 @@ export function KanbanCardContent({ record, fields, view, users = [], className 
   const title = titleValue?.textValue ?? `Record #${record.rowNumber}`;
   const layout = getKanbanCardLayout(view.config, fields);
   const headerFields = layout.header.map(fieldId => fields.find(field => field.id === fieldId)).filter(Boolean) as Field[];
+  const headerRightFields = layout.headerRight.map(fieldId => fields.find(field => field.id === fieldId)).filter(Boolean) as Field[];
+  const middleFields = layout.middle.map(fieldId => fields.find(field => field.id === fieldId)).filter(Boolean) as Field[];
   const footerLeftFields = layout.footerLeft.map(fieldId => fields.find(field => field.id === fieldId)).filter(Boolean) as Field[];
   const footerRightFields = layout.footerRight.map(fieldId => fields.find(field => field.id === fieldId)).filter(Boolean) as Field[];
+  const filePreviewField = layout.filePreviewFieldId ? fields.find(field => field.id === layout.filePreviewFieldId) ?? null : null;
+  const filePreviewUrl = filePreviewField ? getFirstImageUrl(record, filePreviewField) : null;
 
   return (
     <div className={['bg-card border rounded-lg p-3 shadow-sm transition-shadow', className].filter(Boolean).join(' ')}>
-      {headerFields.length > 0 && (
-        <div className="mb-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11px] text-muted-foreground">
-            {headerFields.map(field => {
-            const content = renderFieldValue({ field, record, users, section: 'header' });
-            if (!content) return null;
+      {filePreviewField && filePreviewUrl && (
+        <div className="-mx-3 -mt-3 mb-3 overflow-hidden rounded-t-lg bg-muted flex justify-center" style={{ maxHeight: '120px', minHeight: '80px' }}>
+          <img src={filePreviewUrl} alt="Preview" className="h-full w-auto object-cover" style={{ height: '120px' }} />
+        </div>
+      )}
 
-            return (
-              <Fragment key={field.id}>
-                {content}
-              </Fragment>
-            );
-          })}
+      {(headerFields.length > 0 || headerRightFields.length > 0) && (
+        <div className="mb-2 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 gap-y-1">
+            {headerFields.map(field => {
+              const content = renderFieldValue({ field, record, users, section: 'header' });
+              if (!content) return null;
+              return <Fragment key={field.id}>{content}</Fragment>;
+            })}
+          </div>
+          <div className="flex min-w-0 shrink-0 flex-wrap items-center justify-end gap-x-1.5 gap-y-1">
+            {headerRightFields.map(field => {
+              const content = renderFieldValue({ field, record, users, section: 'headerRight' });
+              if (!content) return null;
+              return <Fragment key={field.id}>{content}</Fragment>;
+            })}
+          </div>
         </div>
       )}
 
       <p className="text-sm font-medium leading-5 text-foreground">{title}</p>
+
+      {middleFields.length > 0 && (
+        <div className="mt-1 flex flex-col gap-0.5">
+          {middleFields.map(field => {
+            const text = getMiddleFieldText(record, field);
+            if (!text) return null;
+            return <span key={field.id} className="truncate text-xs text-foreground/70">{text}</span>;
+          })}
+        </div>
+      )}
 
       {(footerLeftFields.length > 0 || footerRightFields.length > 0) && (
         <div className="mt-3 flex items-center justify-between gap-4 text-xs text-muted-foreground">
@@ -126,7 +151,7 @@ function renderFieldValue({
     return <KanbanAvatarStack users={people} />;
   }
 
-  if (section === 'header' || section === 'footerLeft' || section === 'footerRight') {
+  if (section === 'header' || section === 'headerRight' || section === 'middle' || section === 'footerLeft' || section === 'footerRight') {
     const headerDateValue = getHeaderDateValue(record, field, fieldValue);
     if (headerDateValue) {
       const shortDate = formatKanbanHeaderDate(headerDateValue);
@@ -170,6 +195,18 @@ function renderFieldValue({
   return <span className="min-w-0 truncate">{text}</span>;
 }
 
+function getFirstImageUrl(record: DynRecord, field: Field): string | null {
+  const fieldValue = record.fieldValues.find(v => v.fieldId === field.id);
+  const attachments = Array.isArray(fieldValue?.jsonValue) ? (fieldValue.jsonValue as FileAttachment[]) : [];
+  const image = attachments.find(a => a.type?.startsWith('image/'));
+  return image?.url ?? null;
+}
+
+function getMiddleFieldText(record: DynRecord, field: Field): string | null {
+  const fieldValue = record.fieldValues.find(v => v.fieldId === field.id);
+  return getFieldTextValue(record, field, fieldValue);
+}
+
 function getFieldTextValue(record: DynRecord, field: Field, fieldValue?: FieldValue) {
   switch (field.type) {
     case 'text':
@@ -185,7 +222,7 @@ function getFieldTextValue(record: DynRecord, field: Field, fieldValue?: FieldVa
       return fieldValue?.boolValue === true ? 'Checked' : fieldValue?.boolValue === false ? 'Unchecked' : null;
     case 'file': {
       const attachments = Array.isArray(fieldValue?.jsonValue) ? fieldValue.jsonValue : [];
-      return attachments.length > 0 ? attachments.length : null;
+      return attachments.length > 0 ? String(attachments.length) : null;
     }
     case 'created_time':
       return formatDateValue(record.createdAt, {});

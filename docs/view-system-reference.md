@@ -72,14 +72,15 @@ Template creation behavior in `apps/api/src/services/template.service.ts`:
   - features:
     - Add view dropdown (no create modal)
     - Per-tab menu: Edit, Rename, Move left/right, Set default, Delete
-    - Active Kanban view includes `Customize Card` action
+    - Any Kanban tab dropdown includes `Customize Card` action (not limited to active tab)
     - Delete disabled for default and last view
     - Edit dialog: name, icon, groupBy, date granularity, default toggle
   - Kanban customization dialog:
     - `apps/web/src/pages/DynamicField/views/components/CustomizeKanbanCardDialog.tsx`
-    - layout editor sections: Header, Footer Left, Footer Right
+    - layout editor sections: Header Left, Header Right, Middle, Footer Left, Footer Right
+    - file preview selector: choose a `file` field for top-of-card preview image
     - supports add/remove/reorder per section
-    - live preview is shown at top of dialog
+    - dialog uses split layout: left config area is scrollable (`ScrollArea`), right live preview panel is fixed width
 - Kanban rendering:
   - `apps/web/src/pages/DynamicField/views/kanban/KanbanView.tsx`
   - `apps/web/src/pages/DynamicField/views/kanban/KanbanCard.tsx`
@@ -88,6 +89,8 @@ Template creation behavior in `apps/api/src/services/template.service.ts`:
   - `apps/web/src/pages/DynamicField/views/kanban/kanban-card-layout.utils.ts`
   - card rendering uses per-view `view.config.cardLayout`
   - main title (primary field) is always shown
+  - middle section renders below title as stacked text (`text-xs`, `text-foreground/70`)
+  - optional top preview image renders only when selected file field has at least one image attachment
   - header and footer date-like fields render as short labels (e.g. `Wed 5/20`) with full datetime in hover title
 - Timeline rendering:
   - `apps/web/src/pages/DynamicField/views/timeline/TimelineView.tsx`
@@ -124,9 +127,12 @@ Defined in `apps/web/src/pages/DynamicField/types.ts`:
 - `hiddenFieldIds?: string[]`
   - legacy support; older Kanban configs may still contain this
 - `cardLayout?: ViewKanbanCardLayout`
-  - `header: string[]`
+  - `header: string[]` (header left lane)
+  - `headerRight: string[]`
+  - `middle: string[]`
   - `footerLeft: string[]`
   - `footerRight: string[]`
+  - `filePreviewFieldId?: string`
   - per-view Kanban card layout (field IDs only)
   - legacy `footer` is auto-mapped to `footerLeft` when loading old saved configs
 - `calendar?: ViewCalendarConfig`
@@ -190,9 +196,10 @@ If you need to change view behavior:
 
 ### Kanban-specific notes
 - Kanban card layout editor lives in `apps/web/src/pages/DynamicField/views/components/CustomizeKanbanCardDialog.tsx`.
-- Layout config is `view.config.cardLayout` with `header`, `footerLeft`, `footerRight` arrays.
+- Layout config is `view.config.cardLayout` with `header`, `headerRight`, `middle`, `footerLeft`, `footerRight`, and optional `filePreviewFieldId`.
 - Live preview uses `KanbanCardContent` and dummy data from `kanban-card-layout.utils.ts`.
-- `KanbanCardLayout.tsx` renders footer as left/right lanes and keeps primary title fixed.
+- `KanbanCardLayout.tsx` renders header and footer as left/right lanes, keeps primary title fixed, and renders middle content under title.
+- File preview at top is image-only and hidden when there is no image attachment in the selected file field.
 
 ## 5) Useful Commands
 
