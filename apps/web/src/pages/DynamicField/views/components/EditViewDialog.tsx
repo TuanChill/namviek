@@ -461,7 +461,7 @@ export function EditViewDialog({ view, fields, isDefault, onClose, onSave, onSet
             </div>
           )}
 
-          {(view.type === 'kanban') && cardVisibleFields.length > 0 && (
+          {(view.type === 'timeline') && cardVisibleFields.length > 0 && (
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-medium">Fields shown on cards</label>
               <div className="grid grid-cols-2 gap-1">

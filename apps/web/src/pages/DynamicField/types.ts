@@ -125,10 +125,16 @@ export interface ViewTimelineConfig {
   highlightedWeekdays?: number[];
 }
 
+export interface ViewKanbanCardLayout {
+  header: string[];
+  footer: string[];
+}
+
 export interface ViewConfig {
   groupBy?: ViewGroupByConfig;
   calendar?: ViewCalendarConfig;
   timeline?: ViewTimelineConfig;
+  cardLayout?: ViewKanbanCardLayout;
   filter?: unknown;
   sort?: unknown;
   fieldOrder?: string[];

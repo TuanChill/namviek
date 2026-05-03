@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   Table2, Kanban, CalendarDays, GanttChart, Plus, MoreVertical,
-  Star, Pencil, Trash2, Check, Settings2, ChevronLeft, ChevronRight,
+  Star, Pencil, Trash2, Check, Settings2, ChevronLeft, ChevronRight, Palette,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { getIconByName } from '../../constants';
 import { EditViewDialog } from './EditViewDialog';
+import { CustomizeKanbanCardDialog } from './CustomizeKanbanCardDialog';
 import type {
   DynView,
   DynViewType,
@@ -58,6 +59,7 @@ export function ViewManagerTabBar({
   const [renameValue, setRenameValue] = useState('');
 
   const [editingView, setEditingView] = useState<DynView | null>(null);
+  const [customizingView, setCustomizingView] = useState<DynView | null>(null);
   const [deletingViewId, setDeletingViewId] = useState<string | null>(null);
 
   const getNextViewName = (type: DynViewType) => {
@@ -126,6 +128,11 @@ export function ViewManagerTabBar({
                   <DropdownMenuItem onClick={() => setEditingView(view)}>
                     <Settings2 size={13} className="mr-2" /> Edit view
                   </DropdownMenuItem>
+                  {view.type === 'kanban' && activeView?.id === view.id && (
+                    <DropdownMenuItem onClick={() => setCustomizingView(view)}>
+                      <Palette size={13} className="mr-2" /> Customize Card
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onClick={() => { setRenamingViewId(view.id); setRenameValue(view.name); }}>
                     <Pencil size={13} className="mr-2" /> Rename
                   </DropdownMenuItem>
@@ -198,6 +205,15 @@ export function ViewManagerTabBar({
           onClose={() => setEditingView(null)}
           onSave={onUpdateView}
           onSetDefault={onSetDefault}
+        />
+      )}
+
+      {customizingView && (
+        <CustomizeKanbanCardDialog
+          view={customizingView}
+          fields={fields}
+          onClose={() => setCustomizingView(null)}
+          onSave={onUpdateView}
         />
       )}
 
