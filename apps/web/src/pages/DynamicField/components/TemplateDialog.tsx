@@ -28,7 +28,7 @@ import { TemplateProgressWidget } from './TemplateProgressWidget';
 // Example: { 'pm-task-tracker': '/images/templates/pm-task-tracker.png' }
 const TEMPLATE_PREVIEW_IMAGES: Record<string, string> = {
   'pm-task-tracker': '/templates/campaign-tracker.png',
-  'pm-bug-tracker': '/templates/campaign-tracker.png',
+  // 'pm-bug-tracker': '/templates/campaign-tracker.png',
   'pm-roadmap': '/templates/campaign-tracker.png',
   'hr-applicant-tracker': '/templates/campaign-tracker.png',
   'hr-employee-directory': '/templates/campaign-tracker.png',
@@ -120,7 +120,7 @@ export function TemplateDialog() {
           </SidebarMenuButton>
         </DialogTrigger>
 
-        <DialogContent className="sm:max-w-5xl max-h-[88vh] h-[88vh] flex flex-col p-0 overflow-hidden">
+        <DialogContent className="sm:max-w-5xl max-h-[88vh] h-[88vh] flex flex-col p-0 overflow-hidden gap-1">
           <DialogHeader className="px-6 py-4 border-b shrink-0">
             <DialogTitle>Choose a Template</DialogTitle>
             <DialogDescription>
@@ -129,18 +129,18 @@ export function TemplateDialog() {
           </DialogHeader>
 
           {isLoadingTemplates ? (
-            <div className="flex-1 flex items-center justify-center p-12">
+            <div className="flex-1 flex items-center justify-center px-12">
               <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <div className="flex flex-1 overflow-hidden">
+            <div className="flex flex-1 overflow-hidden divide-x divide-border">
               {/* ── Left: accordion category list ── */}
-              <div className="w-64 border-r shrink-0 flex flex-col bg-muted/20">
+              <div className="w-64 shrink-0 flex flex-col bg-muted/20">
                 <ScrollArea className="flex-1">
                   <Accordion
                     type="multiple"
                     defaultValue={defaultOpenCategories}
-                    className="p-3 space-y-1"
+                    className="p-3 space-y-1 rounded-none border-none"
                   >
                     {categories.map(category => (
                       <AccordionItem
@@ -158,7 +158,7 @@ export function TemplateDialog() {
                                 key={template.id}
                                 onClick={() => setSelectedTemplate(template)}
                                 className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${selectedTemplate?.id === template.id
-                                  ? 'bg-primary text-primary-foreground font-medium'
+                                  ? ' text-primary font-medium'
                                   : 'hover:bg-muted text-muted-foreground hover:text-foreground'
                                   }`}
                               >
@@ -210,19 +210,19 @@ export function TemplateDialog() {
 
                     {/* Preview image area */}
                     <ScrollArea className="flex-1">
-                      <div className="p-6">
+                      <div className="">
                         {TEMPLATE_PREVIEW_IMAGES[selectedTemplate.id] ? (
                           <img
                             src={TEMPLATE_PREVIEW_IMAGES[selectedTemplate.id]}
                             alt={`${selectedTemplate.name} preview`}
-                            className="w-full rounded-lg border shadow-sm object-cover"
+                            className="max-w-full h-[calc(100vh-300px)] object-cover"
                           />
                         ) : (
                           // Placeholder — replace by adding an entry to TEMPLATE_PREVIEW_IMAGES
-                          <div className="w-full aspect-video rounded-lg border border-dashed bg-muted/30 flex flex-col items-center justify-center gap-3 text-muted-foreground">
+                          <div className="w-full aspect-video flex flex-col items-center justify-center gap-3 text-muted-foreground">
                             <ImageIcon size={40} strokeWidth={1.2} />
                             <p className="text-sm">Preview image coming soon</p>
-                            <p className="text-xs opacity-60">
+                            <p className="text-xs opacity-60 w-2/3 text-center leading-6">
                               Add your image to{' '}
                               <code className="bg-muted px-1 py-0.5 rounded text-xs">
                                 TEMPLATE_PREVIEW_IMAGES[&apos;{selectedTemplate.id}&apos;]
