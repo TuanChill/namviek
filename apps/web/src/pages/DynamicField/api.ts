@@ -12,6 +12,7 @@ export interface Template {
   id: string;
   category: string;
   name: string;
+  icon?: string;
   description: string;
   fields: TemplateField[];
 }
@@ -30,12 +31,12 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 export const api = {
   databases: {
     list: () => apiFetch<DynDatabase[]>('/databases'),
-    create: (name: string) => apiFetch<DynDatabase>('/databases', { method: 'POST', body: JSON.stringify({ name }) }),
+    create: (name: string, icon?: string) => apiFetch<DynDatabase>('/databases', { method: 'POST', body: JSON.stringify({ name, icon }) }),
     delete: (id: string) => apiFetch<{ success: boolean }>(`/databases/${id}`, { method: 'DELETE' }),
   },
   templates: {
     list: () => apiFetch<Template[]>('/templates'),
-    createDatabase: (templateId: string, name?: string) => apiFetch<DynDatabase>('/databases/from-template', { method: 'POST', body: JSON.stringify({ templateId, name }) })
+    createDatabase: (templateId: string, name?: string, icon?: string) => apiFetch<DynDatabase>('/databases/from-template', { method: 'POST', body: JSON.stringify({ templateId, name, icon }) })
   },
   fields: {
     list: (dbId: string) => apiFetch<Field[]>(`/databases/${dbId}/fields`),

@@ -215,7 +215,7 @@ export type FieldOptionWhereInput = {
   fieldId?: Prisma.StringFilter<"FieldOption"> | string
   label?: Prisma.StringFilter<"FieldOption"> | string
   color?: Prisma.StringNullableFilter<"FieldOption"> | string | null
-  position?: Prisma.IntFilter<"FieldOption"> | number
+  position?: Prisma.FloatFilter<"FieldOption"> | number
   field?: Prisma.XOR<Prisma.FieldScalarRelationFilter, Prisma.FieldWhereInput>
 }
 
@@ -237,7 +237,7 @@ export type FieldOptionWhereUniqueInput = Prisma.AtLeast<{
   fieldId?: Prisma.StringFilter<"FieldOption"> | string
   label?: Prisma.StringFilter<"FieldOption"> | string
   color?: Prisma.StringNullableFilter<"FieldOption"> | string | null
-  position?: Prisma.IntFilter<"FieldOption"> | number
+  position?: Prisma.FloatFilter<"FieldOption"> | number
   field?: Prisma.XOR<Prisma.FieldScalarRelationFilter, Prisma.FieldWhereInput>
 }, "id" | "fieldId_label">
 
@@ -262,7 +262,7 @@ export type FieldOptionScalarWhereWithAggregatesInput = {
   fieldId?: Prisma.StringWithAggregatesFilter<"FieldOption"> | string
   label?: Prisma.StringWithAggregatesFilter<"FieldOption"> | string
   color?: Prisma.StringNullableWithAggregatesFilter<"FieldOption"> | string | null
-  position?: Prisma.IntWithAggregatesFilter<"FieldOption"> | number
+  position?: Prisma.FloatWithAggregatesFilter<"FieldOption"> | number
 }
 
 export type FieldOptionCreateInput = {
@@ -285,7 +285,7 @@ export type FieldOptionUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   label?: Prisma.StringFieldUpdateOperationsInput | string
   color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  position?: Prisma.IntFieldUpdateOperationsInput | number
+  position?: Prisma.FloatFieldUpdateOperationsInput | number
   field?: Prisma.FieldUpdateOneRequiredWithoutOptionsNestedInput
 }
 
@@ -294,7 +294,7 @@ export type FieldOptionUncheckedUpdateInput = {
   fieldId?: Prisma.StringFieldUpdateOperationsInput | string
   label?: Prisma.StringFieldUpdateOperationsInput | string
   color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  position?: Prisma.IntFieldUpdateOperationsInput | number
+  position?: Prisma.FloatFieldUpdateOperationsInput | number
 }
 
 export type FieldOptionCreateManyInput = {
@@ -309,7 +309,7 @@ export type FieldOptionUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   label?: Prisma.StringFieldUpdateOperationsInput | string
   color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  position?: Prisma.IntFieldUpdateOperationsInput | number
+  position?: Prisma.FloatFieldUpdateOperationsInput | number
 }
 
 export type FieldOptionUncheckedUpdateManyInput = {
@@ -317,7 +317,7 @@ export type FieldOptionUncheckedUpdateManyInput = {
   fieldId?: Prisma.StringFieldUpdateOperationsInput | string
   label?: Prisma.StringFieldUpdateOperationsInput | string
   color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  position?: Prisma.IntFieldUpdateOperationsInput | number
+  position?: Prisma.FloatFieldUpdateOperationsInput | number
 }
 
 export type FieldOptionListRelationFilter = {
@@ -409,6 +409,14 @@ export type FieldOptionUncheckedUpdateManyWithoutFieldNestedInput = {
   deleteMany?: Prisma.FieldOptionScalarWhereInput | Prisma.FieldOptionScalarWhereInput[]
 }
 
+export type FloatFieldUpdateOperationsInput = {
+  set?: number
+  increment?: number
+  decrement?: number
+  multiply?: number
+  divide?: number
+}
+
 export type FieldOptionCreateWithoutFieldInput = {
   id?: string
   label: string
@@ -457,7 +465,7 @@ export type FieldOptionScalarWhereInput = {
   fieldId?: Prisma.StringFilter<"FieldOption"> | string
   label?: Prisma.StringFilter<"FieldOption"> | string
   color?: Prisma.StringNullableFilter<"FieldOption"> | string | null
-  position?: Prisma.IntFilter<"FieldOption"> | number
+  position?: Prisma.FloatFilter<"FieldOption"> | number
 }
 
 export type FieldOptionCreateManyFieldInput = {
@@ -471,21 +479,21 @@ export type FieldOptionUpdateWithoutFieldInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   label?: Prisma.StringFieldUpdateOperationsInput | string
   color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  position?: Prisma.IntFieldUpdateOperationsInput | number
+  position?: Prisma.FloatFieldUpdateOperationsInput | number
 }
 
 export type FieldOptionUncheckedUpdateWithoutFieldInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   label?: Prisma.StringFieldUpdateOperationsInput | string
   color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  position?: Prisma.IntFieldUpdateOperationsInput | number
+  position?: Prisma.FloatFieldUpdateOperationsInput | number
 }
 
 export type FieldOptionUncheckedUpdateManyWithoutFieldInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   label?: Prisma.StringFieldUpdateOperationsInput | string
   color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  position?: Prisma.IntFieldUpdateOperationsInput | number
+  position?: Prisma.FloatFieldUpdateOperationsInput | number
 }
 
 
@@ -975,7 +983,7 @@ export interface FieldOptionFieldRefs {
   readonly fieldId: Prisma.FieldRef<"FieldOption", 'String'>
   readonly label: Prisma.FieldRef<"FieldOption", 'String'>
   readonly color: Prisma.FieldRef<"FieldOption", 'String'>
-  readonly position: Prisma.FieldRef<"FieldOption", 'Int'>
+  readonly position: Prisma.FieldRef<"FieldOption", 'Float'>
 }
     
 

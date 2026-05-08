@@ -50,9 +50,13 @@ export async function getDynDatabases() {
 }
 
 /** Create a new database */
-export async function createDynDatabase(name: string, description?: string) {
+export async function createDynDatabase(name: string, description?: string, icon?: string) {
     return await prisma.dynDatabase.create({
-        data: { name, ...(description !== undefined && { description }) },
+        data: {
+            name,
+            ...(description !== undefined && { description }),
+            ...(icon !== undefined && { icon }),
+        },
     });
 }
 

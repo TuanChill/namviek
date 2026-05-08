@@ -62,6 +62,7 @@ enum DynViewType {
 model DynDatabase {
   id          String   @id @default(uuid())
   name        String
+  icon        String?
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

@@ -25,7 +25,12 @@ const OPTION_COLORS = [
   '#f472b6', // pink-400
 ]
 
-export async function createDatabaseFromTemplate(templateId: string, name?: string, onProgress?: (msg: string) => Promise<void>) {
+export async function createDatabaseFromTemplate(
+  templateId: string,
+  name?: string,
+  icon?: string,
+  onProgress?: (msg: string) => Promise<void>,
+) {
   console.log(`[Template] Starting creation for template ID: ${templateId}`);
   const template = TEMPLATES.find((t) => t.id === templateId)
   if (!template) {
@@ -37,7 +42,8 @@ export async function createDatabaseFromTemplate(templateId: string, name?: stri
   console.log(`[Template] Creating database...`);
   if (onProgress) await onProgress(`Creating database...`)
   const dbName = name && name.trim() ? name.trim() : template.name
-  const db = await createDynDatabase(dbName, template.description)
+  const dbIcon = icon && icon.trim() ? icon.trim() : template.icon
+  const db = await createDynDatabase(dbName, template.description, dbIcon)
 
   // Fetch users for person fields
   const users = await getUsers()

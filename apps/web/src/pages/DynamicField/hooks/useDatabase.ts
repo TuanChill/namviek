@@ -10,8 +10,8 @@ export function useDatabase() {
     api.databases.list().then(setDatabases).catch(console.error);
   }, []);
 
-  const createDatabase = useCallback(async (name: string) => {
-    const db = await api.databases.create(name);
+  const createDatabase = useCallback(async (name: string, icon?: string) => {
+    const db = await api.databases.create(name, icon);
     const list = await api.databases.list();
     setDatabases(list);
     return db;

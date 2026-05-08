@@ -1,5 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -19,9 +18,10 @@ import {
 } from '@/components/ui/accordion';
 import { useTemplates } from '../hooks/useTemplates';
 import { SidebarMenuButton } from '@/components/ui/sidebar';
-import { Loader2, LayoutTemplate, ImageIcon } from 'lucide-react';
+import { Loader2, LayoutTemplate, ImageIcon, Database } from 'lucide-react';
 import type { Template } from '../api';
 import { TemplateProgressWidget } from './TemplateProgressWidget';
+import { getIconByName } from '../constants';
 
 // ─── Template preview images ──────────────────────────────────────────────────
 // Add your preview images here, keyed by template id.
@@ -54,8 +54,6 @@ export function TemplateDialog() {
     createdDbId,
     resetProgress,
   } = useTemplates();
-
-  const navigate = useNavigate();
 
   const categories = useMemo(() => {
     return Array.from(new Set(templates.map(t => t.category)));
@@ -162,7 +160,13 @@ export function TemplateDialog() {
                                   : 'hover:bg-muted text-muted-foreground hover:text-foreground'
                                   }`}
                               >
-                                {template.name}
+                                <span className="flex items-center gap-2 min-w-0">
+                                  {(() => {
+                                    const TemplateIcon = template.icon ? getIconByName(template.icon) : Database;
+                                    return <TemplateIcon size={14} className="shrink-0" />;
+                                  })()}
+                                  <span className="truncate">{template.name}</span>
+                                </span>
                               </button>
                             ))}
                           </div>
@@ -180,8 +184,12 @@ export function TemplateDialog() {
                     {/* Header bar with name, description and use button */}
                     <div className="flex items-start justify-between gap-4 px-6 py-4 border-b shrink-0">
                       <div className="min-w-0">
-                        <h2 className="text-base font-semibold leading-tight">
-                          {selectedTemplate.name}
+                        <h2 className="text-base font-semibold leading-tight flex items-center gap-2">
+                          {(() => {
+                            const SelectedTemplateIcon = selectedTemplate.icon ? getIconByName(selectedTemplate.icon) : Database;
+                            return <SelectedTemplateIcon size={16} className="shrink-0" />;
+                          })()}
+                          <span>{selectedTemplate.name}</span>
                         </h2>
                         <p className="text-sm text-muted-foreground mt-0.5">
                           {selectedTemplate.description}

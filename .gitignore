@@ -95,3 +95,7 @@ Thumbs.db
 # Misc
 *.pem
 .pnpm-debug.log
+
+.agents/skills/wrangler
+.agents/skills/cloudflare
+.agents/skills/agents-sdk

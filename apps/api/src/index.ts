@@ -103,7 +103,7 @@ app.post('/api/databases/from-template', async (c) => {
   try {
     const body = await c.req.json()
     if (!body.templateId) return c.json({ error: 'templateId is required' }, 400)
-    const db = await createDatabaseFromTemplate(body.templateId, body.name)
+    const db = await createDatabaseFromTemplate(body.templateId, body.name, body.icon)
     return c.json(db, 201)
   } catch (error) {
     console.error(error)
@@ -116,8 +116,9 @@ app.get('/api/databases/from-template/stream', (c) => {
   console.log('[API] Hit /api/databases/from-template/stream endpoint');
   const templateId = c.req.query('templateId')
   const name = c.req.query('name')
+  const icon = c.req.query('icon')
 
-  console.log(`[API] templateId: ${templateId}, name: ${name}`);
+  console.log(`[API] templateId: ${templateId}, name: ${name}, icon: ${icon}`);
 
   if (!templateId) return c.json({ error: 'templateId is required' }, 400)
 
@@ -125,7 +126,7 @@ app.get('/api/databases/from-template/stream', (c) => {
     console.log('[API] streamSSE initialized');
     try {
       console.log('[API] Calling createDatabaseFromTemplate...');
-      const db = await createDatabaseFromTemplate(templateId, name, async (msg) => {
+      const db = await createDatabaseFromTemplate(templateId, name, icon, async (msg) => {
         await stream.writeSSE({
           event: 'progress',
           data: msg,
@@ -220,7 +221,8 @@ app.post('/api/databases', async (c) => {
   try {
     const body = await c.req.json()
     if (!body.name?.trim()) return c.json({ error: 'name is required' }, 400)
-    const db = await createDynDatabase(body.name.trim(), body.description)
+    const icon = typeof body.icon === 'string' && body.icon.trim() ? body.icon.trim() : undefined
+    const db = await createDynDatabase(body.name.trim(), body.description, icon)
     // Create primary text (title) field
     await createField(db.id, 'Name', 'text', { isPrimary: true })
     // Create default view (use provided or fallback to Spreadsheet)

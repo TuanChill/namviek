@@ -102,6 +102,7 @@ export type DynUserScalarFieldEnum = (typeof DynUserScalarFieldEnum)[keyof typeo
 export const DynDatabaseScalarFieldEnum = {
   id: 'id',
   name: 'name',
+  icon: 'icon',
   description: 'description',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'

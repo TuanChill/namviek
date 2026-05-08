@@ -4,7 +4,6 @@ import {
   Plus, Database, Trash2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import {
@@ -14,23 +13,16 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupLabel,
-  SidebarHeader,
   SidebarInset,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
   SidebarProvider,
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 
 import { AddFieldDrawer } from './DynamicField/AddFieldDrawer';
 import { EditFieldDrawer } from './DynamicField/EditFieldDrawer';
-import { TemplateDialog } from './DynamicField/components/TemplateDialog';
+import { CreateDatabaseDialog } from './DynamicField/components/CreateDatabaseDialog';
+import { DatabaseIcon } from './DynamicField/components/DatabaseIcon';
+import { DatabasesSidebar } from './DynamicField/components/DatabasesSidebar';
 import { ICON_OPTIONS } from './DynamicField/constants';
 
 import { useDatabase } from './DynamicField/hooks/useDatabase';
@@ -47,6 +39,8 @@ import { ViewManagerTabBar } from './DynamicField/views/components/ViewManagerTa
 
 import type { DynDatabase, DynViewType, Field, FieldConfig, FieldType, FieldValuePayload } from './DynamicField/types';
 
+const DEFAULT_DB_ICON = 'Database';
+
 export default function DynamicFieldPage() {
   const { databases, selectedDb, setSelectedDb, createDatabase, deleteDatabase, upsertDatabase, removeDatabase } = useDatabase();
   const { fields, setFields, loadFields, addField, renameField, deleteField, moveField, duplicateField, changeIcon, updateField } = useFields();
@@ -60,8 +54,7 @@ export default function DynamicFieldPage() {
   const [selectedRecords, setSelectedRecords] = useState<Set<string>>(new Set());
 
   // DB creation & deletion
-  const [showNewDb, setShowNewDb] = useState(false);
-  const [newDbName, setNewDbName] = useState('');
+  const [showCreateDbDialog, setShowCreateDbDialog] = useState(false);
   const [showDeleteDb, setShowDeleteDb] = useState(false);
   const [showDeletedDbNotice, setShowDeletedDbNotice] = useState(false);
 
@@ -166,13 +159,11 @@ export default function DynamicFieldPage() {
   }, [databaseId, databases, selectedDb?.id, loadDb]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
-  const handleCreateDb = async () => {
-    if (!newDbName.trim()) return;
-    const db = await createDatabase(newDbName.trim());
-    setNewDbName('');
-    setShowNewDb(false);
+  const handleCreateDbFromDialog = useCallback(async (name: string, icon: string) => {
+    const db = await createDatabase(name, icon || DEFAULT_DB_ICON);
+    setShowCreateDbDialog(false);
     await loadDb(db);
-  };
+  }, [createDatabase, loadDb]);
 
   const handleDeleteDb = async () => {
     if (!selectedDb) return;
@@ -347,86 +338,12 @@ export default function DynamicFieldPage() {
 
   return (
     <SidebarProvider>
-      <Sidebar collapsible="icon" onClick={(e) => e.stopPropagation()}>
-        {/* ── Sidebar Header ──────────────────────────────────── */}
-        <SidebarHeader>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton size="lg" asChild>
-                <div className="flex items-center gap-2 cursor-default select-none">
-                  <div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground shrink-0">
-                    <Database size={14} />
-                  </div>
-                  <div className="flex flex-col leading-tight">
-                    <span className="text-sm font-semibold">Databases</span>
-                    <span className="text-xs text-muted-foreground">{databases.length} total</span>
-                  </div>
-                </div>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarHeader>
-
-        {/* ── Sidebar Content ─────────────────────────────────── */}
-        <SidebarContent>
-          <SidebarGroup>
-            <SidebarGroupLabel>Your Databases</SidebarGroupLabel>
-            <SidebarMenu>
-              {databases.map(db => (
-                <SidebarMenuItem key={db.id}>
-                  <SidebarMenuButton
-                    isActive={selectedDb?.id === db.id}
-                    onClick={() => loadDb(db)}
-                    tooltip={db.name}
-                  >
-                    <Database />
-                    <div className="flex flex-col leading-tight min-w-0">
-                      <span className="truncate font-medium">{db.name}</span>
-                    </div>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroup>
-        </SidebarContent>
-
-        {/* ── Sidebar Footer ──────────────────────────────────── */}
-        <SidebarFooter>
-          {showNewDb ? (
-            <div className="flex flex-col gap-1.5 px-1">
-              <Input
-                autoFocus
-                value={newDbName}
-                onChange={e => setNewDbName(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') handleCreateDb();
-                  if (e.key === 'Escape') setShowNewDb(false);
-                }}
-                placeholder="Database name"
-                className="h-7 text-xs"
-              />
-              <div className="flex gap-1">
-                <Button size="sm" className="flex-1 h-7 text-xs" onClick={handleCreateDb}>Create</Button>
-                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setShowNewDb(false)}>Cancel</Button>
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-1">
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton onClick={() => setShowNewDb(true)} tooltip="New database">
-                    <Plus />
-                    <span>New database</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <TemplateDialog />
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </div>
-          )}
-        </SidebarFooter>
-      </Sidebar>
+      <DatabasesSidebar
+        databases={databases}
+        selectedDatabaseId={selectedDb?.id}
+        onSelectDatabase={(db) => { void loadDb(db); }}
+        onOpenCreateDatabase={() => setShowCreateDbDialog(true)}
+      />
 
       {/* ── Main content (SidebarInset) ───────────────────────── */}
       <SidebarInset className='h-svh overflow-hidden' onClick={() => setActiveCell(null)}>
@@ -445,6 +362,7 @@ export default function DynamicFieldPage() {
               >
                 <SidebarTrigger className="-ml-1" />
                 <Separator orientation="vertical" className="!h-4 !self-center shrink-0" />
+                <DatabaseIcon icon={selectedDb?.icon} size={14} />
                 <span className="font-semibold">{selectedDb.name}</span>
                 <Separator orientation="vertical" className="!h-4 !self-center shrink-0" />
                 <span className="text-xs text-muted-foreground">
@@ -573,6 +491,13 @@ export default function DynamicFieldPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <CreateDatabaseDialog
+        open={showCreateDbDialog}
+        onOpenChange={setShowCreateDbDialog}
+        onCreate={handleCreateDbFromDialog}
+        defaultIcon={DEFAULT_DB_ICON}
+      />
     </SidebarProvider>
   );
 }

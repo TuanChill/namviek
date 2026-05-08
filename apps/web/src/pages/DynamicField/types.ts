@@ -86,6 +86,7 @@ export interface DynRecord {
 export interface DynDatabase {
   id: string;
   name: string;
+  icon?: string | null;
   createdAt: string;
   _count: { fields: number; records: number };
 }

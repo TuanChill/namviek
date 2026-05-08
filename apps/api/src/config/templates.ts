@@ -11,6 +11,7 @@ export interface Template {
   id: string
   category: string
   name: string
+  icon?: string
   description: string
   fields: TemplateField[]
 }
@@ -21,6 +22,7 @@ export const TEMPLATES: Template[] = [
     id: 'pm-task-tracker',
     category: 'Project Management',
     name: 'Task Tracker',
+    icon: 'CheckSquare',
     description: 'Track tasks, assignees, and due dates.',
     fields: [
       { name: 'Task Name', type: 'text', fakerRule: 'company.catchPhrase' },
@@ -34,6 +36,7 @@ export const TEMPLATES: Template[] = [
     id: 'pm-bug-tracker',
     category: 'Project Management',
     name: 'Bug/Issue Tracker',
+    icon: 'Flag',
     description: 'Track and resolve software bugs.',
     fields: [
       { name: 'Issue Title', type: 'text', fakerRule: 'company.bs' },
@@ -47,6 +50,7 @@ export const TEMPLATES: Template[] = [
     id: 'pm-roadmap',
     category: 'Project Management',
     name: 'Product Roadmap',
+    icon: 'Calendar',
     description: 'Plan features and track product progress.',
     fields: [
       { name: 'Feature Name', type: 'text', fakerRule: 'company.catchPhrase' },
@@ -62,6 +66,7 @@ export const TEMPLATES: Template[] = [
     id: 'hr-applicant-tracker',
     category: 'HR & Recruiting',
     name: 'Applicant Tracker',
+    icon: 'Users',
     description: 'Manage candidates and interview stages.',
     fields: [
       { name: 'Candidate Name', type: 'text', fakerRule: 'person.fullName' },
@@ -75,6 +80,7 @@ export const TEMPLATES: Template[] = [
     id: 'hr-employee-directory',
     category: 'HR & Recruiting',
     name: 'Employee Directory',
+    icon: 'User',
     description: 'Keep track of employee information.',
     fields: [
       { name: 'Name', type: 'text', fakerRule: 'person.fullName' },
@@ -90,6 +96,7 @@ export const TEMPLATES: Template[] = [
     id: 'sales-pipeline',
     category: 'Sales & CRM',
     name: 'Sales Pipeline',
+    icon: 'Zap',
     description: 'Track leads and deal sizes.',
     fields: [
       { name: 'Lead Name', type: 'text', fakerRule: 'company.name' },
@@ -103,6 +110,7 @@ export const TEMPLATES: Template[] = [
     id: 'sales-customer-feedback',
     category: 'Sales & CRM',
     name: 'Customer Feedback',
+    icon: 'MessageSquare',
     description: 'Log and review customer feedback.',
     fields: [
       { name: 'Feedback Summary', type: 'text', fakerRule: 'lorem.sentence' },
@@ -118,6 +126,7 @@ export const TEMPLATES: Template[] = [
     id: 'mktg-content-calendar',
     category: 'Marketing',
     name: 'Content Calendar',
+    icon: 'Bookmark',
     description: 'Plan and schedule content publications.',
     fields: [
       { name: 'Content Title', type: 'text', fakerRule: 'lorem.words' },
@@ -131,6 +140,7 @@ export const TEMPLATES: Template[] = [
     id: 'mktg-campaign-tracker',
     category: 'Marketing',
     name: 'Campaign Tracker',
+    icon: 'Tag',
     description: 'Track marketing campaign budgets and status.',
     fields: [
       { name: 'Campaign Name', type: 'text', fakerRule: 'company.catchPhrase' },

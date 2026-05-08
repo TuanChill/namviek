@@ -1,12 +1,11 @@
 import {
   Type, Hash, CircleDot, LayoutList, Calendar, User,
-  CheckSquare, Paperclip, Link, Mail, Fingerprint,
-  Clock, UserCheck, RefreshCw, UserCog,
-  Star, Heart, Flag, Tag, Folder, Globe, Phone, Users,
-  Bookmark, Code, Database, Zap, Image, MessageSquare,
-  type LucideIcon,
+  CheckSquare, Paperclip, Fingerprint,
+  Clock, UserCheck, RefreshCw, UserCog, Link, Mail,
 } from 'lucide-react';
 import type { FieldType } from './types';
+export type { IconOption, IconCategory } from './icons';
+export { ICON_CATEGORIES, ICON_OPTIONS, getIconByName } from './icons';
 
 export const OPTION_COLORS = [
   '#6366f1', '#f59e0b', '#10b981', '#3b82f6',
@@ -124,39 +123,4 @@ export function formatNumberValue(raw: string | number | null | undefined, confi
     default:
       return n.toLocaleString(undefined, { minimumFractionDigits: precision ?? 0, maximumFractionDigits: precision ?? 2 });
   }
-}
-
-// ─── Icon picker options ───────────────────────────────────────────────────────
-
-export const ICON_OPTIONS: { name: string; Icon: LucideIcon }[] = [
-  { name: 'Type',         Icon: Type },
-  { name: 'Hash',         Icon: Hash },
-  { name: 'Star',         Icon: Star },
-  { name: 'Heart',        Icon: Heart },
-  { name: 'Flag',         Icon: Flag },
-  { name: 'Tag',          Icon: Tag },
-  { name: 'Folder',       Icon: Folder },
-  { name: 'Link',         Icon: Link },
-  { name: 'Globe',        Icon: Globe },
-  { name: 'Mail',         Icon: Mail },
-  { name: 'Phone',        Icon: Phone },
-  { name: 'User',         Icon: User },
-  { name: 'Users',        Icon: Users },
-  { name: 'Calendar',     Icon: Calendar },
-  { name: 'Clock',        Icon: Clock },
-  { name: 'Bookmark',     Icon: Bookmark },
-  { name: 'Code',         Icon: Code },
-  { name: 'Database',     Icon: Database },
-  { name: 'Zap',          Icon: Zap },
-  { name: 'Image',        Icon: Image },
-  { name: 'MessageSquare',Icon: MessageSquare },
-  { name: 'CheckSquare',  Icon: CheckSquare },
-  { name: 'Paperclip',    Icon: Paperclip },
-  { name: 'CircleDot',    Icon: CircleDot },
-];
-
-const ICON_MAP = new Map(ICON_OPTIONS.map(o => [o.name, o.Icon]));
-
-export function getIconByName(name: string): LucideIcon {
-  return ICON_MAP.get(name) ?? Type;
 }
