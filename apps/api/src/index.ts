@@ -72,6 +72,16 @@ app.get('/', (c) => {
   return c.text('Hello Hono 2!')
 })
 
+// Health check endpoint
+app.get('/health-check', (c) => {
+  return c.json({
+    available: true,
+    status: 'ok',
+    service: 'api',
+    timestamp: new Date().toISOString(),
+  })
+})
+
 // ─── Legacy test routes ────────────────────────────────────────────────────────
 
 // Get all tests
