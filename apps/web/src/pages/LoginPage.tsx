@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { login } from '@/lib/auth-store';
-import { tenants } from '@/lib/dummy-data';
+
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -20,9 +20,8 @@ export default function LoginPage() {
     await new Promise(r => setTimeout(r, 600)); // fake delay
     const user = login(email);
     setLoading(false);
-    // Redirect to first tenant
-    const tenant = tenants.find(t => t.id === user.tenantId) ?? tenants[0];
-    navigate(`/t/${tenant.slug}`);
+    // Redirect to test page
+    navigate(`/test`);
   };
 
   return (

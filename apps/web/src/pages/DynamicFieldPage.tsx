@@ -6,6 +6,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { logout } from '@/lib/auth-store';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
@@ -244,6 +245,11 @@ export default function DynamicFieldPage() {
     }
   };
 
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
   // ── View handlers ─────────────────────────────────────────────────────────
   const handleCreateView = async (name: string, type: DynViewType) => {
     if (!selectedDb) return;
@@ -343,6 +349,7 @@ export default function DynamicFieldPage() {
         selectedDatabaseId={selectedDb?.id}
         onSelectDatabase={(db) => { void loadDb(db); }}
         onOpenCreateDatabase={() => setShowCreateDbDialog(true)}
+        onLogout={handleLogout}
       />
 
       {/* ── Main content (SidebarInset) ───────────────────────── */}

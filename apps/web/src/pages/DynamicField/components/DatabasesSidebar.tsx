@@ -1,4 +1,4 @@
-import { Plus, Database } from 'lucide-react';
+import { Plus, Database, LogOut } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -19,6 +19,7 @@ type DatabasesSidebarProps = {
   selectedDatabaseId?: string;
   onSelectDatabase: (database: DynDatabase) => void;
   onOpenCreateDatabase: () => void;
+  onLogout: () => void;
 };
 
 export function DatabasesSidebar({
@@ -26,6 +27,7 @@ export function DatabasesSidebar({
   selectedDatabaseId,
   onSelectDatabase,
   onOpenCreateDatabase,
+  onLogout,
 }: DatabasesSidebarProps) {
   return (
     <Sidebar collapsible="icon" onClick={(e) => e.stopPropagation()}>
@@ -80,6 +82,12 @@ export function DatabasesSidebar({
             </SidebarMenuItem>
             <SidebarMenuItem>
               <TemplateDialog />
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton onClick={onLogout} tooltip="Logout" className="text-destructive hover:bg-destructive/10">
+                <LogOut size={16} />
+                <span>Logout</span>
+              </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
         </div>
