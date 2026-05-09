@@ -37,7 +37,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build packages
-        run: pnpm --recursive --filter "./packages/**" run build --if-present
+        run: pnpm --recursive --if-present --filter "./packages/**" run build
 
       - name: Build web app
         run: pnpm --filter web build
