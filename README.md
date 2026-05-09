@@ -1,5 +1,7 @@
 # Template Monorepo
 
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/<your-org>/<your-repo>/tree/main/apps/web)
+
 A modern monorepo template using **pnpm workspaces** for efficient package management and code sharing.
 
 ## 📋 Table of Contents
@@ -14,6 +16,7 @@ A modern monorepo template using **pnpm workspaces** for efficient package manag
   - [Port Configuration](#port-configuration)
   - [API Proxy Configuration](#api-proxy-configuration)
 - [🏗️ Building for Production](#️-building-for-production)
+- [☁️ Deploy Frontend to Cloudflare](#️-deploy-frontend-to-cloudflare)
 - [📚 Prisma Database Setup](#-prisma-database-setup)
 - [📁 Package Details](#-package-details)
 - [🌊 Streaming with Readable Streams](#-streaming-with-readable-streams)
@@ -236,6 +239,37 @@ pnpm build:web
 ```bash
 pnpm build:all
 ```
+
+## ☁️ Deploy Frontend to Cloudflare
+
+This repository is ready to deploy `apps/web` to Cloudflare Pages using direct upload with Wrangler.
+
+### One-click deploy button
+
+The button at the top of this README uses this URL format:
+
+```text
+https://deploy.workers.cloudflare.com/?url=https://github.com/<your-org>/<your-repo>/tree/main/apps/web
+```
+
+Replace `<your-org>/<your-repo>` with your public GitHub repository path.
+
+### Continuous Deployment (GitHub Actions)
+
+A production deployment workflow is included at `.github/workflows/deploy-web-cloudflare.yml`.
+
+Before enabling it, add these repository secrets in GitHub:
+
+- `CLOUDFLARE_API_TOKEN` (Account -> Cloudflare Pages: Edit)
+- `CLOUDFLARE_ACCOUNT_ID`
+
+Add this repository variable:
+
+- `CLOUDFLARE_PAGES_PROJECT` (your Cloudflare Pages project name)
+
+Then push to `main` to trigger deployment.
+
+For full setup details, see `docs/cloudflare-frontend-deploy.md`.
 
 ## 📚 Prisma Database Setup
 
