@@ -17,8 +17,8 @@ import {
 } from '@/components/ui/collapsible';
 import { Separator } from '@/components/ui/separator';
 import {
-  Home, Inbox, Users, Target, ListTodo, Star, FolderKanban, HelpCircle,
-  Settings, Zap, ChevronDown, ChevronRight, MoreHorizontal,
+  Inbox, Users, Target, FolderKanban, HelpCircle,
+  Settings, ChevronDown, ChevronRight, MoreHorizontal,
   LogOut, Shield, Plus,
 } from 'lucide-react';
 import { logout, getCurrentUser } from '@/lib/auth-store';

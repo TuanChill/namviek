@@ -10,7 +10,10 @@ import type {
 } from './auth.types';
 
 export class AuthApi {
-    constructor(private client: BaseHttpClient) { }
+    private client: BaseHttpClient;
+    constructor(client: BaseHttpClient) {
+        this.client = client;
+    }
 
     async login(credentials: LoginRequest): Promise<ApiResponse<LoginResponse>> {
         return this.client.post<LoginResponse>('/auth/login', credentials);

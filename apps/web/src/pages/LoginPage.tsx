@@ -18,7 +18,7 @@ export default function LoginPage() {
     if (!email || !password) return;
     setLoading(true);
     await new Promise(r => setTimeout(r, 600)); // fake delay
-    const user = login(email);
+    login(email);
     setLoading(false);
     // Redirect to test page
     navigate(`/test`);

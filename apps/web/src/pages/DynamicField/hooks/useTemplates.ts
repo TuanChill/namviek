@@ -10,7 +10,7 @@ export function useTemplates() {
   const [progressMessage, setProgressMessage] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
   const [createdDbId, setCreatedDbId] = useState<string | null>(null);
-  const { databases } = useDatabase();
+  useDatabase();
 
   useEffect(() => {
     setIsLoadingTemplates(true);

@@ -7,7 +7,10 @@ import type {
 } from './test.types';
 
 export class TestApi {
-    constructor(private client: BaseHttpClient) { }
+    private client: BaseHttpClient;
+    constructor(client: BaseHttpClient) {
+        this.client = client;
+    }
 
     async getAll(): Promise<ApiResponse<Test[]>> {
         return this.client.get<Test[]>('/tests');

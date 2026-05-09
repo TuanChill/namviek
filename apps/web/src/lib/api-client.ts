@@ -1,4 +1,5 @@
 import { createApiClient } from '@local/api-client';
+import type { RequestConfig } from '@local/api-client';
 
 // Create API client instance
 export const apiClient = createApiClient({
@@ -6,7 +7,7 @@ export const apiClient = createApiClient({
 });
 
 // Add request interceptor to include auth token
-apiClient.interceptors.addRequestInterceptor((config) => {
+apiClient.interceptors.addRequestInterceptor((config: RequestConfig) => {
     const token = localStorage.getItem('authToken');
     if (token) {
         config.headers = {
@@ -24,7 +25,7 @@ apiClient.interceptors.addResponseInterceptor((response) => {
 });
 
 // Add error interceptor
-apiClient.interceptors.addErrorInterceptor((error) => {
+apiClient.interceptors.addErrorInterceptor((error: Error) => {
     console.error('API Error:', error);
     // You can add custom error handling here, e.g., redirect to login on 401
     return error;

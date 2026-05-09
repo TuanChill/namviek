@@ -18,6 +18,9 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@local/api-client": [
+        "../../packages/api-client/src/index.ts"
       ]
     },
     /* Bundler mode */

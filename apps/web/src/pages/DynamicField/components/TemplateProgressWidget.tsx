@@ -1,4 +1,3 @@
-import React from 'react';
 import { Loader2, CheckCircle2, Minimize2, Maximize2, X, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';

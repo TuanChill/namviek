@@ -99,6 +99,7 @@ export type FieldValuePayload = {
   dateValue?: string | null;
   personValue?: string[];
   boolValue?: boolean | null;
+  jsonValue?: unknown | null;
 };
 
 // ─── View system ──────────────────────────────────────────────────────────────

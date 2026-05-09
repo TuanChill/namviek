@@ -36,6 +36,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build packages
+        run: pnpm --recursive --filter "./packages/**" run build --if-present
+
       - name: Build web app
         run: pnpm --filter web build
 

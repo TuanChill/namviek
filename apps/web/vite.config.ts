@@ -12,6 +12,7 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),
+        '@local/api-client': path.resolve(__dirname, '../../packages/api-client/src/index.ts'),
       },
     },
     server: {
