@@ -42,6 +42,9 @@ jobs:
         run: pnpm --recursive --if-present --filter "./packages/**" run build
 
       - name: Build web app
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          # Add more variables as needed, excluding PORT
         run: pnpm --filter web build
 
       - name: Validate Cloudflare Pages project variable
