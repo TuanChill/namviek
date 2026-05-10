@@ -3,3 +3,11 @@ node_modules
 .env
 
 /generated/prisma
+
+# Build outputs (tsc emits .js/.js.map alongside .ts sources)
+*.js
+*.js.map
+generated/**/*.js
+generated/**/*.js.map
+prisma/seed.js
+prisma/seed.js.map
