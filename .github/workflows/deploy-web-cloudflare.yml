@@ -37,6 +37,8 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build packages
+        # Build only workspace packages first so apps/web can resolve local package outputs.
+        # --filter limits work to ./packages/**, and --if-present avoids failing on packages without a build script.
         run: pnpm --recursive --if-present --filter "./packages/**" run build
 
       - name: Build web app
