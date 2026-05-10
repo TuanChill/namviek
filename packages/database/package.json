@@ -8,6 +8,7 @@
     ".": "./index.js"
   },
   "scripts": {
+    "build": "tsc --noEmit false",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
