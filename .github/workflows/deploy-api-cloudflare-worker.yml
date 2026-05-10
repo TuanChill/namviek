@@ -35,6 +35,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build packages
+        run: pnpm --recursive --if-present --filter "./packages/**" run build
+
       - name: Deploy API Worker
         uses: cloudflare/wrangler-action@v3
         with:
