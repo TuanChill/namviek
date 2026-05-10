@@ -2,9 +2,11 @@
   "name": "api",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "tsx watch src/node.ts",
+    "dev:worker": "wrangler dev",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/node.js",
+    "deploy": "wrangler deploy"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1037.0",
