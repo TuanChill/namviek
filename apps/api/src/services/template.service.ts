@@ -7,7 +7,7 @@ import {
   createFieldOption,
   getUsers,
   ensureDefaultView,
-} from '@local/database'
+} from '../queries.js'
 import { TEMPLATES } from '../config/templates.js'
 
 /** Curated palette — each value is stored in the option and rendered by OptionChip */

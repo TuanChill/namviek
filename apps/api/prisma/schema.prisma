@@ -1,0 +1,171 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Legacy test model ───────────────────────────────────────────────────────
+
+model Test {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+}
+
+// ─── Users (for person fields) ────────────────────────────────────────────────
+
+model DynUser {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("dyn_users")
+}
+
+// ─── Dynamic Fields System ────────────────────────────────────────────────────
+
+enum FieldType {
+  text
+  number
+  select
+  multi_select
+  date
+  person
+  checkbox
+  file
+  url
+  email
+  id
+  created_time
+  created_by
+  updated_time
+  updated_by
+}
+
+enum DynViewType {
+  spreadsheet
+  kanban
+  calendar
+  timeline
+}
+
+model DynDatabase {
+  id          String   @id @default(uuid())
+  name        String
+  icon        String?
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  fields  Field[]
+  records DynRecord[]
+  views   DynView[]
+
+  @@map("dyn_databases")
+}
+
+model DynView {
+  id         String      @id @default(uuid())
+  databaseId String
+  name       String
+  icon       String?
+  type       DynViewType
+  position   Int
+  isDefault  Boolean     @default(false)
+  config     Json?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  database DynDatabase @relation(fields: [databaseId], references: [id], onDelete: Cascade)
+
+  @@index([databaseId, position])
+  @@index([databaseId, type])
+  @@map("dyn_views")
+}
+
+model Field {
+  id         String    @id @default(uuid())
+  databaseId String
+  name       String
+  type       FieldType
+  position   Int
+  required   Boolean   @default(false)
+  isPrimary  Boolean   @default(false)
+  config     Json?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  database    DynDatabase   @relation(fields: [databaseId], references: [id], onDelete: Cascade)
+  options     FieldOption[]
+  fieldValues FieldValue[]
+
+  @@unique([databaseId, name])
+  @@index([databaseId, position])
+  @@map("dyn_fields")
+}
+
+model FieldOption {
+  id       String  @id @default(uuid())
+  fieldId  String
+  label    String
+  color    String?
+  position Float
+
+  field Field @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+
+  @@unique([fieldId, label])
+  @@index([fieldId, position])
+  @@map("dyn_field_options")
+}
+
+model DynRecord {
+  id         String    @id @default(uuid())
+  databaseId String
+  rowNumber  Int
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  archivedAt DateTime?
+
+  database    DynDatabase  @relation(fields: [databaseId], references: [id], onDelete: Cascade)
+  fieldValues FieldValue[]
+
+  @@unique([databaseId, rowNumber])
+  @@index([databaseId, createdAt])
+  @@map("dyn_records")
+}
+
+model FieldValue {
+  id               String    @id @default(uuid())
+  recordId         String
+  fieldId          String
+
+  textValue        String?
+  numberValue      Decimal?  @db.Decimal(20, 6)
+  selectValue      String?
+  multiSelectValue String[]
+  dateValue        DateTime? @db.Timestamptz(6)
+  personValue      String[]
+  boolValue        Boolean?
+  jsonValue        Json?
+
+  record DynRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  field  Field     @relation(fields: [fieldId],  references: [id], onDelete: Cascade)
+
+  @@unique([recordId, fieldId])
+  @@index([fieldId, textValue])
+  @@index([fieldId, numberValue])
+  @@index([fieldId, selectValue])
+  @@index([fieldId, dateValue])
+  @@index([fieldId, boolValue])
+  @@map("dyn_field_values")
+}

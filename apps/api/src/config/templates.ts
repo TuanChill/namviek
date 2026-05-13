@@ -1,4 +1,4 @@
-import { FieldType } from '@local/database'
+import { FieldType } from '../generated/client/client.js'
 
 export interface TemplateField {
   name: string

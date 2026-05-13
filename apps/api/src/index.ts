@@ -25,7 +25,7 @@ import {
   ensureDefaultView,
   createField,
   ensurePrimaryField,
-} from '@local/database'
+} from './queries.js'
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
 import crypto from 'crypto'
 import { TEMPLATES } from './config/templates.js'

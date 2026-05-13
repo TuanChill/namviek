@@ -12,9 +12,9 @@ import {
   reorderField,
   duplicateField,
   backfillIdField,
-} from '@local/database'
-import type { FieldType } from '@local/database'
-import type { Prisma } from '@local/database'
+} from '../queries.js'
+import type { FieldType } from '../generated/client/client.js'
+import type { Prisma } from '../generated/client/client.js'
 
 class ValidationError extends Error {}
 

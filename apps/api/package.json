@@ -6,19 +6,29 @@
     "dev:worker": "wrangler dev",
     "build": "tsc",
     "start": "node dist/node.js",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:studio": "prisma studio"
+  },
+  "prisma": {
+    "schema": "prisma/schema.prisma"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1037.0",
     "@aws-sdk/s3-request-presigner": "^3.1037.0",
     "@hono/node-server": "^1.19.6",
     "@local/database": "workspace:*",
+    "@prisma/client": "^7.0.0",
+    "@prisma/extension-accelerate": "^3.0.0",
     "dotenv": "^17.2.3",
     "hono": "^4.10.6"
   },
   "devDependencies": {
     "@faker-js/faker": "^10.4.0",
     "@types/node": "^20.11.17",
+    "prisma": "^7.0.0",
     "tsx": "^4.7.1",
     "typescript": "^5.8.3"
   }
