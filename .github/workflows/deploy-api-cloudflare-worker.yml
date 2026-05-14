@@ -38,6 +38,10 @@ jobs:
         working-directory: apps/api
         run: pnpm db:generate
 
+      - name: Build Worker bundle (with CJS banner patch)
+        working-directory: apps/api
+        run: pnpm build:worker
+
       - name: Deploy API Worker
         uses: cloudflare/wrangler-action@v3
         with:
@@ -45,6 +49,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: apps/api
+          command: deploy --env production --no-bundle
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
           secrets: |
             ORIGINS

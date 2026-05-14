@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { streamSSE } from 'hono/streaming'
+import { getPrisma, type PrismaInstance } from './lib/prisma.js'
 import { dbEvents } from './pubsub.js'
 import {
   getAllTests,
@@ -32,7 +33,16 @@ import { TEMPLATES } from './config/templates.js'
 import { createDatabaseFromTemplate } from './services/template.service.js'
 import { registerFieldRoutes } from './services/field.service.js'
 
-const app = new Hono()
+const app = new Hono<{ Bindings: {
+  DATABASE_URL: string
+  ORIGINS: string
+  R2_ACCOUNT_ID: string
+  R2_ACCESS_KEY_ID: string
+  R2_SECRET_ACCESS_KEY: string
+  R2_BUCKET: string
+  R2_PUBLIC_URL: string
+  MCP_API_KEY: string
+}; Variables: { prisma: PrismaInstance } }>()
 const GLOBAL_DATABASE_STREAM_ID = '__GLOBAL_DATABASES__'
 
 const s3Client = new S3Client({
@@ -53,6 +63,14 @@ app.use('/*', cors({
   origin: origins.split(','),
   credentials: true,
 }))
+
+// Initialize Prisma client per request using Workers binding or local env
+// Following: https://hono.dev/examples/prisma
+app.use('/*', async (c, next) => {
+  const url = c.env?.DATABASE_URL || process.env.DATABASE_URL || ''
+  c.set('prisma', getPrisma(url))
+  await next()
+})
 
 // Protect all /api/* routes with a fixed API key (for MCP server access)
 const MCP_API_KEY = process.env.MCP_API_KEY || 'namviek-mcp-dev-key'
@@ -85,7 +103,7 @@ app.get('/health-check', (c) => {
 // Get all tests
 app.get('/api/tests', async (c) => {
   try {
-    const tests = await getAllTests()
+    const tests = await getAllTests(c.var.prisma)
     return c.json(tests)
   } catch (error) {
     console.log('error', error)
@@ -97,7 +115,7 @@ app.get('/api/tests', async (c) => {
 app.post('/api/tests', async (c) => {
   try {
     const body = await c.req.json()
-    const test = await createTest(body.name, body.description)
+    const test = await createTest(c.var.prisma, body.name, body.description)
     return c.json(test, 201)
   } catch (error) {
     return c.json({ error: 'Failed to create test' }, 500)
@@ -111,7 +129,7 @@ app.post('/api/databases/from-template', async (c) => {
   try {
     const body = await c.req.json()
     if (!body.templateId) return c.json({ error: 'templateId is required' }, 400)
-    const db = await createDatabaseFromTemplate(body.templateId, body.name, body.icon)
+    const db = await createDatabaseFromTemplate(c.var.prisma, body.templateId, body.name, body.icon)
     return c.json(db, 201)
   } catch (error) {
     console.error(error)
@@ -134,7 +152,7 @@ app.get('/api/databases/from-template/stream', (c) => {
     console.log('[API] streamSSE initialized');
     try {
       console.log('[API] Calling createDatabaseFromTemplate...');
-      const db = await createDatabaseFromTemplate(templateId, name, icon, async (msg) => {
+      const db = await createDatabaseFromTemplate(c.var.prisma, templateId, name, icon, async (msg) => {
         await stream.writeSSE({
           event: 'progress',
           data: msg,
@@ -216,7 +234,7 @@ app.get('/api/databases/stream', (c) => {
 // GET /api/databases — list all databases
 app.get('/api/databases', async (c) => {
   try {
-    const databases = await getDynDatabases()
+    const databases = await getDynDatabases(c.var.prisma)
     return c.json(databases)
   } catch (error) {
     console.error(error)
@@ -230,11 +248,11 @@ app.post('/api/databases', async (c) => {
     const body = await c.req.json()
     if (!body.name?.trim()) return c.json({ error: 'name is required' }, 400)
     const icon = typeof body.icon === 'string' && body.icon.trim() ? body.icon.trim() : undefined
-    const db = await createDynDatabase(body.name.trim(), body.description, icon)
+    const db = await createDynDatabase(c.var.prisma, body.name.trim(), body.description, icon)
     // Create primary text (title) field
-    await createField(db.id, 'Name', 'text', { isPrimary: true })
+    await createField(c.var.prisma, db.id, 'Name', 'text', { isPrimary: true })
     // Create default view (use provided or fallback to Spreadsheet)
-    await createDatabaseView({
+    await createDatabaseView(c.var.prisma, {
       databaseId: db.id,
       name: body.defaultView?.name ?? 'Spreadsheet',
       type: body.defaultView?.type ?? 'spreadsheet',
@@ -255,7 +273,7 @@ app.delete('/api/databases/:id', async (c) => {
   try {
     const dbId = c.req.param('id')
     dbEvents.publish(GLOBAL_DATABASE_STREAM_ID, 'DATABASE_DELETED', { id: dbId })
-    await deleteDynDatabase(dbId)
+    await deleteDynDatabase(c.var.prisma, dbId)
     return c.json({ success: true })
   } catch (error) {
     console.error(error)
@@ -271,7 +289,7 @@ app.get('/api/templates', (c) => {
 // GET /api/databases/:id/stats — simple stats for MCP agent
 app.get('/api/databases/:id/stats', async (c) => {
   try {
-    const stats = await getDatabaseStats(c.req.param('id'))
+    const stats = await getDatabaseStats(c.var.prisma, c.req.param('id'))
     return c.json(stats)
   } catch (error) {
     console.error(error)
@@ -365,7 +383,7 @@ function validateViewConfig(config: any): string | null {
 // GET /api/databases/:id/views
 app.get('/api/databases/:id/views', async (c) => {
   try {
-    const views = await getDatabaseViews(c.req.param('id'))
+    const views = await getDatabaseViews(c.var.prisma, c.req.param('id'))
     return c.json(views)
   } catch (error) {
     console.error(error)
@@ -386,7 +404,7 @@ app.post('/api/databases/:id/views', async (c) => {
     if (validationError) {
       return c.json({ error: validationError }, 400)
     }
-    const view = await createDatabaseView({
+    const view = await createDatabaseView(c.var.prisma, {
       databaseId,
       name: body.name.trim(),
       type: body.type,
@@ -415,7 +433,7 @@ app.patch('/api/views/:viewId', async (c) => {
       }
       patch.config = body.config
     }
-    const view = await updateDatabaseView(viewId, patch)
+    const view = await updateDatabaseView(c.var.prisma, viewId, patch)
     return c.json(view)
   } catch (error) {
     console.error(error)
@@ -426,7 +444,7 @@ app.patch('/api/views/:viewId', async (c) => {
 // DELETE /api/views/:viewId
 app.delete('/api/views/:viewId', async (c) => {
   try {
-    const view = await deleteDatabaseView(c.req.param('viewId'))
+    const view = await deleteDatabaseView(c.var.prisma, c.req.param('viewId'))
     return c.json(view)
   } catch (error: any) {
     if (error?.message === 'Cannot delete the last remaining view' || error?.message === 'Cannot delete the default view') {
@@ -443,7 +461,7 @@ app.post('/api/databases/:id/views/reorder', async (c) => {
     const databaseId = c.req.param('id')
     const body = await c.req.json()
     if (!Array.isArray(body.viewIds)) return c.json({ error: 'viewIds array is required' }, 400)
-    await reorderDatabaseViews(databaseId, body.viewIds)
+    await reorderDatabaseViews(c.var.prisma, databaseId, body.viewIds)
     return c.json({ success: true })
   } catch (error) {
     console.error(error)
@@ -455,7 +473,7 @@ app.post('/api/databases/:id/views/reorder', async (c) => {
 app.post('/api/databases/:id/views/:viewId/default', async (c) => {
   try {
     const { id: databaseId, viewId } = c.req.param()
-    await setDefaultDatabaseView(databaseId, viewId)
+    await setDefaultDatabaseView(c.var.prisma, databaseId, viewId)
     return c.json({ success: true })
   } catch (error) {
     console.error(error)
@@ -466,7 +484,7 @@ app.post('/api/databases/:id/views/:viewId/default', async (c) => {
 // GET /api/databases/:id/records — list records with field values
 app.get('/api/databases/:id/records', async (c) => {
   try {
-    const records = await getDynRecords(c.req.param('id'))
+    const records = await getDynRecords(c.var.prisma, c.req.param('id'))
     return c.json(records)
   } catch (error) {
     console.error(error)
@@ -477,7 +495,7 @@ app.get('/api/databases/:id/records', async (c) => {
 // POST /api/databases/:id/records — create an empty record
 app.post('/api/databases/:id/records', async (c) => {
   try {
-    const record = await createDynRecord(c.req.param('id'))
+    const record = await createDynRecord(c.var.prisma, c.req.param('id'))
     dbEvents.publish(c.req.param('id'), 'RECORD_CREATED', record)
     return c.json(record, 201)
   } catch (error) {
@@ -491,7 +509,7 @@ app.delete('/api/records', async (c) => {
   try {
     const body = await c.req.json()
     if (!Array.isArray(body.ids)) return c.json({ error: 'ids array is required' }, 400)
-    await deleteDynRecords(body.ids)
+    await deleteDynRecords(c.var.prisma, body.ids)
 
     // We don't have dbId directly here, but we could pass it or clients can just listen.
     // Actually, deleteDynRecords doesn't return dbId, so frontend should pass databaseId.
@@ -511,6 +529,7 @@ app.put('/api/records/:recordId/values/:fieldId', async (c) => {
     const body = await c.req.json()
     const { databaseId, ...payload } = body
     const value = await setFieldValue(
+      c.var.prisma,
       c.req.param('recordId'),
       c.req.param('fieldId'),
       payload
@@ -598,7 +617,7 @@ app.delete('/api/upload', async (c) => {
 app.get('/api/users', async (c) => {
   try {
     const q = c.req.query('q')?.trim()
-    const users = q ? await searchUsers(q) : await getUsers()
+    const users = q ? await searchUsers(c.var.prisma, q) : await getUsers(c.var.prisma)
     return c.json(users)
   } catch (error) {
     console.error(error)
@@ -613,7 +632,7 @@ app.post('/api/users', async (c) => {
     if (!body.name?.trim() || !body.email?.trim()) {
       return c.json({ error: 'name and email are required' }, 400)
     }
-    const user = await upsertDynUser(body.name.trim(), body.email.trim(), body.avatarUrl)
+    const user = await upsertDynUser(c.var.prisma, body.name.trim(), body.email.trim(), body.avatarUrl)
     return c.json(user, 201)
   } catch (error) {
     console.error(error)

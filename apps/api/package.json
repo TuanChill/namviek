@@ -7,7 +7,9 @@
     "build": "tsc",
     "start": "node dist/node.js",
     "deploy": "wrangler deploy",
-    "db:generate": "prisma generate && node scripts/patch-generated-client.mjs",
+    "build:worker": "node scripts/build-worker.mjs",
+    "deploy:worker": "node scripts/build-worker.mjs && wrangler deploy --env production --no-bundle",
+    "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio"

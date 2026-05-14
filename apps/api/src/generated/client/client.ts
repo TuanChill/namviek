@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url'
 // CF_WORKERS_PATCH: import.meta.url is undefined in Workers; Prisma Accelerate doesn't need __dirname.
 try { globalThis['__dirname'] = path.dirname(fileURLToPath(import.meta.url)) } catch { globalThis['__dirname'] = '/' }
 
-import * as runtime from "@prisma/client/runtime/client"
+import * as runtime from "@prisma/client/runtime/wasm-compiler-edge"
 import * as $Enums from "./enums.js"
 import * as $Class from "./internal/class.js"
 import * as Prisma from "./internal/prismaNamespace.js"

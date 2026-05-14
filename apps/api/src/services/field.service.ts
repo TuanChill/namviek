@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import type { PrismaInstance } from '../lib/prisma.js'
 import {
   getFields,
   getFieldById,
@@ -221,11 +222,13 @@ type DbEventPublisher = {
   publish: (databaseId: string, event: string, payload: unknown) => void
 }
 
-export function registerFieldRoutes(app: Hono, dbEvents: DbEventPublisher) {
+type AppWithPrisma = Hono<any>
+
+export function registerFieldRoutes(app: AppWithPrisma, dbEvents: DbEventPublisher) {
   // GET /api/databases/:id/fields — list fields
   app.get('/api/databases/:id/fields', async (c) => {
     try {
-      const fields = await getFields(c.req.param('id'))
+      const fields = await getFields(c.var.prisma, c.req.param('id'))
       return c.json(fields)
     } catch (error) {
       console.error(error)
@@ -236,7 +239,7 @@ export function registerFieldRoutes(app: Hono, dbEvents: DbEventPublisher) {
   // GET /api/fields/:fieldId — get one field with options
   app.get('/api/fields/:fieldId', async (c) => {
     try {
-      const field = await getFieldById(c.req.param('fieldId'))
+      const field = await getFieldById(c.var.prisma, c.req.param('fieldId'))
       if (!field) return c.json({ error: 'Field not found' }, 404)
       return c.json(field)
     } catch (error) {
@@ -257,6 +260,7 @@ export function registerFieldRoutes(app: Hono, dbEvents: DbEventPublisher) {
       const config = sanitizeConfigForType(type, body.config)
 
       const field = await createField(
+        c.var.prisma,
         c.req.param('id'),
         name,
         type,
@@ -276,7 +280,7 @@ export function registerFieldRoutes(app: Hono, dbEvents: DbEventPublisher) {
   // GET /api/fields/:fieldId/options — list options for a field
   app.get('/api/fields/:fieldId/options', async (c) => {
     try {
-      const options = await getFieldOptions(c.req.param('fieldId'))
+      const options = await getFieldOptions(c.var.prisma, c.req.param('fieldId'))
       return c.json(options)
     } catch (error) {
       console.error(error)
@@ -293,6 +297,7 @@ export function registerFieldRoutes(app: Hono, dbEvents: DbEventPublisher) {
         assertNumber('position', body.position)
       }
       const option = await createFieldOption(
+        c.var.prisma,
         c.req.param('fieldId'),
         body.label.trim(),
         body.color,
@@ -339,7 +344,7 @@ export function registerFieldRoutes(app: Hono, dbEvents: DbEventPublisher) {
         return c.json({ error: 'At least one of label, color, or position must be provided' }, 400)
       }
 
-      const option = await updateFieldOption(c.req.param('fieldId'), c.req.param('optionId'), payload)
+      const option = await updateFieldOption(c.var.prisma, c.req.param('fieldId'), c.req.param('optionId'), payload)
       return c.json(option)
     } catch (error: any) {
       if (error instanceof ValidationError) {
@@ -356,7 +361,7 @@ export function registerFieldRoutes(app: Hono, dbEvents: DbEventPublisher) {
   // DELETE /api/fields/:fieldId/options/:optionId — delete an option
   app.delete('/api/fields/:fieldId/options/:optionId', async (c) => {
     try {
-      await deleteFieldOption(c.req.param('optionId'))
+      await deleteFieldOption(c.var.prisma, c.req.param('optionId'))
       return c.json({ success: true })
     } catch (error) {
       console.error(error)
@@ -368,7 +373,7 @@ export function registerFieldRoutes(app: Hono, dbEvents: DbEventPublisher) {
   app.delete('/api/fields/:fieldId', async (c) => {
     try {
       const databaseId = c.req.query('databaseId')
-      await deleteField(c.req.param('fieldId'))
+      await deleteField(c.var.prisma, c.req.param('fieldId'))
       if (databaseId) {
         dbEvents.publish(databaseId, 'FIELD_DELETED', { id: c.req.param('fieldId') })
       }
@@ -388,7 +393,7 @@ export function registerFieldRoutes(app: Hono, dbEvents: DbEventPublisher) {
       const body = await c.req.json()
       if (!isObject(body)) return c.json({ error: 'Invalid request body' }, 400)
 
-      const current = await getFieldById(c.req.param('fieldId'))
+      const current = await getFieldById(c.var.prisma, c.req.param('fieldId'))
       if (!current) return c.json({ error: 'Field not found' }, 404)
 
       const data: { name?: string; config?: Prisma.InputJsonValue } = {}
@@ -413,7 +418,7 @@ export function registerFieldRoutes(app: Hono, dbEvents: DbEventPublisher) {
         return c.json({ error: 'At least one of name or config must be provided' }, 400)
       }
 
-      const field = await updateField(c.req.param('fieldId'), data)
+      const field = await updateField(c.var.prisma, c.req.param('fieldId'), data)
       dbEvents.publish(field.databaseId, 'FIELD_UPDATED', field)
       return c.json(field)
     } catch (error) {
@@ -429,7 +434,7 @@ export function registerFieldRoutes(app: Hono, dbEvents: DbEventPublisher) {
   app.post('/api/fields/:fieldId/move', async (c) => {
     try {
       const body = await c.req.json()
-      const result = await reorderField(c.req.param('fieldId'), body.direction)
+      const result = await reorderField(c.var.prisma, c.req.param('fieldId'), body.direction)
       if (body.databaseId) {
         dbEvents.publish(body.databaseId, 'FIELDS_REORDERED', {})
       }
@@ -443,7 +448,7 @@ export function registerFieldRoutes(app: Hono, dbEvents: DbEventPublisher) {
   // POST /api/fields/:fieldId/duplicate — duplicate a field
   app.post('/api/fields/:fieldId/duplicate', async (c) => {
     try {
-      const field = await duplicateField(c.req.param('fieldId'))
+      const field = await duplicateField(c.var.prisma, c.req.param('fieldId'))
       if (!field) {
         return c.json({ error: 'Field not found' }, 404)
       }
@@ -459,7 +464,7 @@ export function registerFieldRoutes(app: Hono, dbEvents: DbEventPublisher) {
   app.post('/api/fields/:fieldId/backfill', async (c) => {
     try {
       const body = await c.req.json()
-      const count = await backfillIdField(c.req.param('fieldId'), body.databaseId)
+      const count = await backfillIdField(c.var.prisma, c.req.param('fieldId'), body.databaseId)
       return c.json({ backfilled: count })
     } catch (error) {
       console.error(error)

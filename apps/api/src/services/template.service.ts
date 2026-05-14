@@ -1,4 +1,5 @@
 import { faker } from '@faker-js/faker'
+import type { PrismaInstance } from '../lib/prisma.js'
 import {
   createDynDatabase,
   createField,
@@ -26,6 +27,7 @@ const OPTION_COLORS = [
 ]
 
 export async function createDatabaseFromTemplate(
+  prisma: PrismaInstance,
   templateId: string,
   name?: string,
   icon?: string,
@@ -43,10 +45,10 @@ export async function createDatabaseFromTemplate(
   if (onProgress) await onProgress(`Creating database...`)
   const dbName = name && name.trim() ? name.trim() : template.name
   const dbIcon = icon && icon.trim() ? icon.trim() : template.icon
-  const db = await createDynDatabase(dbName, template.description, dbIcon)
+  const db = await createDynDatabase(prisma, dbName, template.description, dbIcon)
 
   // Fetch users for person fields
-  const users = await getUsers()
+  const users = await getUsers(prisma)
   const userIds = users.map((u) => u.id)
 
   // 2. Create the fields and their options
@@ -57,7 +59,7 @@ export async function createDatabaseFromTemplate(
 
   for (const [idx, tField] of template.fields.entries()) {
     const isFirst = idx === 0 && tField.type === 'text'
-    const field = await createField(db.id, tField.name, tField.type, { isPrimary: isFirst })
+    const field = await createField(prisma, db.id, tField.name, tField.type, { isPrimary: isFirst })
     fields.push({ ...tField, createdId: field.id })
 
     // If it's a select field, create options with random distinct colors
@@ -68,7 +70,7 @@ export async function createDatabaseFromTemplate(
       for (let i = 0; i < tField.options.length; i++) {
         const opt = tField.options[i]
         const color = shuffled[i % shuffled.length]
-        const optionRecord = await createFieldOption(field.id, opt, color)
+        const optionRecord = await createFieldOption(prisma, field.id, opt, color)
         fieldIdToOptionsMap[field.id].push(optionRecord.id)
       }
     }
@@ -81,7 +83,7 @@ export async function createDatabaseFromTemplate(
   
   for (let i = 0; i < numRecords; i++) {
     if (onProgress) await onProgress(`Generating record ${i + 1} of ${numRecords}...`)
-    const record = await createDynRecord(db.id)
+    const record = await createDynRecord(prisma, db.id)
 
     for (const fieldDef of fields) {
       const fieldId = fieldDef.createdId
@@ -137,12 +139,12 @@ export async function createDatabaseFromTemplate(
         }
       }
 
-      await setFieldValue(record.id, fieldId, payload)
+      await setFieldValue(prisma, record.id, fieldId, payload)
     }
   }
 
   console.log(`[Template] Done.`);
   if (onProgress) await onProgress(`Done`)
-  await ensureDefaultView(db.id)
+  await ensureDefaultView(prisma, db.id)
   return db
 }

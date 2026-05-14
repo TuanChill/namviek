@@ -1,18 +1,16 @@
-import { PrismaClient } from "../generated/client/client.js";
-import { withAccelerate } from "@prisma/extension-accelerate";
+import { PrismaClient } from "../generated/client/client.js"
+import { withAccelerate } from "@prisma/extension-accelerate"
 
-const globalForPrisma = globalThis as typeof globalThis & {
-  prisma?: ReturnType<typeof createPrismaClient>;
-};
-
-function createPrismaClient() {
-  return new PrismaClient({
-    accelerateUrl: process.env.DATABASE_URL!,
-  }).$extends(withAccelerate());
+/**
+ * Creates a Prisma client with Accelerate extension.
+ * Following the Hono + Prisma on Cloudflare Workers pattern:
+ * https://hono.dev/examples/prisma
+ *
+ * Call this per-request with c.env.DATABASE_URL (Workers bindings)
+ * or process.env.DATABASE_URL (local Node.js dev).
+ */
+export const getPrisma = (datasourceUrl: string) => {
+  return new PrismaClient({ accelerateUrl: datasourceUrl }).$extends(withAccelerate())
 }
 
-export const prisma = globalForPrisma.prisma ?? createPrismaClient();
-
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
-}
+export type PrismaInstance = ReturnType<typeof getPrisma>

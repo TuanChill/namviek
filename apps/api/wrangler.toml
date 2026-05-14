@@ -2,3 +2,11 @@ name = "api"
 main = "src/index.ts"
 compatibility_date = "2026-05-10"
 compatibility_flags = ["nodejs_compat", "nodejs_compat_populate_process_env"]
+
+# Production deployment uses a pre-built, patched bundle to fix the Wrangler
+# CJS interop banner crash (fileURLToPath(import.meta.url) is undefined in Workers).
+# Build with: pnpm build:worker   Deploy with: wrangler deploy --env production --no-bundle
+[env.production]
+main = "dist-worker/index.js"
+compatibility_date = "2026-05-10"
+compatibility_flags = ["nodejs_compat", "nodejs_compat_populate_process_env"]

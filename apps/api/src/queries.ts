@@ -1,11 +1,11 @@
-import { prisma } from "./lib/prisma.js";
+import type { PrismaInstance } from "./lib/prisma.js";
 import type { Prisma } from "./generated/client/client.js";
 import type { FieldType, DynViewType, Prisma as PrismaTypes } from "./generated/client/client.js";
 
 
 // ─── Legacy test queries ───────────────────────────────────────────────────────
 
-export async function getAllTests() {
+export async function getAllTests(prisma: PrismaInstance) {
     return await prisma.test.findMany({
         orderBy: {
             createdAt: "desc",
@@ -13,7 +13,7 @@ export async function getAllTests() {
     });
 }
 
-export async function createTest(name: string, description?: string) {
+export async function createTest(prisma: PrismaInstance, name: string, description?: string) {
     return await prisma.test.create({
         data: {
             name,
@@ -22,7 +22,7 @@ export async function createTest(name: string, description?: string) {
     });
 }
 
-export async function getTestById(id: number) {
+export async function getTestById(prisma: PrismaInstance, id: number) {
     return await prisma.test.findUnique({
         where: {
             id,
@@ -32,14 +32,14 @@ export async function getTestById(id: number) {
 
 // ─── Dynamic Fields System queries ────────────────────────────────────────────
 
-export async function getDynDatabases() {
+export async function getDynDatabases(prisma: PrismaInstance) {
     return await prisma.dynDatabase.findMany({
         orderBy: { createdAt: "desc" },
         include: { _count: { select: { fields: true, records: true } } },
     });
 }
 
-export async function createDynDatabase(name: string, description?: string, icon?: string) {
+export async function createDynDatabase(prisma: PrismaInstance, name: string, description?: string, icon?: string) {
     return await prisma.dynDatabase.create({
         data: {
             name,
@@ -49,19 +49,19 @@ export async function createDynDatabase(name: string, description?: string, icon
     });
 }
 
-export async function getDynDatabase(id: string) {
+export async function getDynDatabase(prisma: PrismaInstance, id: string) {
     return await prisma.dynDatabase.findUnique({
         where: { id },
     });
 }
 
-export async function deleteDynDatabase(id: string) {
+export async function deleteDynDatabase(prisma: PrismaInstance, id: string) {
     return await prisma.dynDatabase.delete({
         where: { id },
     });
 }
 
-export async function getFields(databaseId: string) {
+export async function getFields(prisma: PrismaInstance, databaseId: string) {
     return await prisma.field.findMany({
         where: { databaseId },
         orderBy: { position: "asc" },
@@ -69,7 +69,7 @@ export async function getFields(databaseId: string) {
     });
 }
 
-export async function getFieldById(fieldId: string) {
+export async function getFieldById(prisma: PrismaInstance, fieldId: string) {
     return await prisma.field.findUnique({
         where: { id: fieldId },
         include: { options: { orderBy: { position: "asc" } } },
@@ -77,6 +77,7 @@ export async function getFieldById(fieldId: string) {
 }
 
 export async function createField(
+    prisma: PrismaInstance,
     databaseId: string,
     name: string,
     type: FieldType,
@@ -101,7 +102,7 @@ export async function createField(
     });
 }
 
-export async function getDynRecords(databaseId: string) {
+export async function getDynRecords(prisma: PrismaInstance, databaseId: string) {
     return await prisma.dynRecord.findMany({
         where: { databaseId, archivedAt: null },
         orderBy: { rowNumber: "asc" },
@@ -113,7 +114,7 @@ export async function getDynRecords(databaseId: string) {
     });
 }
 
-export async function createDynRecord(databaseId: string) {
+export async function createDynRecord(prisma: PrismaInstance, databaseId: string) {
     for (let attempt = 0; attempt < 5; attempt += 1) {
         const maxRow = await prisma.dynRecord.aggregate({
             where: { databaseId },
@@ -140,13 +141,14 @@ export async function createDynRecord(databaseId: string) {
     throw new Error(`Failed to create record for database ${databaseId}`);
 }
 
-export async function deleteDynRecords(recordIds: string[]) {
+export async function deleteDynRecords(prisma: PrismaInstance, recordIds: string[]) {
     return await prisma.dynRecord.deleteMany({
         where: { id: { in: recordIds } },
     });
 }
 
 export async function setFieldValue(
+    prisma: PrismaInstance,
     recordId: string,
     fieldId: string,
     payload: {
@@ -196,14 +198,14 @@ export async function setFieldValue(
     });
 }
 
-export async function getFieldOptions(fieldId: string) {
+export async function getFieldOptions(prisma: PrismaInstance, fieldId: string) {
     return await prisma.fieldOption.findMany({
         where: { fieldId },
         orderBy: { position: "asc" },
     });
 }
 
-export async function createFieldOption(fieldId: string, label: string, color?: string, position?: number) {
+export async function createFieldOption(prisma: PrismaInstance, fieldId: string, label: string, color?: string, position?: number) {
     const agg = await prisma.fieldOption.aggregate({
         where: { fieldId },
         _max: { position: true },
@@ -215,6 +217,7 @@ export async function createFieldOption(fieldId: string, label: string, color?: 
 }
 
 export async function updateFieldOption(
+    prisma: PrismaInstance,
     fieldId: string,
     optionId: string,
     data: { label?: string; color?: string | null; position?: number }
@@ -230,18 +233,18 @@ export async function updateFieldOption(
     });
 }
 
-export async function deleteFieldOption(optionId: string) {
+export async function deleteFieldOption(prisma: PrismaInstance, optionId: string) {
     return await prisma.fieldOption.delete({ where: { id: optionId } });
 }
 
-export async function updateFieldConfig(fieldId: string, config: Prisma.InputJsonValue) {
+export async function updateFieldConfig(prisma: PrismaInstance, fieldId: string, config: Prisma.InputJsonValue) {
     return await prisma.field.update({
         where: { id: fieldId },
         data: { config },
     });
 }
 
-export async function deleteField(fieldId: string) {
+export async function deleteField(prisma: PrismaInstance, fieldId: string) {
     const field = await prisma.field.findUnique({ where: { id: fieldId } });
     if (!field) throw new Error('Field not found');
     if (field.isPrimary) throw new Error('Cannot delete the primary field');
@@ -249,6 +252,7 @@ export async function deleteField(fieldId: string) {
 }
 
 export async function updateField(
+    prisma: PrismaInstance,
     fieldId: string,
     data: { name?: string; config?: Prisma.InputJsonValue }
 ) {
@@ -259,7 +263,7 @@ export async function updateField(
     });
 }
 
-export async function reorderField(fieldId: string, direction: "left" | "right") {
+export async function reorderField(prisma: PrismaInstance, fieldId: string, direction: "left" | "right") {
     const field = await prisma.field.findUnique({ where: { id: fieldId } });
     if (!field) throw new Error("Field not found");
 
@@ -279,7 +283,7 @@ export async function reorderField(fieldId: string, direction: "left" | "right")
     return true;
 }
 
-export async function duplicateField(fieldId: string) {
+export async function duplicateField(prisma: PrismaInstance, fieldId: string) {
     const src = await prisma.field.findUnique({
         where: { id: fieldId },
         include: { options: { orderBy: { position: "asc" } } },
@@ -322,14 +326,14 @@ export async function duplicateField(fieldId: string) {
 
 // ─── DynUser queries ───────────────────────────────────────────────────────────
 
-export async function getUsers() {
+export async function getUsers(prisma: PrismaInstance) {
     return await prisma.dynUser.findMany({
         orderBy: { name: "asc" },
         select: { id: true, name: true, email: true, avatarUrl: true },
     });
 }
 
-export async function searchUsers(q: string) {
+export async function searchUsers(prisma: PrismaInstance, q: string) {
     return await prisma.dynUser.findMany({
         where: {
             OR: [
@@ -343,7 +347,7 @@ export async function searchUsers(q: string) {
     });
 }
 
-export async function upsertDynUser(name: string, email: string, avatarUrl?: string) {
+export async function upsertDynUser(prisma: PrismaInstance, name: string, email: string, avatarUrl?: string) {
     return await prisma.dynUser.upsert({
         where: { email },
         create: { name, email, avatarUrl },
@@ -353,7 +357,7 @@ export async function upsertDynUser(name: string, email: string, avatarUrl?: str
 
 // ─── Statistics queries ────────────────────────────────────────────────────────
 
-export async function getDatabaseStats(databaseId: string) {
+export async function getDatabaseStats(prisma: PrismaInstance, databaseId: string) {
     const totalRecords = await prisma.dynRecord.count({
         where: { databaseId, archivedAt: null },
     });
@@ -383,7 +387,7 @@ export async function getDatabaseStats(databaseId: string) {
     };
 }
 
-export async function backfillIdField(fieldId: string, databaseId: string) {
+export async function backfillIdField(prisma: PrismaInstance, fieldId: string, databaseId: string) {
     const records = await prisma.dynRecord.findMany({
         where: { databaseId },
         select: { id: true, rowNumber: true },
@@ -412,14 +416,14 @@ export async function backfillIdField(fieldId: string, databaseId: string) {
 
 // ─── DynView queries ───────────────────────────────────────────────────────────
 
-export async function getDatabaseViews(databaseId: string) {
+export async function getDatabaseViews(prisma: PrismaInstance, databaseId: string) {
     return await prisma.dynView.findMany({
         where: { databaseId },
         orderBy: { position: "asc" },
     });
 }
 
-export async function createDatabaseView(input: {
+export async function createDatabaseView(prisma: PrismaInstance, input: {
     databaseId: string;
     name: string;
     type: DynViewType;
@@ -447,6 +451,7 @@ export async function createDatabaseView(input: {
 }
 
 export async function updateDatabaseView(
+    prisma: PrismaInstance,
     viewId: string,
     patch: {
         name?: string;
@@ -461,7 +466,7 @@ export async function updateDatabaseView(
     });
 }
 
-export async function deleteDatabaseView(viewId: string) {
+export async function deleteDatabaseView(prisma: PrismaInstance, viewId: string) {
     const view = await prisma.dynView.findUnique({ where: { id: viewId } });
     if (!view) throw new Error("View not found");
     if (view.isDefault) throw new Error("Cannot delete the default view");
@@ -472,7 +477,7 @@ export async function deleteDatabaseView(viewId: string) {
     return await prisma.dynView.delete({ where: { id: viewId } });
 }
 
-export async function setDefaultDatabaseView(databaseId: string, viewId: string) {
+export async function setDefaultDatabaseView(prisma: PrismaInstance, databaseId: string, viewId: string) {
     return await prisma.$transaction([
         prisma.dynView.updateMany({
             where: { databaseId, isDefault: true },
@@ -485,14 +490,14 @@ export async function setDefaultDatabaseView(databaseId: string, viewId: string)
     ]);
 }
 
-export async function reorderDatabaseViews(databaseId: string, orderedViewIds: string[]) {
+export async function reorderDatabaseViews(prisma: PrismaInstance, databaseId: string, orderedViewIds: string[]) {
     const updates = orderedViewIds.map((id, idx) =>
         prisma.dynView.update({ where: { id }, data: { position: idx } })
     );
     return await prisma.$transaction(updates);
 }
 
-export async function ensureDefaultView(databaseId: string) {
+export async function ensureDefaultView(prisma: PrismaInstance, databaseId: string) {
     const existing = await prisma.dynView.findFirst({
         where: { databaseId, isDefault: true },
     });
@@ -506,7 +511,7 @@ export async function ensureDefaultView(databaseId: string) {
         });
     }
 
-    return await createDatabaseView({
+    return await createDatabaseView(prisma, {
         databaseId,
         name: "Spreadsheet",
         type: "spreadsheet",
@@ -514,7 +519,7 @@ export async function ensureDefaultView(databaseId: string) {
     });
 }
 
-export async function ensurePrimaryField(databaseId: string) {
+export async function ensurePrimaryField(prisma: PrismaInstance, databaseId: string) {
     const existing = await prisma.field.findFirst({
         where: { databaseId, isPrimary: true },
     });
