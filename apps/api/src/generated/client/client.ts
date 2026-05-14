@@ -13,7 +13,8 @@
 import * as process from 'node:process'
 import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
-globalThis['__dirname'] = path.dirname(fileURLToPath(import.meta.url))
+// CF_WORKERS_PATCH: import.meta.url is undefined in Workers; Prisma Accelerate doesn't need __dirname.
+try { globalThis['__dirname'] = path.dirname(fileURLToPath(import.meta.url)) } catch { globalThis['__dirname'] = '/' }
 
 import * as runtime from "@prisma/client/runtime/client"
 import * as $Enums from "./enums.js"
