@@ -38,24 +38,20 @@ jobs:
         working-directory: apps/api
         run: pnpm build:worker
 
-      - name: Deploy API Worker
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: apps/api
-          command: deploy --env production --no-bundle
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
-          secrets: |
-            ORIGINS
-            DATABASE_URL
-            R2_ACCOUNT_ID
-            R2_ACCESS_KEY_ID
-            R2_SECRET_ACCESS_KEY
-            R2_BUCKET
-            R2_PUBLIC_URL
-            MCP_API_KEY
+      - name: Upload Worker secrets
+        working-directory: apps/api
+        run: |
+          echo "$ORIGINS"           | npx wrangler secret put ORIGINS           --env production
+          echo "$DATABASE_URL"      | npx wrangler secret put DATABASE_URL      --env production
+          echo "$R2_ACCOUNT_ID"     | npx wrangler secret put R2_ACCOUNT_ID     --env production
+          echo "$R2_ACCESS_KEY_ID"  | npx wrangler secret put R2_ACCESS_KEY_ID  --env production
+          echo "$R2_SECRET_ACCESS_KEY" | npx wrangler secret put R2_SECRET_ACCESS_KEY --env production
+          echo "$R2_BUCKET"         | npx wrangler secret put R2_BUCKET         --env production
+          echo "$R2_PUBLIC_URL"     | npx wrangler secret put R2_PUBLIC_URL     --env production
+          echo "$MCP_API_KEY"       | npx wrangler secret put MCP_API_KEY       --env production
         env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           ORIGINS: ${{ secrets.ORIGINS }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
@@ -64,3 +60,10 @@ jobs:
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
           R2_PUBLIC_URL: ${{ secrets.R2_PUBLIC_URL }}
           MCP_API_KEY: ${{ secrets.MCP_API_KEY }}
+
+      - name: Deploy API Worker
+        working-directory: apps/api
+        run: npx wrangler deploy --env production --no-bundle
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
