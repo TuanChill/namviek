@@ -16,7 +16,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import {
   SidebarInset,
   SidebarProvider,
-  SidebarTrigger,
 } from '@/components/ui/sidebar';
 
 import { AddFieldDrawer } from './DynamicField/AddFieldDrawer';
@@ -367,8 +366,6 @@ export default function DynamicFieldPage() {
                 className="flex h-12 shrink-0 items-center gap-3 border-b px-4"
                 onClick={e => e.stopPropagation()}
               >
-                <SidebarTrigger className="-ml-1" />
-                <Separator orientation="vertical" className="!h-4 !self-center shrink-0" />
                 <DatabaseIcon icon={selectedDb?.icon} size={14} />
                 <span className="font-semibold">{selectedDb.name}</span>
                 <Separator orientation="vertical" className="!h-4 !self-center shrink-0" />

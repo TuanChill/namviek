@@ -9,6 +9,8 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarTrigger,
+  useSidebar,
 } from '@/components/ui/sidebar';
 import type { DynDatabase } from '../types';
 import { DatabaseIcon } from './DatabaseIcon';
@@ -29,22 +31,29 @@ export function DatabasesSidebar({
   onOpenCreateDatabase,
   onLogout,
 }: DatabasesSidebarProps) {
+  const { open } = useSidebar();
+
   return (
     <Sidebar collapsible="icon" onClick={(e) => e.stopPropagation()}>
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
-              <div className="flex items-center gap-2 cursor-default select-none">
-                <div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground shrink-0">
-                  <Database size={14} />
+            {!open ? (
+              <SidebarTrigger className="w-full h-8" />
+            ) : (
+              <SidebarMenuButton size="lg" asChild>
+                <div className="flex items-center gap-2 cursor-default select-none">
+                  <div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground shrink-0">
+                    <Database size={14} />
+                  </div>
+                  <div className="flex flex-col leading-tight flex-1 min-w-0">
+                    <span className="text-sm font-semibold">Databases</span>
+                    <span className="text-xs text-muted-foreground">{databases.length} total</span>
+                  </div>
+                  <SidebarTrigger />
                 </div>
-                <div className="flex flex-col leading-tight">
-                  <span className="text-sm font-semibold">Databases</span>
-                  <span className="text-xs text-muted-foreground">{databases.length} total</span>
-                </div>
-              </div>
-            </SidebarMenuButton>
+              </SidebarMenuButton>
+            )}
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
