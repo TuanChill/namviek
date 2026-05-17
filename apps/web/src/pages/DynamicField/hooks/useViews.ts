@@ -6,18 +6,20 @@ export function useViews() {
   const [views, setViews] = useState<DynView[]>([]);
   const [activeView, setActiveView] = useState<DynView | null>(null);
 
-  const loadViews = useCallback(async (databaseId: string) => {
+  const loadViews = useCallback(async (databaseId: string, shouldApply: () => boolean = () => true) => {
     const data = await api.views.list(databaseId);
-    setViews(data);
-    // Set active to current default or first
-    const def = data.find(v => v.isDefault) ?? data[0] ?? null;
-    setActiveView(prev => {
-      // Keep previously active view if it still exists
-      if (prev && data.some(v => v.id === prev.id)) {
-        return data.find(v => v.id === prev.id) ?? def;
-      }
-      return def;
-    });
+    if (shouldApply()) {
+      setViews(data);
+      // Set active to current default or first
+      const def = data.find(v => v.isDefault) ?? data[0] ?? null;
+      setActiveView(prev => {
+        // Keep previously active view if it still exists
+        if (prev && data.some(v => v.id === prev.id)) {
+          return data.find(v => v.id === prev.id) ?? def;
+        }
+        return def;
+      });
+    }
     return data;
   }, []);
 

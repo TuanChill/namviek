@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import {
   Plus, Database, Trash2
@@ -45,7 +45,7 @@ export default function DynamicFieldPage() {
   const { databases, selectedDb, setSelectedDb, createDatabase, deleteDatabase, upsertDatabase, removeDatabase } = useDatabase();
   const { fields, setFields, loadFields, addField, renameField, deleteField, moveField, duplicateField, changeIcon, updateField } = useFields();
   const { records, setRecords, loadRecords, addRecord, setValue, removeFieldValues, reloadRecords, deleteRecords } = useRecords();
-  const { views, activeView, setActiveView, loadViews, createView, updateView, deleteView, setDefaultView, moveView } = useViews();
+  const { views, setViews, activeView, setActiveView, loadViews, createView, updateView, deleteView, setDefaultView, moveView } = useViews();
 
   const { databaseId } = useParams();
   const navigate = useNavigate();
@@ -57,6 +57,14 @@ export default function DynamicFieldPage() {
   const [showCreateDbDialog, setShowCreateDbDialog] = useState(false);
   const [showDeleteDb, setShowDeleteDb] = useState(false);
   const [showDeletedDbNotice, setShowDeletedDbNotice] = useState(false);
+
+  // Track in-flight load requests so a stale response from a previous database
+  // cannot overwrite data from the currently selected one.
+  const loadRequestIdRef = useRef(0);
+  // Track which databaseId we have already triggered a load for, so the
+  // URL-watching effect does not fire a duplicate load when selectedDb state
+  // updates mid-flight (which would otherwise cause the old DB to reload).
+  const loadedDbIdRef = useRef<string | undefined>(undefined);
 
   // Drawers / dialogs
   const [showAddField, setShowAddField] = useState(false);
@@ -137,26 +145,52 @@ export default function DynamicFieldPage() {
 
   // ── Load DB ───────────────────────────────────────────────────────────────
   const loadDb = useCallback(async (db: DynDatabase, updateUrl = true) => {
+    // Stamp this request so stale completions can be detected and ignored.
+    const requestId = ++loadRequestIdRef.current;
+    // Mark this db as "loading" before any await so the URL-watching effect
+    // does not race and re-trigger a load for the old database when selectedDb
+    // state updates mid-flight.
+    loadedDbIdRef.current = db.id;
+
     setSelectedDb(db);
     setActiveCell(null);
     setSelectedRecords(new Set());
     setLoading(true);
-    try {
-      await Promise.all([loadFields(db.id), loadRecords(db.id), loadViews(db.id)]);
-      if (updateUrl && databaseId !== db.id) navigate(`/test/${db.id}`);
-    } finally {
-      setLoading(false);
-    }
-  }, [setSelectedDb, loadFields, loadRecords, loadViews, databaseId, navigate]);
 
-  // Initial load from URL
+    // Clear stale data immediately so the old database does not flash while
+    // the new database is loading.
+    setFields([]);
+    setRecords([]);
+    setViews([]);
+    setActiveView(null);
+
+    try {
+      const shouldApply = () => loadRequestIdRef.current === requestId;
+      await Promise.all([
+        loadFields(db.id, shouldApply),
+        loadRecords(db.id, shouldApply),
+        loadViews(db.id, shouldApply),
+      ]);
+      if (!shouldApply()) return;
+      if (updateUrl) navigate(`/test/${db.id}`);
+    } finally {
+      if (loadRequestIdRef.current === requestId) {
+        setLoading(false);
+      }
+    }
+  }, [setSelectedDb, setFields, setRecords, setViews, setActiveView, loadFields, loadRecords, loadViews, navigate]);
+
+  // Initial load from URL (also handles browser back/forward).
+  // Intentionally does NOT depend on selectedDb — that state changes during
+  // loadDb itself and would otherwise cause a spurious reload of the old db.
   useEffect(() => {
     if (databases.length === 0 || !databaseId) return;
-    if (selectedDb?.id !== databaseId) {
-      const db = databases.find(d => d.id === databaseId);
-      if (db) loadDb(db, false);
-    }
-  }, [databaseId, databases, selectedDb?.id, loadDb]);
+    // loadedDbIdRef is set synchronously at the top of loadDb, so if it
+    // already matches, this db is already loading or loaded — skip.
+    if (loadedDbIdRef.current === databaseId) return;
+    const db = databases.find(d => d.id === databaseId);
+    if (db) loadDb(db, false);
+  }, [databaseId, databases, loadDb]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleCreateDbFromDialog = useCallback(async (name: string, icon: string) => {

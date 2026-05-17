@@ -10,9 +10,9 @@ interface AddRecordInitialValue {
 export function useRecords() {
   const [records, setRecords] = useState<DynRecord[]>([]);
 
-  const loadRecords = useCallback(async (dbId: string) => {
+  const loadRecords = useCallback(async (dbId: string, shouldApply: () => boolean = () => true) => {
     const r = await api.records.list(dbId);
-    setRecords(r);
+    if (shouldApply()) setRecords(r);
     return r;
   }, []);
 

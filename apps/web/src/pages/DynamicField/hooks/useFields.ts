@@ -5,9 +5,9 @@ import type { Field, FieldConfig, FieldType } from '../types';
 export function useFields() {
   const [fields, setFields] = useState<Field[]>([]);
 
-  const loadFields = useCallback(async (dbId: string) => {
+  const loadFields = useCallback(async (dbId: string, shouldApply: () => boolean = () => true) => {
     const f = await api.fields.list(dbId);
-    setFields(f);
+    if (shouldApply()) setFields(f);
     return f;
   }, []);
 
