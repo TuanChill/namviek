@@ -1,6 +1,11 @@
 # Dynamic Field Filter Builder Reference
 
-Purpose: document how the Dynamic Field filter builder is modeled, rendered, and evaluated so future changes are safe and fast.
+Purpose: document how the Dynamic Field filter builder is modeled, persisted, and executed so future changes are safe and fast.
+
+Status note:
+
+- The web app still owns filter editing UX.
+- Record matching now runs on the backend, not in the browser.
 
 ## 1) Where It Lives
 
@@ -11,8 +16,11 @@ Purpose: document how the Dynamic Field filter builder is modeled, rendered, and
 - Types/AST: `apps/web/src/pages/DynamicField/views/filter/types.ts`
 - Operator config: `apps/web/src/pages/DynamicField/views/filter/constants.ts`
 - Tree helpers: `apps/web/src/pages/DynamicField/views/filter/utils.ts`
-- Runtime evaluator: `apps/web/src/pages/DynamicField/views/filter/apply.ts`
-- Integration point: `apps/web/src/pages/DynamicFieldPage.tsx` via `applyFilter(records, fields, activeView?.config?.filter)`
+- Debounced save trigger: `apps/web/src/pages/DynamicField/views/components/ViewManagerTabBar.tsx`
+- Backend evaluator: `packages/database/filter.ts`
+- Backend query hook-in: `packages/database/queries.ts` via `getFilteredDynRecords(databaseId, filter)`
+- API endpoint: `POST /api/databases/:id/records/filter`
+- Runtime fetch integration: `apps/web/src/pages/DynamicFieldPage.tsx` via `api.records.listFiltered(selectedDb.id, activeView?.config?.filter)`
 
 ## 2) Data Model (AST)
 
@@ -39,7 +47,9 @@ Persistence details:
 - Database table: `dyn_filters` (Prisma model: `Filter`)
 - Relationship: `Filter.viewId` -> `DynView.id` (unique, `ON DELETE CASCADE`)
 - API write path (unchanged): `PATCH /api/views/:viewId` with body `{ config: ... }`
+- API filter path: `POST /api/databases/:id/records/filter` with body `{ filter }`
 - Query write path (split/merge): `updateDatabaseView(viewId, { config })`
+- Query filter path: `getFilteredDynRecords(databaseId, filter)`
 
 Important distinction:
 
@@ -98,9 +108,27 @@ Evaluator behavior in `apply.ts`:
 - `is_on_or_before`: inclusive upper bound
 - `is_on_or_after`: inclusive lower bound
 
-## 5) Runtime Evaluation
+## 5) Backend Filter Process
 
-`applyFilter` is pure and synchronous.
+Current flow:
+
+1. User edits the AST in `FilterBuilder.tsx`.
+2. The builder updates local UI state immediately.
+3. `ViewManagerTabBar.tsx` debounces the save for about 1 second.
+4. After the debounce, the web app persists the filter through `PATCH /api/views/:viewId`.
+5. The API stores the tree in `Filter.config` through `updateDatabaseView(...)`.
+6. `DynamicFieldPage.tsx` requests matching rows from `POST /api/databases/:id/records/filter`.
+7. The API calls `getFilteredDynRecords(databaseId, filter)`.
+8. `getFilteredDynRecords(...)` loads records + fields and applies the evaluator in `packages/database/filter.ts`.
+9. Only matching records are returned to the browser.
+
+Important implications:
+
+- Filter save traffic and record filter traffic are separate calls.
+- The debounce is on the view save call, not on the record filter endpoint.
+- The browser should not be treated as the source of truth for match logic anymore.
+
+`applyFilter` in `packages/database/filter.ts` is pure and synchronous.
 
 - Returns original records for null/empty filter
 - Builds `fieldMap` once, then evaluates each record recursively
@@ -131,13 +159,13 @@ When adding a new operator:
 1. Add the operator to `FilterOperator` in `types.ts`.
 2. Add label in `OPERATOR_LABELS`.
 3. Add operator mapping in `FIELD_OPERATOR_CONFIG` for relevant field types.
-4. Implement evaluator logic in `apply.ts` for affected field types.
+4. Implement evaluator logic in `packages/database/filter.ts` for affected field types.
 5. Verify value UI behavior in `ValueInput.tsx`.
 
 When adding a new filterable field type:
 
 1. Add field type config in `FIELD_OPERATOR_CONFIG`.
-2. Ensure `apply.ts` can evaluate that field type.
+2. Ensure `packages/database/filter.ts` can evaluate that field type.
 3. Confirm value payload shape in rule `value` is consistent.
 
 ### 7.1) How to Support a New Field in Filter Builder (Step-by-step)
@@ -159,7 +187,7 @@ Use this when a new field type should become filterable in the UI and evaluator.
   - Add operators to `FilterOperator`.
 
 4. Add evaluator logic.
-  - File: `apps/web/src/pages/DynamicField/views/filter/apply.ts`
+  - File: `packages/database/filter.ts`
   - Add a new branch in `evaluateRule` for the field type.
   - Implement or reuse evaluator helper functions.
   - Keep behavior aligned with empty checks and value shape.
@@ -175,15 +203,16 @@ Use this when a new field type should become filterable in the UI and evaluator.
   - File: `apps/web/src/pages/DynamicField/views/filter/FilterRuleRow.tsx`
   - Ensure field/operator switching resets incompatible value state.
 
-7. Verify persistence contract.
+7. Verify persistence and execution contract.
   - Filter tree still persists via `config.filter` API payload.
   - Backend split/merge persists filter into `Filter.config`.
+  - Backend record filtering still accepts the same AST via `POST /api/databases/:id/records/filter`.
 
 8. Test scenarios for the new field type.
   - Operator semantics: positive + negative cases.
   - Empty/not-empty behavior.
   - Nested group behavior (`AND`/`OR`) with mixed field types.
-  - Save/reload consistency and immediate update without page refresh.
+  - Save/reload consistency and filtered row refresh after the debounced save completes.
 
 ## 8) Quick Testing Scenarios
 

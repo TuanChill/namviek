@@ -47,6 +47,11 @@ View endpoints in `apps/api/src/index.ts`:
 - `POST /api/databases/:id/views/reorder`
 - `POST /api/databases/:id/views/:viewId/default`
 
+Record filtering endpoint in `apps/api/src/index.ts`:
+- `POST /api/databases/:id/records/filter`
+  - body: `{ filter }`
+  - returns only records that match the submitted filter AST
+
 Database creation behavior in `apps/api/src/index.ts`:
 - `POST /api/databases` creates:
   - primary text field: `Name` (`isPrimary=true`)
@@ -64,6 +69,7 @@ Template creation behavior in `apps/api/src/services/template.service.ts`:
   - `ViewConfig.hiddenFieldIds` is supported
 - API client:
   - `apps/web/src/pages/DynamicField/api.ts` (`api.views.*`)
+  - `apps/web/src/pages/DynamicField/api.ts` (`api.records.listFiltered`)
 - View state hook:
   - `apps/web/src/pages/DynamicField/hooks/useViews.ts`
   - includes `moveView(viewId, direction)`
@@ -72,6 +78,7 @@ Template creation behavior in `apps/api/src/services/template.service.ts`:
   - features:
     - Add view dropdown (no create modal)
     - Per-tab menu: Edit, Rename, Move left/right, Set default, Delete
+    - Filter saves are debounced for about 1 second before `PATCH /api/views/:viewId`
     - Any Kanban tab dropdown includes `Customize Card` action (not limited to active tab)
     - Delete disabled for default and last view
     - Edit dialog: name, icon, groupBy, date granularity, default toggle
@@ -152,6 +159,10 @@ Stored in DB as:
 - `DynView.config` JSON for non-filter view settings
 - `Filter.config` JSON for filter tree (1:1 with `DynView`)
 
+Backend filter execution path:
+- Save path: web `onUpdateView(...)` -> `PATCH /api/views/:viewId` -> `updateDatabaseView(...)`
+- Query path: web `api.records.listFiltered(...)` -> `POST /api/databases/:id/records/filter` -> `getFilteredDynRecords(...)` -> `packages/database/filter.ts`
+
 Note:
 - View-level behavior (groupBy, cardLayout, calendar, timeline) is stored on `DynView.config`.
 - Filter behavior is stored on `Filter.config`.
@@ -170,6 +181,7 @@ Cascade delete behavior:
 - Last remaining view cannot be deleted.
 - Primary field cannot be deleted.
 - Kanban card layout is view-scoped (`DynView.config`), so each Kanban view can have a different card structure.
+- View filter persistence is debounced in the web tab bar; backend filtering itself is not debounced.
 - Every database should have:
   - at least one default view
   - one primary text field

@@ -348,7 +348,13 @@ Shared Prisma database package. Features:
 
 ## 🔎 Dynamic Field Filter Builder
 
-The Dynamic Field view includes a client-side AST-based filter builder with nested condition groups, type-aware operators, and date mode support (exact date, custom range, and relative periods).
+The Dynamic Field view includes an AST-based filter builder with nested condition groups, type-aware operators, and date mode support (exact date, custom range, and relative periods).
+
+Current processing model:
+- The browser builds and edits the filter AST.
+- Filter persistence is saved through `PATCH /api/views/:viewId`.
+- Record matching is executed on the backend through `POST /api/databases/:id/records/filter`.
+- Filter saves from the builder are debounced by about 1 second before the view update request is sent.
 
 📖 **[Read the Filter Builder Reference →](./docs/filter-builder-reference.md)**
 

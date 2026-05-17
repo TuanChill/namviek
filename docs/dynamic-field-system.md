@@ -39,6 +39,7 @@ Database package
   ├── prisma/schema.prisma            ← Prisma models
   ├── prisma/seed.ts                  ← seeds test data + 10 DynUsers (Dicebear avatars)
   ├── queries.ts                      ← all DB query functions
+  ├── filter.ts                       ← backend filter evaluator used by filtered record queries
   └── client.ts                       ← Prisma client singleton
 ```
 
@@ -135,6 +136,7 @@ Import path: `@local/database`
 | Function | Description |
 |---|---|
 | `getDynRecords(databaseId)` | Non-archived records with `fieldValues + field` |
+| `getFilteredDynRecords(databaseId, filter)` | Loads records + fields and applies backend filter AST |
 | `createDynRecord(databaseId)` | Auto-increments `rowNumber` |
 | `setFieldValue(recordId, fieldId, payload)` | Upsert; coerces date strings + number strings |
 
@@ -179,8 +181,17 @@ Import path: `@local/database`
 | Method | Path | Body |
 |---|---|---|
 | `GET` | `/api/databases/:id/records` | |
+| `POST` | `/api/databases/:id/records/filter` | `{ filter }` |
 | `POST` | `/api/databases/:id/records` | |
 | `PUT` | `/api/records/:recordId/values/:fieldId` | `FieldValuePayload` |
+
+Backend filter process:
+
+- Filter edits originate in the web filter builder.
+- The view save is debounced in `ViewManagerTabBar.tsx` before `PATCH /api/views/:viewId`.
+- The server persists the filter tree into `Filter.config`.
+- The page requests matching rows from `POST /api/databases/:id/records/filter`.
+- The API resolves the result through `getFilteredDynRecords(...)` and `packages/database/filter.ts`.
 
 #### Users
 | Method | Path | Notes |
@@ -210,6 +221,10 @@ Import path: `@local/database`
 - `setValue(record, field, payload)` — upsert + optimistic update
 - `removeFieldValues(fieldId)` — local cleanup after field delete
 - `reloadRecords(dbId)` — force re-fetch from server
+
+### Filtered record loading
+- `DynamicFieldPage.tsx` calls `api.records.listFiltered(dbId, filter)` when the active view has a saved filter.
+- Record filtering is backend-driven; the page receives already-filtered rows.
 
 ---
 
