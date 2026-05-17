@@ -5,9 +5,10 @@
  */
 
 import { useState } from 'react';
-import { Check, ChevronDown, X } from 'lucide-react';
+import { Check, ChevronDown, Calendar as CalendarIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
 import {
   Popover, PopoverContent, PopoverTrigger,
 } from '@/components/ui/popover';
@@ -15,8 +16,22 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { getValueInputVariant, RELATIVE_DATE_MODES, DATE_MODE_LABELS, DATE_MODES_ORDERED } from './constants';
+import { format } from 'date-fns';
+import type { DateRange } from 'react-day-picker';
 import type { Field, DynUser } from '../../types';
 import type { FilterOperator, DateMode } from './types';
+
+function parseYmdLocal(value?: string): Date | undefined {
+  if (!value) return undefined;
+  const [y, m, d] = value.split('-').map(Number);
+  if (!y || !m || !d) return undefined;
+  const date = new Date(y, m - 1, d);
+  return Number.isNaN(date.getTime()) ? undefined : date;
+}
+
+function formatYmd(value: Date): string {
+  return format(value, 'yyyy-MM-dd');
+}
 
 interface ValueInputProps {
   field: Field;
@@ -245,6 +260,7 @@ function PersonPicker({
   );
 }
 
+
 // ─── Date value input ─────────────────────────────────────────────────────────
 
 function DateValueInput({
@@ -276,18 +292,16 @@ function DateValueInput({
         </SelectContent>
       </Select>
 
-      {/* Value picker — hidden for relative modes */}
+      {/* Date picker — hidden for relative modes */}
       {!isRelative && dateMode === 'exact_date' && (
-        <Input
-          type="date"
-          className="h-8 text-xs flex-1 min-w-0"
+        <DatePickerButton
           value={typeof value === 'string' ? value : ''}
-          onChange={e => onChange(e.target.value)}
+          onChange={onChange}
         />
       )}
 
       {!isRelative && dateMode === 'custom_range' && (
-        <DateRangeInput
+        <DateRangePickerButton
           value={value as { from?: string; to?: string } | null}
           onChange={onChange}
         />
@@ -296,30 +310,108 @@ function DateValueInput({
   );
 }
 
-function DateRangeInput({
+function DatePickerButton({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: unknown) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const date = parseYmdLocal(value);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 text-xs gap-2 flex-1"
+        >
+          <CalendarIcon size={13} />
+          <span className="text-xs">
+            {date ? format(date, 'MMM d, yyyy') : 'Pick a date'}
+          </span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={date}
+          onSelect={(d) => {
+            if (d) {
+              onChange(formatYmd(d));
+              setOpen(false);
+            }
+          }}
+          disabled={(date) => date > new Date('2099-12-31')}
+          initialFocus
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function DateRangePickerButton({
   value,
   onChange,
 }: {
   value: { from?: string; to?: string } | null;
   onChange: (v: unknown) => void;
 }) {
-  const from = value?.from ?? '';
-  const to   = value?.to   ?? '';
+  const [open, setOpen] = useState(false);
+  const from = parseYmdLocal(value?.from);
+  const to = parseYmdLocal(value?.to);
+
+  const selectedRange: DateRange | undefined = from || to ? { from, to } : undefined;
+
+  const handleRangeSelect = (range: DateRange | undefined) => {
+    if (!range?.from) {
+      onChange({ from: undefined, to: undefined });
+      return;
+    }
+
+    onChange({
+      from: formatYmd(range.from),
+      to: range.to ? formatYmd(range.to) : undefined,
+    });
+  };
+
+  const displayText = value?.from && value?.to 
+    ? `${format(from!, 'MMM d')} → ${format(to!, 'MMM d, yyyy')}`
+    : value?.from
+    ? `From ${format(from!, 'MMM d, yyyy')}`
+    : 'Pick date range';
+
   return (
-    <div className="flex items-center gap-1 flex-1 min-w-0">
-      <Input
-        type="date"
-        className="h-8 text-xs flex-1 min-w-0"
-        value={from}
-        onChange={e => onChange({ from: e.target.value, to })}
-      />
-      <span className="text-xs text-muted-foreground shrink-0">→</span>
-      <Input
-        type="date"
-        className="h-8 text-xs flex-1 min-w-0"
-        value={to}
-        onChange={e => onChange({ from, to: e.target.value })}
-      />
-    </div>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 text-xs gap-2 flex-1"
+        >
+          <CalendarIcon size={13} />
+          <span className="text-xs">{displayText}</span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="range"
+          defaultMonth={from}
+          selected={selectedRange}
+          onSelect={handleRangeSelect}
+          numberOfMonths={2}
+          disabled={(date) => date > new Date('2099-12-31')}
+          initialFocus
+        />
+        {value?.from && (
+          <div className="p-2 border-t text-xs text-muted-foreground">
+            From: {from ? format(from, 'MMM d, yyyy') : value.from}
+            {value?.to && ` → To: ${to ? format(to, 'MMM d, yyyy') : value.to}`}
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
   );
 }
