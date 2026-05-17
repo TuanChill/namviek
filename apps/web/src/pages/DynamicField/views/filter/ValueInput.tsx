@@ -18,6 +18,7 @@ import {
 import { getValueInputVariant, RELATIVE_DATE_MODES, DATE_MODE_LABELS, DATE_MODES_ORDERED } from './constants';
 import { format } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
+import { PersonChip } from '../../components/PersonCell';
 import type { Field, DynUser } from '../../types';
 import type { FilterOperator, DateMode } from './types';
 
@@ -228,14 +229,20 @@ function PersonPicker({
     onChange(next);
   };
 
-  const selectedNames = users.filter(u => value.includes(u.id)).map(u => u.name);
+  const selectedUsers = users.filter(u => value.includes(u.id));
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button className="flex items-center justify-between gap-2 h-8 w-full px-2 rounded-md border border-input bg-background text-xs hover:bg-accent transition-colors min-w-0">
           <span className="truncate text-left flex-1 text-muted-foreground">
-            {selectedNames.length > 0 ? selectedNames.join(', ') : 'Select user…'}
+            {selectedUsers.length > 0 ? (
+              <span className="flex flex-wrap gap-1">
+                {selectedUsers.map(user => (
+                  <PersonChip key={user.id} user={user} />
+                ))}
+              </span>
+            ) : 'Select user…'}
           </span>
           <ChevronDown size={12} className="shrink-0 text-muted-foreground" />
         </button>
@@ -248,15 +255,50 @@ function PersonPicker({
             <button
               key={u.id}
               onClick={() => toggle(u.id)}
-              className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-accent text-xs"
+              className="flex items-center gap-2.5 w-full px-2 py-1.5 rounded hover:bg-accent text-xs"
             >
-              <span className="flex-1 text-left">{u.name}</span>
+              <PersonOptionAvatar user={u} size={20} />
+              <span className="flex-1 min-w-0 text-left">
+                <span className="block truncate text-xs font-medium">{u.name}</span>
+                <span className="block truncate text-[10px] text-muted-foreground">{u.email}</span>
+              </span>
               {value.includes(u.id) && <Check size={11} className="text-primary shrink-0" />}
             </button>
           ))
         )}
       </PopoverContent>
     </Popover>
+  );
+}
+
+function PersonOptionAvatar({ user, size = 20 }: { user: DynUser; size?: number }) {
+  if (user.avatarUrl) {
+    return (
+      <img
+        src={user.avatarUrl}
+        alt={user.name}
+        style={{ width: size, height: size }}
+        className="rounded-full object-cover shrink-0"
+      />
+    );
+  }
+
+  const initials = user.name
+    .split(' ')
+    .map(n => n[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+  const colors = ['#6366f1', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6'];
+  const color = colors[user.name.charCodeAt(0) % colors.length];
+
+  return (
+    <span
+      style={{ width: size, height: size, background: `${color}22`, color, border: `1px solid ${color}44`, fontSize: size * 0.4 }}
+      className="rounded-full flex items-center justify-center font-semibold shrink-0"
+    >
+      {initials}
+    </span>
   );
 }
 

@@ -19,6 +19,7 @@ A modern monorepo template using **pnpm workspaces** for efficient package manag
 - [☁️ Deploy Frontend to Cloudflare](#️-deploy-frontend-to-cloudflare)
 - [📚 Prisma Database Setup](#-prisma-database-setup)
 - [📁 Package Details](#-package-details)
+- [🔎 Dynamic Field Filter Builder](#-dynamic-field-filter-builder)
 - [🌊 Streaming with Readable Streams](#-streaming-with-readable-streams)
 - [🎨 UI Components with shadcn/ui](#-ui-components-with-shadcnui)
 - [🔐 Authentication with Better Auth](#-authentication-with-better-auth)
@@ -344,6 +345,12 @@ Shared Prisma database package. Features:
 - Centralized database schema
 - Shared Prisma client
 - Type-safe database queries
+
+## 🔎 Dynamic Field Filter Builder
+
+The Dynamic Field view includes a client-side AST-based filter builder with nested condition groups, type-aware operators, and date mode support (exact date, custom range, and relative periods).
+
+📖 **[Read the Filter Builder Reference →](./docs/filter-builder-reference.md)**
 
 ## 🌊 Streaming with Readable Streams
 

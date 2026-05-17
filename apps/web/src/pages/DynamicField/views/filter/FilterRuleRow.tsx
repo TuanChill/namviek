@@ -4,7 +4,8 @@ import {
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { ValueInput } from './ValueInput';
-import { getOperatorsForFieldType, OPERATOR_LABELS, getValueInputVariant } from './constants';
+import { getOperatorsForFieldType, OPERATOR_LABELS } from './constants';
+import { getFieldMeta, getIconByName } from '../../constants';
 import type { Field, DynUser } from '../../types';
 import type { FilterRule, FilterOperator, DateMode } from './types';
 
@@ -19,7 +20,6 @@ interface FilterRuleRowProps {
 export function FilterRuleRow({ rule, fields, users, onUpdate, onDelete }: FilterRuleRowProps) {
   const field = fields.find(f => f.id === rule.fieldId);
   const operators = field ? getOperatorsForFieldType(field.type) : [];
-  const valueVariant = field ? getValueInputVariant(field.type, rule.operator) : 'none';
 
   const handleFieldChange = (fieldId: string) => {
     const newField = fields.find(f => f.id === fieldId);
@@ -50,11 +50,17 @@ export function FilterRuleRow({ rule, fields, users, onUpdate, onDelete }: Filte
           <SelectValue placeholder="Select field…" />
         </SelectTrigger>
         <SelectContent>
-          {fields.map(f => (
-            <SelectItem key={f.id} value={f.id} className="text-xs">
-              {f.name}
-            </SelectItem>
-          ))}
+          {fields.map(f => {
+            const FieldIcon = f.config?.customIcon ? getIconByName(f.config.customIcon) : getFieldMeta(f.type).Icon;
+            return (
+              <SelectItem key={f.id} value={f.id} className="text-xs">
+                <span className="flex items-center gap-1.5">
+                  <FieldIcon size={13} className="text-muted-foreground" />
+                  <span className="truncate">{f.name}</span>
+                </span>
+              </SelectItem>
+            );
+          })}
         </SelectContent>
       </Select>
 
