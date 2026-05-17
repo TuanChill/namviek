@@ -36,7 +36,7 @@ import { KanbanView } from './DynamicField/views/kanban/KanbanView';
 import { CalendarView } from './DynamicField/views/calendar/CalendarView';
 import { TimelineView } from './DynamicField/views/timeline/TimelineView';
 import { ViewManagerTabBar } from './DynamicField/views/components/ViewManagerTabBar';
-import { applyFilter } from './DynamicField/views/filter';
+import { api } from './DynamicField/api';
 
 import type { DynDatabase, DynViewType, Field, FieldConfig, FieldType, FieldValuePayload } from './DynamicField/types';
 
@@ -48,8 +48,42 @@ export default function DynamicFieldPage() {
   const { records, setRecords, loadRecords, addRecord, setValue, removeFieldValues, reloadRecords, deleteRecords } = useRecords();
   const { views, setViews, activeView, setActiveView, loadViews, createView, updateView, deleteView, setDefaultView, moveView } = useViews();
 
-  // Apply the active view's filter to records before passing to any view component
-  const filteredRecords = applyFilter(records, fields, activeView?.config?.filter);
+  // Server-side filtered records
+  const [filteredRecords, setFilteredRecords] = useState<typeof records>([]);
+
+  // When active view changes, fetch filtered records if the view has a filter
+  useEffect(() => {
+    if (!selectedDb?.id || !records.length) {
+      setFilteredRecords(records);
+      return;
+    }
+
+    const filter = activeView?.config?.filter;
+
+    if (filter) {
+      let cancelled = false;
+
+      api.records.listFiltered(selectedDb.id, filter)
+        .then(filtered => {
+          if (!cancelled) setFilteredRecords(filtered);
+        })
+        .catch(err => {
+          console.error('Failed to fetch filtered records:', err);
+          // Fallback to records if server filtering fails
+          if (!cancelled) setFilteredRecords(records);
+        });
+
+      return () => {
+        cancelled = true;
+      };
+    } else {
+      // No filter, use all records
+      setFilteredRecords(records);
+    }
+  }, [selectedDb?.id, activeView, records]);
+
+  // Keep this import for fallback in case server filtering fails
+  // const clientFilteredRecords = applyFilter(records, fields, activeView?.config?.filter);
 
   const { databaseId } = useParams();
   const navigate = useNavigate();

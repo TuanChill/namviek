@@ -55,6 +55,7 @@ export const api = {
   },
   records: {
     list: (dbId: string) => apiFetch<DynRecord[]>(`/databases/${dbId}/records`),
+    listFiltered: (dbId: string, filter: any) => apiFetch<DynRecord[]>(`/databases/${dbId}/records/filter`, { method: 'POST', body: JSON.stringify({ filter }) }),
     create: (dbId: string) => apiFetch<DynRecord>(`/databases/${dbId}/records`, { method: 'POST' }),
     delete: (dbId: string, ids: string[]) => apiFetch(`/records`, { method: 'DELETE', body: JSON.stringify({ ids, databaseId: dbId }) }),
   },

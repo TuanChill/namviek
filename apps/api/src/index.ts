@@ -27,6 +27,7 @@ import {
   ensureDefaultView,
   createField,
   ensurePrimaryField,
+  getFilteredDynRecords,
 } from '@local/database'
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
 import crypto from 'crypto'
@@ -485,6 +486,21 @@ app.post('/api/databases/:id/records', async (c) => {
   } catch (error) {
     console.error(error)
     return c.json({ error: 'Failed to create record' }, 500)
+  }
+})
+
+// POST /api/databases/:id/records/filter — get filtered records
+app.post('/api/databases/:id/records/filter', async (c) => {
+  try {
+    const databaseId = c.req.param('id')
+    const body = await c.req.json()
+    const filter = body.filter || null
+
+    const records = await getFilteredDynRecords(databaseId, filter)
+    return c.json(records)
+  } catch (error) {
+    console.error(error)
+    return c.json({ error: 'Failed to fetch filtered records' }, 500)
   }
 })
 

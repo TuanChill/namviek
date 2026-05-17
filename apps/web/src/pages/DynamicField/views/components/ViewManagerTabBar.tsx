@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Table2, Kanban, CalendarDays, GanttChart, Plus, MoreVertical,
   Star, Pencil, Trash2, Check, Settings2, ChevronLeft, ChevronRight, Palette, Filter,
@@ -60,6 +60,7 @@ export function ViewManagerTabBar({
 }: ViewManagerTabBarProps) {
   const [renamingViewId, setRenamingViewId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
+  const filterSaveTimerRef = useRef<number | null>(null);
 
   const [editingView, setEditingView] = useState<DynView | null>(null);
   const [customizingView, setCustomizingView] = useState<DynView | null>(null);
@@ -81,6 +82,14 @@ export function ViewManagerTabBar({
     onRenameView(renamingViewId, renameValue.trim());
     setRenamingViewId(null);
   };
+
+  useEffect(() => {
+    return () => {
+      if (filterSaveTimerRef.current !== null) {
+        window.clearTimeout(filterSaveTimerRef.current);
+      }
+    };
+  }, []);
 
   return (
     <>
@@ -229,9 +238,15 @@ export function ViewManagerTabBar({
                 view={activeView}
                 fields={fields}
                 onChange={filter => {
-                  onUpdateView(activeView.id, {
-                    config: { ...(activeView.config ?? {}), filter: filter as ViewFilter },
-                  });
+                  if (filterSaveTimerRef.current !== null) {
+                    window.clearTimeout(filterSaveTimerRef.current);
+                  }
+
+                  filterSaveTimerRef.current = window.setTimeout(() => {
+                    onUpdateView(activeView.id, {
+                      config: { ...(activeView.config ?? {}), filter: filter as ViewFilter },
+                    });
+                  }, 1000);
                 }}
               />
             </PopoverContent>

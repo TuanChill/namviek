@@ -729,3 +729,57 @@ export async function ensurePrimaryField(databaseId: string) {
         include: { options: { orderBy: { position: 'asc' } } },
     });
 }
+
+/**
+ * Get all records for a database and apply server-side filtering.
+ * Uses the filter logic from the database/filter.ts module.
+ */
+export async function getFilteredDynRecords(
+    databaseId: string,
+    filter: PrismaTypes.JsonValue | null | undefined,
+) {
+    // First, fetch all records with their field values
+    const records = await prisma.dynRecord.findMany({
+        where: { databaseId },
+        orderBy: { rowNumber: "asc" },
+        include: { fieldValues: { orderBy: { fieldId: "asc" } } },
+    });
+
+    // If no filter, return all records
+    if (!filter) return records;
+
+    // Fetch all fields for type information during filtering
+    const fields = await prisma.field.findMany({
+        where: { databaseId },
+        orderBy: { position: "asc" },
+        include: { options: { orderBy: { position: "asc" } } },
+    });
+
+    // Import and use the server-side filter
+    const { applyFilter } = await import("./filter.js");
+
+    // Transform records to match the filter function's expected format
+    // Handle Prisma's Decimal type by converting to numbers
+    // Handle Prisma's Date type by converting to ISO strings
+    const formattedRecords = records.map(r => ({
+        id: r.id,
+        databaseId: r.databaseId,
+        rowNumber: r.rowNumber,
+        createdAt: r.createdAt,
+        updatedAt: r.updatedAt,
+        fieldValues: r.fieldValues.map(fv => ({
+            fieldId: fv.fieldId,
+            textValue: fv.textValue,
+            numberValue: fv.numberValue != null ? Number(fv.numberValue) : null,
+            selectValue: fv.selectValue,
+            multiSelectValue: fv.multiSelectValue,
+            dateValue: fv.dateValue != null ? (fv.dateValue instanceof Date ? fv.dateValue.toISOString() : fv.dateValue) : null,
+            personValue: fv.personValue,
+            boolValue: fv.boolValue,
+            jsonValue: fv.jsonValue,
+        })) as any,
+    }));
+
+    // Apply filter and return
+    return applyFilter(formattedRecords, fields, filter as any);
+}

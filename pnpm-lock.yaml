@@ -206,6 +206,9 @@ importers:
       '@prisma/extension-accelerate':
         specifier: ^3.0.0
         version: 3.0.0(@prisma/client@7.0.0(prisma@7.0.0(@types/react@19.2.6)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.9.3))(typescript@5.9.3))
+      date-fns:
+        specifier: ^4.1.0
+        version: 4.1.0
       dotenv:
         specifier: ^17.2.3
         version: 17.2.3
