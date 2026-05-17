@@ -14,7 +14,7 @@ import {
   isBefore, isAfter,
 } from 'date-fns';
 import type { DynRecord, Field } from '../../types';
-import type { FilterGroup, FilterRule, ViewFilter, RelativeDateMode, DateMode } from './types';
+import type { FilterGroup, FilterRule, ViewFilter, DateMode } from './types';
 import type { FilterOperator } from './types';
 
 // ─── Public API ───────────────────────────────────────────────────────────────

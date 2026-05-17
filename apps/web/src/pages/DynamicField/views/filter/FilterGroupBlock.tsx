@@ -4,7 +4,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { FilterRuleRow } from './FilterRuleRow';
-import type { FilterGroup, FilterRule, ViewFilter, Conjunction } from './types';
+import type { FilterGroup, FilterRule, Conjunction } from './types';
 import type { Field, DynUser } from '../../types';
 
 interface FilterGroupBlockProps {

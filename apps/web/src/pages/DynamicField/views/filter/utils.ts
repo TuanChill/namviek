@@ -1,4 +1,4 @@
-import type { FilterRule, FilterGroup, ViewFilter, FilterOperator, Conjunction } from './types';
+import type { FilterRule, FilterGroup, ViewFilter, Conjunction } from './types';
 import { getDefaultOperator } from './constants';
 import type { FieldType } from '../../types';
 
