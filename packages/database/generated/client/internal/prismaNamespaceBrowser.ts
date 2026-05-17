@@ -55,6 +55,7 @@ export const ModelName = {
   DynUser: 'DynUser',
   DynDatabase: 'DynDatabase',
   DynView: 'DynView',
+  Filter: 'Filter',
   Field: 'Field',
   FieldOption: 'FieldOption',
   DynRecord: 'DynRecord',
@@ -127,6 +128,17 @@ export const DynViewScalarFieldEnum = {
 export type DynViewScalarFieldEnum = (typeof DynViewScalarFieldEnum)[keyof typeof DynViewScalarFieldEnum]
 
 
+export const FilterScalarFieldEnum = {
+  id: 'id',
+  viewId: 'viewId',
+  config: 'config',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type FilterScalarFieldEnum = (typeof FilterScalarFieldEnum)[keyof typeof FilterScalarFieldEnum]
+
+
 export const FieldScalarFieldEnum = {
   id: 'id',
   databaseId: 'databaseId',
@@ -197,6 +209,13 @@ export const NullableJsonNullValueInput = {
 } as const
 
 export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
+
+
+export const JsonNullValueInput = {
+  JsonNull: 'JsonNull'
+} as const
+
+export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
 
 
 export const QueryMode = {

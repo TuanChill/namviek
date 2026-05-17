@@ -2,6 +2,10 @@ import { prisma } from "./client.js";
 import type { Prisma } from "./generated/client/client.js";
 import type { FieldType } from "./generated/client/client.js";
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 
 // ─── Legacy test queries ───────────────────────────────────────────────────────
 
@@ -453,12 +457,59 @@ export async function backfillIdField(fieldId: string, databaseId: string) {
 
 import type { DynViewType, Prisma as PrismaTypes } from "./generated/client/client.js";
 
+function extractFilterFromViewConfig(
+    config: PrismaTypes.InputJsonValue | PrismaTypes.NullableJsonNullValueInput | undefined,
+): {
+    viewConfig: PrismaTypes.InputJsonValue | PrismaTypes.NullableJsonNullValueInput | undefined;
+    hasFilterKey: boolean;
+    filterConfig: PrismaTypes.InputJsonValue | null | undefined;
+} {
+    if (config === undefined) {
+        return { viewConfig: undefined, hasFilterKey: false, filterConfig: undefined };
+    }
+
+    if (!isPlainObject(config)) {
+        return { viewConfig: config, hasFilterKey: false, filterConfig: undefined };
+    }
+
+    if (!Object.prototype.hasOwnProperty.call(config, "filter")) {
+        return { viewConfig: config as PrismaTypes.InputJsonValue, hasFilterKey: false, filterConfig: undefined };
+    }
+
+    const cloned: Record<string, unknown> = { ...config };
+    const filterConfig = cloned.filter as PrismaTypes.InputJsonValue | null | undefined;
+    delete cloned.filter;
+
+    return {
+        viewConfig: cloned as PrismaTypes.InputJsonValue,
+        hasFilterKey: true,
+        filterConfig,
+    };
+}
+
+function mergeViewAndFilterConfig(
+    viewConfig: PrismaTypes.JsonValue | null,
+    filterConfig: PrismaTypes.JsonValue | undefined,
+): PrismaTypes.JsonValue | null {
+    if (filterConfig === undefined) return viewConfig;
+    if (isPlainObject(viewConfig)) {
+        return { ...viewConfig, filter: filterConfig } as PrismaTypes.JsonValue;
+    }
+    return { filter: filterConfig } as PrismaTypes.JsonValue;
+}
+
 /** List all views for a database ordered by position */
 export async function getDatabaseViews(databaseId: string) {
-    return await prisma.dynView.findMany({
+    const views = await prisma.dynView.findMany({
         where: { databaseId },
         orderBy: { position: "asc" },
+        include: { filter: true },
     });
+
+    return views.map(({ filter, ...view }) => ({
+        ...view,
+        config: mergeViewAndFilterConfig(view.config, filter?.config),
+    }));
 }
 
 /** Create a view in a database */
@@ -476,16 +527,41 @@ export async function createDatabaseView(input: {
     });
     const position = (maxPos._max.position ?? -1) + 1;
 
-    return await prisma.dynView.create({
-        data: {
-            databaseId: input.databaseId,
-            name: input.name,
-            type: input.type,
-            icon: input.icon ?? null,
-            position,
-            isDefault: input.isDefault ?? false,
-            ...(input.config !== undefined && { config: input.config }),
-        },
+    const { viewConfig, hasFilterKey, filterConfig } = extractFilterFromViewConfig(input.config);
+
+    return await prisma.$transaction(async (tx) => {
+        const view = await tx.dynView.create({
+            data: {
+                databaseId: input.databaseId,
+                name: input.name,
+                type: input.type,
+                icon: input.icon ?? null,
+                position,
+                isDefault: input.isDefault ?? false,
+                ...(viewConfig !== undefined && { config: viewConfig as PrismaTypes.InputJsonValue }),
+            },
+        });
+
+        if (hasFilterKey && filterConfig !== null && filterConfig !== undefined) {
+            await tx.filter.create({
+                data: {
+                    viewId: view.id,
+                    config: filterConfig,
+                },
+            });
+        }
+
+        const hydrated = await tx.dynView.findUnique({
+            where: { id: view.id },
+            include: { filter: true },
+        });
+
+        if (!hydrated) return view;
+        const { filter, ...rawView } = hydrated;
+        return {
+            ...rawView,
+            config: mergeViewAndFilterConfig(rawView.config, filter?.config),
+        };
     });
 }
 
@@ -499,9 +575,64 @@ export async function updateDatabaseView(
         config?: PrismaTypes.InputJsonValue | PrismaTypes.NullableJsonNullValueInput;
     }
 ) {
-    return await prisma.dynView.update({
-        where: { id: viewId },
-        data: patch,
+    if (patch.config === undefined) {
+        const view = await prisma.dynView.update({
+            where: { id: viewId },
+            data: patch,
+        });
+
+        const hydrated = await prisma.dynView.findUnique({
+            where: { id: view.id },
+            include: { filter: true },
+        });
+        if (!hydrated) return view;
+        const { filter, ...rawView } = hydrated;
+        return {
+            ...rawView,
+            config: mergeViewAndFilterConfig(rawView.config, filter?.config),
+        };
+    }
+
+    const { config, ...rest } = patch;
+    const { viewConfig, hasFilterKey, filterConfig } = extractFilterFromViewConfig(config);
+    const clearFilterBecauseConfigCleared = config === null;
+
+    return await prisma.$transaction(async (tx) => {
+        const view = await tx.dynView.update({
+            where: { id: viewId },
+            data: {
+                ...rest,
+                config: viewConfig as PrismaTypes.InputJsonValue | PrismaTypes.NullableJsonNullValueInput,
+            },
+        });
+
+        if (clearFilterBecauseConfigCleared) {
+            await tx.filter.deleteMany({ where: { viewId } });
+        } else if (hasFilterKey) {
+            if (filterConfig === null || filterConfig === undefined) {
+                await tx.filter.deleteMany({ where: { viewId } });
+            } else {
+                await tx.filter.upsert({
+                    where: { viewId },
+                    update: { config: filterConfig },
+                    create: {
+                        viewId,
+                        config: filterConfig,
+                    },
+                });
+            }
+        }
+
+        const hydrated = await tx.dynView.findUnique({
+            where: { id: view.id },
+            include: { filter: true },
+        });
+        if (!hydrated) return view;
+        const { filter, ...rawView } = hydrated;
+        return {
+            ...rawView,
+            config: mergeViewAndFilterConfig(rawView.config, filter?.config),
+        };
     });
 }
 

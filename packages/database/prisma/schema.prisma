@@ -87,10 +87,23 @@ model DynView {
   updatedAt  DateTime    @updatedAt
 
   database DynDatabase @relation(fields: [databaseId], references: [id], onDelete: Cascade)
+  filter   Filter?
 
   @@index([databaseId, position])
   @@index([databaseId, type])
   @@map("dyn_views")
+}
+
+model Filter {
+  id        String   @id @default(uuid())
+  viewId    String   @unique
+  config    Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  view DynView @relation(fields: [viewId], references: [id], onDelete: Cascade)
+
+  @@map("dyn_filters")
 }
 
 model Field {

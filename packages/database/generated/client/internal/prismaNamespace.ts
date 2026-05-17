@@ -388,6 +388,7 @@ export const ModelName = {
   DynUser: 'DynUser',
   DynDatabase: 'DynDatabase',
   DynView: 'DynView',
+  Filter: 'Filter',
   Field: 'Field',
   FieldOption: 'FieldOption',
   DynRecord: 'DynRecord',
@@ -407,7 +408,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "test" | "dynUser" | "dynDatabase" | "dynView" | "field" | "fieldOption" | "dynRecord" | "fieldValue"
+    modelProps: "test" | "dynUser" | "dynDatabase" | "dynView" | "filter" | "field" | "fieldOption" | "dynRecord" | "fieldValue"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -704,6 +705,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.DynViewCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.DynViewCountAggregateOutputType> | number
+        }
+      }
+    }
+    Filter: {
+      payload: Prisma.$FilterPayload<ExtArgs>
+      fields: Prisma.FilterFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.FilterFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FilterPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.FilterFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FilterPayload>
+        }
+        findFirst: {
+          args: Prisma.FilterFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FilterPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.FilterFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FilterPayload>
+        }
+        findMany: {
+          args: Prisma.FilterFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FilterPayload>[]
+        }
+        create: {
+          args: Prisma.FilterCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FilterPayload>
+        }
+        createMany: {
+          args: Prisma.FilterCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.FilterCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FilterPayload>[]
+        }
+        delete: {
+          args: Prisma.FilterDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FilterPayload>
+        }
+        update: {
+          args: Prisma.FilterUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FilterPayload>
+        }
+        deleteMany: {
+          args: Prisma.FilterDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.FilterUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.FilterUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FilterPayload>[]
+        }
+        upsert: {
+          args: Prisma.FilterUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FilterPayload>
+        }
+        aggregate: {
+          args: Prisma.FilterAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateFilter>
+        }
+        groupBy: {
+          args: Prisma.FilterGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.FilterGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.FilterCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.FilterCountAggregateOutputType> | number
         }
       }
     }
@@ -1092,6 +1167,17 @@ export const DynViewScalarFieldEnum = {
 export type DynViewScalarFieldEnum = (typeof DynViewScalarFieldEnum)[keyof typeof DynViewScalarFieldEnum]
 
 
+export const FilterScalarFieldEnum = {
+  id: 'id',
+  viewId: 'viewId',
+  config: 'config',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type FilterScalarFieldEnum = (typeof FilterScalarFieldEnum)[keyof typeof FilterScalarFieldEnum]
+
+
 export const FieldScalarFieldEnum = {
   id: 'id',
   databaseId: 'databaseId',
@@ -1162,6 +1248,13 @@ export const NullableJsonNullValueInput = {
 } as const
 
 export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
+
+
+export const JsonNullValueInput = {
+  JsonNull: JsonNull
+} as const
+
+export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
 
 
 export const QueryMode = {
@@ -1396,6 +1489,7 @@ export type GlobalOmitConfig = {
   dynUser?: Prisma.DynUserOmit
   dynDatabase?: Prisma.DynDatabaseOmit
   dynView?: Prisma.DynViewOmit
+  filter?: Prisma.FilterOmit
   field?: Prisma.FieldOmit
   fieldOption?: Prisma.FieldOptionOmit
   dynRecord?: Prisma.DynRecordOmit

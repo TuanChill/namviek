@@ -148,11 +148,19 @@ Defined in `apps/web/src/pages/DynamicField/types.ts`:
   - `colorFieldId?: string` — resolves a `select` or `multi_select` field; maps option color to bar dash stripe
   - `highlightedWeekdays?: number[]` — 0–6 (Sun–Sat) days to stripe-highlight; defaults to `[0, 2]` (Sun, Tue)
 
-Stored in DB as `DynView.config` JSON.
+Stored in DB as:
+- `DynView.config` JSON for non-filter view settings
+- `Filter.config` JSON for filter tree (1:1 with `DynView`)
 
 Note:
-- View-level behavior (filter, groupBy, cardLayout, calendar, timeline) is stored on `DynView.config`.
+- View-level behavior (groupBy, cardLayout, calendar, timeline) is stored on `DynView.config`.
+- Filter behavior is stored on `Filter.config`.
 - Field-level behavior (field formatting, field icon, options metadata) is stored separately on `Field.config`.
+
+Cascade delete behavior:
+- `Filter.viewId` has `ON DELETE CASCADE` to `DynView.id`.
+- Deleting a view removes its filter row automatically.
+- Deleting a database removes its views and their filter rows automatically.
 
 ## 3) Behavior Rules
 

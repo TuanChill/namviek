@@ -38,6 +38,11 @@ export type DynDatabase = Prisma.DynDatabaseModel
  */
 export type DynView = Prisma.DynViewModel
 /**
+ * Model Filter
+ * 
+ */
+export type Filter = Prisma.FilterModel
+/**
  * Model Field
  * 
  */

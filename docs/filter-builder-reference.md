@@ -32,18 +32,25 @@ The filter is a tree with groups and rules.
   - `dateMode?` (date fields only)
   - `value` (shape depends on field/operator)
 
-The full tree is persisted in `DynView.config.filter`.
+The full tree is persisted in `Filter.config` (separate table), linked 1:1 to a view.
 
 Persistence details:
 
-- Database column: `DynView.config` (JSON) in Prisma schema
-- API write path: `PATCH /api/views/:viewId` with body `{ config: ... }`
-- Query write path: `updateDatabaseView(viewId, { config })`
+- Database table: `dyn_filters` (Prisma model: `Filter`)
+- Relationship: `Filter.viewId` -> `DynView.id` (unique, `ON DELETE CASCADE`)
+- API write path (unchanged): `PATCH /api/views/:viewId` with body `{ config: ... }`
+- Query write path (split/merge): `updateDatabaseView(viewId, { config })`
 
 Important distinction:
 
-- Filter/view settings live in `DynView.config`
+- Filter settings live in `Filter.config`
+- Other view settings (groupBy, calendar, timeline, card layout) stay in `DynView.config`
 - Field-level settings (format, icon, etc.) live in `Field.config`
+
+Delete behavior:
+
+- Deleting a view deletes its filter row automatically via FK cascade.
+- Deleting a database deletes views, which also deletes filter rows transitively.
 
 ## 3) Operators and Inputs
 
@@ -132,6 +139,51 @@ When adding a new filterable field type:
 1. Add field type config in `FIELD_OPERATOR_CONFIG`.
 2. Ensure `apply.ts` can evaluate that field type.
 3. Confirm value payload shape in rule `value` is consistent.
+
+### 7.1) How to Support a New Field in Filter Builder (Step-by-step)
+
+Use this when a new field type should become filterable in the UI and evaluator.
+
+1. Add/update field type definitions.
+  - If this is a brand-new product field type, add it to the shared field type source first.
+  - Web filter code reads field type from Dynamic Field types.
+
+2. Add operator + input mapping in filter constants.
+  - File: `apps/web/src/pages/DynamicField/views/filter/constants.ts`
+  - Update `FIELD_OPERATOR_CONFIG` for the new field type.
+  - Pick `valueInput` for each operator (`text`, `number`, `select`, `multi_select`, `checkbox`, `person`, `date`, `none`).
+  - If needed, add new operator labels to `OPERATOR_LABELS`.
+
+3. Extend filter operator union if you introduced new operators.
+  - File: `apps/web/src/pages/DynamicField/views/filter/types.ts`
+  - Add operators to `FilterOperator`.
+
+4. Add evaluator logic.
+  - File: `apps/web/src/pages/DynamicField/views/filter/apply.ts`
+  - Add a new branch in `evaluateRule` for the field type.
+  - Implement or reuse evaluator helper functions.
+  - Keep behavior aligned with empty checks and value shape.
+
+5. Ensure value editor supports the selected `valueInput`.
+  - File: `apps/web/src/pages/DynamicField/views/filter/ValueInput.tsx`
+  - If existing input variants are enough, no change needed.
+  - If not, add a new input variant and renderer.
+
+6. Validate rule initialization/reset behavior.
+  - File: `apps/web/src/pages/DynamicField/views/filter/utils.ts`
+  - `makeRule` should initialize required defaults (for example date-like `dateMode`).
+  - File: `apps/web/src/pages/DynamicField/views/filter/FilterRuleRow.tsx`
+  - Ensure field/operator switching resets incompatible value state.
+
+7. Verify persistence contract.
+  - Filter tree still persists via `config.filter` API payload.
+  - Backend split/merge persists filter into `Filter.config`.
+
+8. Test scenarios for the new field type.
+  - Operator semantics: positive + negative cases.
+  - Empty/not-empty behavior.
+  - Nested group behavior (`AND`/`OR`) with mixed field types.
+  - Save/reload consistency and immediate update without page refresh.
 
 ## 8) Quick Testing Scenarios
 
