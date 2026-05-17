@@ -141,7 +141,7 @@ export interface ViewConfig {
   calendar?: ViewCalendarConfig;
   timeline?: ViewTimelineConfig;
   cardLayout?: ViewKanbanCardLayout;
-  filter?: unknown;
+  filter?: import('./views/filter/types').ViewFilter;
   sort?: unknown;
   fieldOrder?: string[];
   fieldWidths?: Record<string, number>;

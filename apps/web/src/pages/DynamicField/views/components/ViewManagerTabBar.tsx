@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   Table2, Kanban, CalendarDays, GanttChart, Plus, MoreVertical,
-  Star, Pencil, Trash2, Check, Settings2, ChevronLeft, ChevronRight, Palette,
+  Star, Pencil, Trash2, Check, Settings2, ChevronLeft, ChevronRight, Palette, Filter,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,15 +13,18 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { getIconByName } from '../../constants';
 import { EditViewDialog } from './EditViewDialog';
 import { CustomizeKanbanCardDialog } from './CustomizeKanbanCardDialog';
+import { FilterBuilder, countRules } from '../filter';
 import type {
   DynView,
   DynViewType,
   Field,
   ViewConfig,
 } from '../../types';
+import type { ViewFilter } from '../filter';
 
 const VIEW_TYPE_META: Record<DynViewType, { label: string; Icon: React.FC<{ size?: number; className?: string }> }> = {
   spreadsheet: { label: 'Spreadsheet', Icon: Table2 },
@@ -61,6 +64,7 @@ export function ViewManagerTabBar({
   const [editingView, setEditingView] = useState<DynView | null>(null);
   const [customizingView, setCustomizingView] = useState<DynView | null>(null);
   const [deletingViewId, setDeletingViewId] = useState<string | null>(null);
+  const [filterOpen, setFilterOpen] = useState(false);
 
   const getNextViewName = (type: DynViewType) => {
     const baseName = VIEW_TYPE_META[type].label;
@@ -195,6 +199,45 @@ export function ViewManagerTabBar({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      {/* ── Toolbar row (Filter / Sort / …) ───────────────────── */}
+      {activeView && (
+        <div className="flex items-center gap-1 px-2 py-1 border-b">
+          <Popover open={filterOpen} onOpenChange={setFilterOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant={activeView.config?.filter && countRules(activeView.config.filter) > 0 ? 'secondary' : 'ghost'}
+                size="sm"
+                className="h-7 px-2 text-xs gap-1.5"
+              >
+                <Filter size={12} />
+                Filter
+                {activeView.config?.filter && countRules(activeView.config.filter) > 0 && (
+                  <span className="ml-0.5 rounded-full bg-primary text-primary-foreground text-[10px] w-4 h-4 flex items-center justify-center font-semibold">
+                    {countRules(activeView.config.filter)}
+                  </span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              className="p-0 w-auto"
+              align="start"
+              side="bottom"
+              sideOffset={4}
+            >
+              <FilterBuilder
+                view={activeView}
+                fields={fields}
+                onChange={filter => {
+                  onUpdateView(activeView.id, {
+                    config: { ...(activeView.config ?? {}), filter: filter as ViewFilter },
+                  });
+                }}
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+      )}
 
       {/* Edit view dialog */}
       {editingView && (

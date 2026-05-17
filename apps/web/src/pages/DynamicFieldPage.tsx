@@ -36,6 +36,7 @@ import { KanbanView } from './DynamicField/views/kanban/KanbanView';
 import { CalendarView } from './DynamicField/views/calendar/CalendarView';
 import { TimelineView } from './DynamicField/views/timeline/TimelineView';
 import { ViewManagerTabBar } from './DynamicField/views/components/ViewManagerTabBar';
+import { applyFilter } from './DynamicField/views/filter';
 
 import type { DynDatabase, DynViewType, Field, FieldConfig, FieldType, FieldValuePayload } from './DynamicField/types';
 
@@ -46,6 +47,9 @@ export default function DynamicFieldPage() {
   const { fields, setFields, loadFields, addField, renameField, deleteField, moveField, duplicateField, changeIcon, updateField } = useFields();
   const { records, setRecords, loadRecords, addRecord, setValue, removeFieldValues, reloadRecords, deleteRecords } = useRecords();
   const { views, setViews, activeView, setActiveView, loadViews, createView, updateView, deleteView, setDefaultView, moveView } = useViews();
+
+  // Apply the active view's filter to records before passing to any view component
+  const filteredRecords = applyFilter(records, fields, activeView?.config?.filter);
 
   const { databaseId } = useParams();
   const navigate = useNavigate();
@@ -311,7 +315,7 @@ export default function DynamicFieldPage() {
         return (
           <KanbanView
             fields={fields}
-            records={records}
+            records={filteredRecords}
             loading={loading}
             view={activeView!}
             onSetValue={handleSetValue}
@@ -322,7 +326,7 @@ export default function DynamicFieldPage() {
         return (
           <CalendarView
             fields={fields}
-            records={records}
+            records={filteredRecords}
             loading={loading}
             view={activeView!}
             onUpdateView={(viewId, patch) => { void updateView(viewId, patch); }}
@@ -334,7 +338,7 @@ export default function DynamicFieldPage() {
         return (
           <TimelineView
             fields={fields}
-            records={records}
+            records={filteredRecords}
             loading={loading}
             view={activeView!}
           />
@@ -344,7 +348,7 @@ export default function DynamicFieldPage() {
         return (
           <SpreadsheetView
             fields={fields}
-            records={records}
+            records={filteredRecords}
             loading={loading}
             selectedRecords={selectedRecords}
             activeCell={activeCell}
