@@ -34,6 +34,17 @@ The filter is a tree with groups and rules.
 
 The full tree is persisted in `DynView.config.filter`.
 
+Persistence details:
+
+- Database column: `DynView.config` (JSON) in Prisma schema
+- API write path: `PATCH /api/views/:viewId` with body `{ config: ... }`
+- Query write path: `updateDatabaseView(viewId, { config })`
+
+Important distinction:
+
+- Filter/view settings live in `DynView.config`
+- Field-level settings (format, icon, etc.) live in `Field.config`
+
 ## 3) Operators and Inputs
 
 `constants.ts` is the single source of truth:

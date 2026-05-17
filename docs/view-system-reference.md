@@ -150,6 +150,10 @@ Defined in `apps/web/src/pages/DynamicField/types.ts`:
 
 Stored in DB as `DynView.config` JSON.
 
+Note:
+- View-level behavior (filter, groupBy, cardLayout, calendar, timeline) is stored on `DynView.config`.
+- Field-level behavior (field formatting, field icon, options metadata) is stored separately on `Field.config`.
+
 ## 3) Behavior Rules
 
 - View order is database-backed via `DynView.position`.
