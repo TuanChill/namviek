@@ -142,7 +142,7 @@ export interface ViewConfig {
   timeline?: ViewTimelineConfig;
   cardLayout?: ViewKanbanCardLayout;
   filter?: import('./views/filter/types').ViewFilter;
-  sort?: unknown;
+  sort?: import('./views/sort/types').ViewSort;
   fieldOrder?: string[];
   fieldWidths?: Record<string, number>;
   hiddenFieldIds?: string[];

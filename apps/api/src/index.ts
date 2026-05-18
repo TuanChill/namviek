@@ -291,6 +291,7 @@ const VALID_VIEW_TYPES = ['spreadsheet', 'kanban', 'calendar', 'timeline'] as co
 const VALID_GROUPBY_FIELD_TYPES = ['select', 'multi_select', 'date', 'created_time', 'updated_time'] as const
 const VALID_GRANULARITIES = ['day', 'month', 'quarter'] as const
 const VALID_CALENDAR_MODES = ['month', 'week'] as const
+const VALID_SORT_DIRECTIONS = ['asc', 'desc'] as const
 
 function validateViewConfig(config: any): string | null {
   if (!config || typeof config !== 'object') return null
@@ -359,6 +360,23 @@ function validateViewConfig(config: any): string | null {
       if (config.timeline.groupHeight < 120 || config.timeline.groupHeight > 1200) {
         return 'timeline groupHeight must be between 120 and 1200'
       }
+    }
+  }
+
+  if (config.sort !== undefined) {
+    if (!Array.isArray(config.sort)) {
+      return 'sort must be an array'
+    }
+
+    const invalidSort = config.sort.some((rule: unknown) => {
+      if (!rule || typeof rule !== 'object') return true
+      const candidate = rule as { fieldId?: unknown; direction?: unknown }
+      return typeof candidate.fieldId !== 'string'
+        || !VALID_SORT_DIRECTIONS.includes(candidate.direction as typeof VALID_SORT_DIRECTIONS[number])
+    })
+
+    if (invalidSort) {
+      return 'sort entries must include fieldId and direction (asc or desc)'
     }
   }
 
@@ -469,7 +487,8 @@ app.post('/api/databases/:id/views/:viewId/default', async (c) => {
 // GET /api/databases/:id/records — list records with field values
 app.get('/api/databases/:id/records', async (c) => {
   try {
-    const records = await getDynRecords(c.req.param('id'))
+    const viewId = c.req.query('viewId') ?? undefined
+    const records = await getDynRecords(c.req.param('id'), viewId)
     return c.json(records)
   } catch (error) {
     console.error(error)

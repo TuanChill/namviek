@@ -3,6 +3,8 @@ import type { Prisma } from "./generated/client/client.js";
 import type { FieldType } from "./generated/client/client.js";
 import { buildFilteredRecordIdsQuery } from "./filter-sql.js";
 import type { ViewFilter } from "./filter.js";
+import { buildSortOrderClause } from "./sort-sql.js";
+import type { ViewSort } from "./sort-sql.js";
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
     return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -118,13 +120,18 @@ export async function createField(
             position,
             isPrimary: options?.isPrimary ?? false,
             required: options?.required ?? false,
-            config: options?.config ?? undefined,
+            ...(options?.config !== undefined ? { config: options.config } : {}),
         },
     });
 }
 
 /** List records for a database with their field values */
-export async function getDynRecords(databaseId: string) {
+export async function getDynRecords(databaseId: string, viewId?: string) {
+    if (viewId) {
+        const records = await getDynRecordsForView(databaseId, viewId);
+        if (records) return records;
+    }
+
     return await prisma.dynRecord.findMany({
         where: { databaseId, archivedAt: null },
         orderBy: { rowNumber: "asc" },
@@ -195,25 +202,27 @@ export async function setFieldValue(
         personValue?: string[];
         boolValue?: boolean | null;
         jsonValue?: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput;
-    } = {
-        textValue: payload.textValue,
-        numberValue:
-            typeof payload.numberValue === "string"
-                ? (() => {
-                    const n = parseFloat(payload.numberValue);
-                    return Number.isNaN(n) ? null : n;
-                })()
-                : payload.numberValue,
-        selectValue: payload.selectValue,
-        multiSelectValue: payload.multiSelectValue,
-        dateValue:
-            typeof payload.dateValue === "string"
-                ? new Date(payload.dateValue)
-                : payload.dateValue,
-        personValue: payload.personValue,
-        boolValue: payload.boolValue,
-        jsonValue: payload.jsonValue,
-    };
+    } = {};
+
+    if (payload.textValue !== undefined) cleaned.textValue = payload.textValue;
+    if (payload.numberValue !== undefined) {
+        cleaned.numberValue = typeof payload.numberValue === "string"
+            ? (() => {
+                const n = parseFloat(payload.numberValue);
+                return Number.isNaN(n) ? null : n;
+            })()
+            : payload.numberValue;
+    }
+    if (payload.selectValue !== undefined) cleaned.selectValue = payload.selectValue;
+    if (payload.multiSelectValue !== undefined) cleaned.multiSelectValue = payload.multiSelectValue;
+    if (payload.dateValue !== undefined) {
+        cleaned.dateValue = typeof payload.dateValue === "string"
+            ? new Date(payload.dateValue)
+            : payload.dateValue;
+    }
+    if (payload.personValue !== undefined) cleaned.personValue = payload.personValue;
+    if (payload.boolValue !== undefined) cleaned.boolValue = payload.boolValue;
+    if (payload.jsonValue !== undefined) cleaned.jsonValue = payload.jsonValue;
 
     return await prisma.fieldValue.upsert({
         where: { recordId_fieldId: { recordId, fieldId } },
@@ -336,7 +345,7 @@ export async function duplicateField(fieldId: string) {
             position: src.position + 1,
             required: src.required,
             isPrimary: false,
-            config: src.config ?? undefined,
+            ...(src.config !== null && src.config !== undefined ? { config: src.config } : {}),
         },
     });
 
@@ -386,8 +395,15 @@ export async function searchUsers(q: string) {
 export async function upsertDynUser(name: string, email: string, avatarUrl?: string) {
     return await prisma.dynUser.upsert({
         where: { email },
-        create: { name, email, avatarUrl },
-        update: { name, avatarUrl },
+        create: {
+            name,
+            email,
+            ...(avatarUrl !== undefined ? { avatarUrl } : {}),
+        },
+        update: {
+            name,
+            ...(avatarUrl !== undefined ? { avatarUrl } : {}),
+        },
     });
 }
 
@@ -498,6 +514,74 @@ function mergeViewAndFilterConfig(
         return { ...viewConfig, filter: filterConfig } as PrismaTypes.JsonValue;
     }
     return { filter: filterConfig } as PrismaTypes.JsonValue;
+}
+
+function extractSortConfig(config: PrismaTypes.JsonValue | null | undefined): ViewSort | undefined {
+    if (!isPlainObject(config)) return undefined;
+    if (!Array.isArray(config.sort)) return undefined;
+
+    const sort = config.sort.filter((rule): rule is { fieldId: string; direction: 'asc' | 'desc' } => {
+        return isPlainObject(rule)
+            && typeof rule.fieldId === 'string'
+            && (rule.direction === 'asc' || rule.direction === 'desc');
+    });
+
+    return sort.length > 0 ? sort : undefined;
+}
+
+async function getDynRecordsForView(databaseId: string, viewId: string) {
+    const view = await prisma.dynView.findUnique({
+        where: { id: viewId },
+        include: { filter: true },
+    });
+
+    if (!view || view.databaseId !== databaseId) {
+        return null;
+    }
+
+    const viewConfig = mergeViewAndFilterConfig(view.config, view.filter?.config);
+    const viewFilter = isPlainObject(viewConfig) && isPlainObject(viewConfig.filter)
+        ? (viewConfig.filter as unknown as ViewFilter)
+        : ({ id: 'root', type: 'group', conjunction: 'AND', children: [] } as ViewFilter);
+    const sort = extractSortConfig(viewConfig);
+
+    const fields = await prisma.field.findMany({
+        where: { databaseId },
+        orderBy: { position: 'asc' },
+        select: { id: true, type: true },
+    });
+
+    const orderClause = sort ? buildSortOrderClause(sort, fields) : undefined;
+    const query = buildFilteredRecordIdsQuery(databaseId, viewFilter, fields, orderClause);
+
+    const matchingRows = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
+        query.sql,
+        ...query.params,
+    );
+    const recordIds = matchingRows.map((row) => row.id);
+
+    if (recordIds.length === 0) {
+        return [];
+    }
+
+    const records = await prisma.dynRecord.findMany({
+        where: {
+            databaseId,
+            archivedAt: null,
+            id: { in: recordIds },
+        },
+        orderBy: { rowNumber: 'asc' },
+        include: {
+            fieldValues: {
+                include: { field: true },
+            },
+        },
+    });
+
+    const recordById = new Map(records.map((record) => [record.id, record]));
+    return recordIds
+        .map((id) => recordById.get(id))
+        .filter((record): record is NonNullable<typeof record> => Boolean(record));
 }
 
 /** List all views for a database ordered by position */
@@ -766,7 +850,7 @@ export async function getFilteredDynRecords(
         return [];
     }
 
-    return prisma.dynRecord.findMany({
+    const records = await prisma.dynRecord.findMany({
         where: {
             databaseId,
             archivedAt: null,
@@ -779,4 +863,9 @@ export async function getFilteredDynRecords(
             },
         },
     });
+
+    const recordById = new Map(records.map((record) => [record.id, record]));
+    return recordIds
+        .map((id) => recordById.get(id))
+        .filter((record): record is NonNullable<typeof record> => Boolean(record));
 }

@@ -51,39 +51,28 @@ export default function DynamicFieldPage() {
   // Server-side filtered records
   const [filteredRecords, setFilteredRecords] = useState<typeof records>([]);
 
-  // When active view changes, fetch filtered records if the view has a filter
+  // When the active view changes or is updated, fetch view-ordered records from the backend.
   useEffect(() => {
     if (!selectedDb?.id || !records.length) {
       setFilteredRecords(records);
       return;
     }
 
-    const filter = activeView?.config?.filter;
+    let cancelled = false;
 
-    if (filter) {
-      let cancelled = false;
+    api.records.list(selectedDb.id, activeView?.id)
+      .then(viewRecords => {
+        if (!cancelled) setFilteredRecords(viewRecords);
+      })
+      .catch(err => {
+        console.error('Failed to fetch view records:', err);
+        if (!cancelled) setFilteredRecords(records);
+      });
 
-      api.records.listFiltered(selectedDb.id, filter)
-        .then(filtered => {
-          if (!cancelled) setFilteredRecords(filtered);
-        })
-        .catch(err => {
-          console.error('Failed to fetch filtered records:', err);
-          // Fallback to records if server filtering fails
-          if (!cancelled) setFilteredRecords(records);
-        });
-
-      return () => {
-        cancelled = true;
-      };
-    } else {
-      // No filter, use all records
-      setFilteredRecords(records);
-    }
-  }, [selectedDb?.id, activeView, records]);
-
-  // Keep this import for fallback in case server filtering fails
-  // const clientFilteredRecords = applyFilter(records, fields, activeView?.config?.filter);
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedDb?.id, activeView?.id, activeView?.updatedAt, records]);
 
   const { databaseId } = useParams();
   const navigate = useNavigate();

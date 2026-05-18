@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   Table2, Kanban, CalendarDays, GanttChart, Plus, MoreVertical,
-  Star, Pencil, Trash2, Check, Settings2, ChevronLeft, ChevronRight, Palette, Filter,
+  Star, Pencil, Trash2, Check, Settings2, ChevronLeft, ChevronRight, Palette, Filter, ArrowUpDown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,7 @@ import { getIconByName } from '../../constants';
 import { EditViewDialog } from './EditViewDialog';
 import { CustomizeKanbanCardDialog } from './CustomizeKanbanCardDialog';
 import { FilterBuilder, countRules } from '../filter';
+import { SortBuilder } from '../sort';
 import type {
   DynView,
   DynViewType,
@@ -66,6 +67,7 @@ export function ViewManagerTabBar({
   const [customizingView, setCustomizingView] = useState<DynView | null>(null);
   const [deletingViewId, setDeletingViewId] = useState<string | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [sortOpen, setSortOpen] = useState(false);
 
   const getNextViewName = (type: DynViewType) => {
     const baseName = VIEW_TYPE_META[type].label;
@@ -247,6 +249,40 @@ export function ViewManagerTabBar({
                       config: { ...(activeView.config ?? {}), filter: filter as ViewFilter },
                     });
                   }, 1000);
+                }}
+              />
+            </PopoverContent>
+          </Popover>
+
+          <Popover open={sortOpen} onOpenChange={setSortOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant={Array.isArray(activeView.config?.sort) && activeView.config.sort.length > 0 ? 'secondary' : 'ghost'}
+                size="sm"
+                className="h-7 px-2 text-xs gap-1.5"
+              >
+                <ArrowUpDown size={12} />
+                Sort
+                {Array.isArray(activeView.config?.sort) && activeView.config.sort.length > 0 && (
+                  <span className="ml-0.5 rounded-full bg-primary text-primary-foreground text-[10px] w-4 h-4 flex items-center justify-center font-semibold">
+                    {activeView.config.sort.length}
+                  </span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              className="p-0 w-auto"
+              align="start"
+              side="bottom"
+              sideOffset={4}
+            >
+              <SortBuilder
+                view={activeView}
+                fields={fields}
+                onChange={sort => {
+                  onUpdateView(activeView.id, {
+                    config: { ...(activeView.config ?? {}), sort },
+                  });
                 }}
               />
             </PopoverContent>

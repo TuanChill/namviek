@@ -3,7 +3,7 @@ import type { Field } from './generated/client/client.js';
 import { resolveDateRange } from './filter.js';
 import type { DateMode, FilterGroup, FilterRule, ViewFilter } from './filter.js';
 
-type SqlFragment = {
+export type SqlFragment = {
   text: string;
   params: unknown[];
 };
@@ -21,9 +21,11 @@ export function buildFilteredRecordIdsQuery(
   databaseId: string,
   filter: ViewFilter,
   fields: SupportedField[],
+  orderBy?: SqlFragment,
 ): SqlQuery {
   const fieldMap = new Map(fields.map((field) => [field.id, field]));
   const predicate = buildGroupPredicate(filter, fieldMap);
+  const orderClause = orderBy ?? fragment('r."rowNumber" ASC');
 
   const statement = joinFragments([
     fragment(
@@ -31,7 +33,8 @@ export function buildFilteredRecordIdsQuery(
       [databaseId],
     ),
     wrap(predicate),
-    fragment(' ORDER BY r."rowNumber" ASC'),
+    fragment(' ORDER BY '),
+    orderClause,
   ]);
 
   return finalizeQuery(statement);

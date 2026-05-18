@@ -54,7 +54,7 @@ export const api = {
       apiFetch<{ backfilled: number }>(`/fields/${fieldId}/backfill`, { method: 'POST', body: JSON.stringify({ databaseId }) }),
   },
   records: {
-    list: (dbId: string) => apiFetch<DynRecord[]>(`/databases/${dbId}/records`),
+    list: (dbId: string, viewId?: string) => apiFetch<DynRecord[]>(`/databases/${dbId}/records${viewId ? `?viewId=${encodeURIComponent(viewId)}` : ''}`),
     listFiltered: (dbId: string, filter: any) => apiFetch<DynRecord[]>(`/databases/${dbId}/records/filter`, { method: 'POST', body: JSON.stringify({ filter }) }),
     create: (dbId: string) => apiFetch<DynRecord>(`/databases/${dbId}/records`, { method: 'POST' }),
     delete: (dbId: string, ids: string[]) => apiFetch(`/records`, { method: 'DELETE', body: JSON.stringify({ ids, databaseId: dbId }) }),
