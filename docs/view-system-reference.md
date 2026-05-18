@@ -161,7 +161,7 @@ Stored in DB as:
 
 Backend filter execution path:
 - Save path: web `onUpdateView(...)` -> `PATCH /api/views/:viewId` -> `updateDatabaseView(...)`
-- Query path: web `api.records.listFiltered(...)` -> `POST /api/databases/:id/records/filter` -> `getFilteredDynRecords(...)` -> `packages/database/filter.ts`
+- Query path: web `api.records.listFiltered(...)` -> `POST /api/databases/:id/records/filter` -> `getFilteredDynRecords(...)` -> `packages/database/filter-sql.ts` (SQL compiler) -> Prisma hydration
 
 Note:
 - View-level behavior (groupBy, cardLayout, calendar, timeline) is stored on `DynView.config`.

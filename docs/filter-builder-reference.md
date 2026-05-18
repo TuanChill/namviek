@@ -17,7 +17,7 @@ Status note:
 - Operator config: `apps/web/src/pages/DynamicField/views/filter/constants.ts`
 - Tree helpers: `apps/web/src/pages/DynamicField/views/filter/utils.ts`
 - Debounced save trigger: `apps/web/src/pages/DynamicField/views/components/ViewManagerTabBar.tsx`
-- Backend evaluator: `packages/database/filter.ts`
+- Raw SQL filter builder: `packages/database/filter-sql.ts`
 - Backend query hook-in: `packages/database/queries.ts` via `getFilteredDynRecords(databaseId, filter)`
 - API endpoint: `POST /api/databases/:id/records/filter`
 - Runtime fetch integration: `apps/web/src/pages/DynamicFieldPage.tsx` via `api.records.listFiltered(selectedDb.id, activeView?.config?.filter)`
@@ -108,7 +108,7 @@ Evaluator behavior in `apply.ts`:
 - `is_on_or_before`: inclusive upper bound
 - `is_on_or_after`: inclusive lower bound
 
-## 5) Backend Filter Process
+## 5) Backend Filter Process (Raw SQL)
 
 Current flow:
 
@@ -119,30 +119,33 @@ Current flow:
 5. The API stores the tree in `Filter.config` through `updateDatabaseView(...)`.
 6. `DynamicFieldPage.tsx` requests matching rows from `POST /api/databases/:id/records/filter`.
 7. The API calls `getFilteredDynRecords(databaseId, filter)`.
-8. `getFilteredDynRecords(...)` loads records + fields and applies the evaluator in `packages/database/filter.ts`.
-9. Only matching records are returned to the browser.
+8. `getFilteredDynRecords(...)` loads field metadata and builds SQL using `buildFilteredRecordIdsQuery(...)` in `packages/database/filter-sql.ts`.
+9. The backend executes the generated SQL to fetch only matching record IDs.
+10. Prisma loads matched records with full `fieldValues + field` include shape.
+11. Only matching records are returned to the browser.
 
 Important implications:
 
 - Filter save traffic and record filter traffic are separate calls.
 - The debounce is on the view save call, not on the record filter endpoint.
 - The browser should not be treated as the source of truth for match logic anymore.
+- SQL text and bound params are logged in `getFilteredDynRecords(...)` for debugging.
 
-`applyFilter` in `packages/database/filter.ts` is pure and synchronous.
+Raw SQL builder design goals in `packages/database/filter-sql.ts`:
 
-- Returns original records for null/empty filter
-- Builds `fieldMap` once, then evaluates each record recursively
-- `AND` group: all children must pass
-- `OR` group: at least one child must pass
+- Keep AST-to-SQL translation readable via small per-type compiler helpers.
+- Keep generated SQL safe via positional parameters (`$1`, `$2`, ...).
+- Keep runtime record shape stable by using SQL for ID matching, then Prisma for hydration.
 
-Type-specific evaluators:
+Current operator compilation strategy:
 
-- Text-like: case-insensitive string compare/contains
-- Number: numeric comparisons (`eq`, `gt`, `lte`, etc.)
-- Select/multi-select/person: membership checks
-- Checkbox: boolean compare on `is`
-- File: empty/not-empty based on attachment array length
-- Date-like: parsed ISO date + range resolution
+- Text-like: `LOWER(...)` comparisons and `LIKE` patterns
+- Number: scalar numeric comparisons
+- Select: scalar equality/inequality
+- Multi-select/person: Postgres array operators (`@>`, `&&`)
+- Checkbox: boolean comparison with `COALESCE`
+- File: `EXISTS` query with JSON array-length checks
+- Date-like: date range bounds from shared `resolveDateRange(...)`
 
 ## 6) Important Defaults and UX Rules
 
@@ -159,13 +162,13 @@ When adding a new operator:
 1. Add the operator to `FilterOperator` in `types.ts`.
 2. Add label in `OPERATOR_LABELS`.
 3. Add operator mapping in `FIELD_OPERATOR_CONFIG` for relevant field types.
-4. Implement evaluator logic in `packages/database/filter.ts` for affected field types.
+4. Implement SQL compiler logic in `packages/database/filter-sql.ts` for affected field types/operators.
 5. Verify value UI behavior in `ValueInput.tsx`.
 
 When adding a new filterable field type:
 
 1. Add field type config in `FIELD_OPERATOR_CONFIG`.
-2. Ensure `packages/database/filter.ts` can evaluate that field type.
+2. Ensure `packages/database/filter-sql.ts` can compile that field type.
 3. Confirm value payload shape in rule `value` is consistent.
 
 ### 7.1) How to Support a New Field in Filter Builder (Step-by-step)
@@ -186,10 +189,10 @@ Use this when a new field type should become filterable in the UI and evaluator.
   - File: `apps/web/src/pages/DynamicField/views/filter/types.ts`
   - Add operators to `FilterOperator`.
 
-4. Add evaluator logic.
-  - File: `packages/database/filter.ts`
-  - Add a new branch in `evaluateRule` for the field type.
-  - Implement or reuse evaluator helper functions.
+4. Add SQL compiler logic.
+  - File: `packages/database/filter-sql.ts`
+  - Add or update rule compiler helpers for the field type.
+  - Keep SQL parameterized (no inline user values).
   - Keep behavior aligned with empty checks and value shape.
 
 5. Ensure value editor supports the selected `valueInput`.
@@ -207,6 +210,7 @@ Use this when a new field type should become filterable in the UI and evaluator.
   - Filter tree still persists via `config.filter` API payload.
   - Backend split/merge persists filter into `Filter.config`.
   - Backend record filtering still accepts the same AST via `POST /api/databases/:id/records/filter`.
+  - Debug SQL logs show both statement and params for failed/edge cases.
 
 8. Test scenarios for the new field type.
   - Operator semantics: positive + negative cases.

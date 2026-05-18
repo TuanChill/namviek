@@ -191,7 +191,8 @@ Backend filter process:
 - The view save is debounced in `ViewManagerTabBar.tsx` before `PATCH /api/views/:viewId`.
 - The server persists the filter tree into `Filter.config`.
 - The page requests matching rows from `POST /api/databases/:id/records/filter`.
-- The API resolves the result through `getFilteredDynRecords(...)` and `packages/database/filter.ts`.
+- The API resolves the result through `getFilteredDynRecords(...)` and `packages/database/filter-sql.ts`.
+- SQL statement and params are logged by `getFilteredDynRecords(...)` for debugging.
 
 #### Users
 | Method | Path | Notes |
