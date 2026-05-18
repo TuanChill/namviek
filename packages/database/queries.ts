@@ -1,6 +1,8 @@
 import { prisma } from "./client.js";
 import type { Prisma } from "./generated/client/client.js";
 import type { FieldType } from "./generated/client/client.js";
+import { buildFilteredRecordIdsQuery } from "./filter-sql.js";
+import type { ViewFilter } from "./filter.js";
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
     return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -738,48 +740,43 @@ export async function getFilteredDynRecords(
     databaseId: string,
     filter: PrismaTypes.JsonValue | null | undefined,
 ) {
-    // First, fetch all records with their field values
-    const records = await prisma.dynRecord.findMany({
-        where: { databaseId },
-        orderBy: { rowNumber: "asc" },
-        include: { fieldValues: { orderBy: { fieldId: "asc" } } },
-    });
+    const viewFilter = filter as ViewFilter | null | undefined;
 
-    // If no filter, return all records
-    if (!filter) return records;
+    if (!viewFilter || viewFilter.children.length === 0) {
+        return getDynRecords(databaseId);
+    }
 
-    // Fetch all fields for type information during filtering
     const fields = await prisma.field.findMany({
         where: { databaseId },
         orderBy: { position: "asc" },
-        include: { options: { orderBy: { position: "asc" } } },
+        select: { id: true, type: true },
     });
 
-    // Import and use the server-side filter
-    const { applyFilter } = await import("./filter.js");
+    const query = buildFilteredRecordIdsQuery(databaseId, viewFilter, fields);
+    console.log("[getFilteredDynRecords] SQL:", query.sql);
+    console.log("[getFilteredDynRecords] Params:", query.params);
 
-    // Transform records to match the filter function's expected format
-    // Handle Prisma's Decimal type by converting to numbers
-    // Handle Prisma's Date type by converting to ISO strings
-    const formattedRecords = records.map(r => ({
-        id: r.id,
-        databaseId: r.databaseId,
-        rowNumber: r.rowNumber,
-        createdAt: r.createdAt,
-        updatedAt: r.updatedAt,
-        fieldValues: r.fieldValues.map(fv => ({
-            fieldId: fv.fieldId,
-            textValue: fv.textValue,
-            numberValue: fv.numberValue != null ? Number(fv.numberValue) : null,
-            selectValue: fv.selectValue,
-            multiSelectValue: fv.multiSelectValue,
-            dateValue: fv.dateValue != null ? (fv.dateValue instanceof Date ? fv.dateValue.toISOString() : fv.dateValue) : null,
-            personValue: fv.personValue,
-            boolValue: fv.boolValue,
-            jsonValue: fv.jsonValue,
-        })) as any,
-    }));
+    const matchingRows = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
+        query.sql,
+        ...query.params,
+    );
+    const recordIds = matchingRows.map((row) => row.id);
 
-    // Apply filter and return
-    return applyFilter(formattedRecords, fields, filter as any);
+    if (recordIds.length === 0) {
+        return [];
+    }
+
+    return prisma.dynRecord.findMany({
+        where: {
+            databaseId,
+            archivedAt: null,
+            id: { in: recordIds },
+        },
+        orderBy: { rowNumber: "asc" },
+        include: {
+            fieldValues: {
+                include: { field: true },
+            },
+        },
+    });
 }

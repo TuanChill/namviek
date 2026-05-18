@@ -267,7 +267,7 @@ function evalDate(
 
 // ─── Date range resolver ──────────────────────────────────────────────────────
 
-function resolveDateRange(
+export function resolveDateRange(
   dateMode: DateMode | undefined,
   filterValue: unknown,
 ): { start: Date | null; end: Date | null } {
