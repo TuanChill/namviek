@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { api } from '../api';
 import type { DynRecord, Field, FieldValue, FieldValuePayload } from '../types';
 
@@ -9,12 +9,57 @@ interface AddRecordInitialValue {
 
 export function useRecords() {
   const [records, setRecords] = useState<DynRecord[]>([]);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const nextCursorRef = useRef<string | null>(null);
+  const currentQueryRef = useRef<{ dbId: string; viewId?: string }>({ dbId: '', viewId: undefined });
 
-  const loadRecords = useCallback(async (dbId: string, shouldApply: () => boolean = () => true) => {
-    const r = await api.records.list(dbId);
-    if (shouldApply()) setRecords(r);
-    return r;
+  const mergeUniqueRecords = useCallback((prev: DynRecord[], incoming: DynRecord[]) => {
+    if (incoming.length === 0) return prev;
+    const seen = new Set(prev.map(r => r.id));
+    const appended = incoming.filter(r => !seen.has(r.id));
+    if (appended.length === 0) return prev;
+    return [...prev, ...appended];
   }, []);
+
+  const loadRecords = useCallback(async (
+    dbId: string,
+    viewId?: string,
+    shouldApply: () => boolean = () => true,
+  ) => {
+    currentQueryRef.current = { dbId, viewId };
+    const page = await api.records.listPage(dbId, { viewId, limit: 100 });
+    if (shouldApply()) {
+      setRecords(page.items);
+      setTotalRecords(page.total);
+      setHasMore(page.hasMore);
+      nextCursorRef.current = page.nextCursor;
+    }
+    return page.items;
+  }, []);
+
+  const loadMoreRecords = useCallback(async () => {
+    if (loadingMore || !hasMore || !nextCursorRef.current) return;
+
+    const { dbId, viewId } = currentQueryRef.current;
+    if (!dbId) return;
+
+    setLoadingMore(true);
+    try {
+      const page = await api.records.listPage(dbId, {
+        viewId,
+        cursor: nextCursorRef.current,
+        limit: 100,
+      });
+      setRecords(prev => mergeUniqueRecords(prev, page.items));
+      setTotalRecords(page.total);
+      setHasMore(page.hasMore);
+      nextCursorRef.current = page.nextCursor;
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [hasMore, loadingMore, mergeUniqueRecords]);
 
   /** Add a new empty record and auto-fill id-type fields plus optional initial values */
   const addRecord = useCallback(async (dbId: string, idFields: Field[], initialValues: AddRecordInitialValue[] = []) => {
@@ -45,6 +90,7 @@ export function useRecords() {
       }
       return [...prev, { ...record, fieldValues }];
     });
+    setTotalRecords(prev => prev + 1);
     return record;
   }, []);
 
@@ -65,13 +111,32 @@ export function useRecords() {
   const deleteRecords = useCallback(async (dbId: string, recordIds: string[]) => {
     await api.records.delete(dbId, recordIds);
     setRecords(prev => prev.filter(r => !recordIds.includes(r.id)));
+    setTotalRecords(prev => Math.max(0, prev - recordIds.length));
   }, []);
 
   /** After a backfill, reload records from server */
-  const reloadRecords = useCallback(async (dbId: string) => {
-    const r = await api.records.list(dbId);
-    setRecords(r);
+  const reloadRecords = useCallback(async (dbId: string, viewId?: string) => {
+    const page = await api.records.listPage(dbId, { viewId, limit: 100 });
+    setRecords(page.items);
+    setTotalRecords(page.total);
+    setHasMore(page.hasMore);
+    nextCursorRef.current = page.nextCursor;
+    currentQueryRef.current = { dbId, viewId };
   }, []);
 
-  return { records, setRecords, loadRecords, addRecord, setValue, removeFieldValues, reloadRecords, deleteRecords };
+  return {
+    records,
+    setRecords,
+    totalRecords,
+    setTotalRecords,
+    hasMore,
+    loadingMore,
+    loadRecords,
+    loadMoreRecords,
+    addRecord,
+    setValue,
+    removeFieldValues,
+    reloadRecords,
+    deleteRecords,
+  };
 }

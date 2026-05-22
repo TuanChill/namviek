@@ -10,6 +10,7 @@ import {
   getDynDatabases,
   createDynDatabase,
   getDynRecords,
+  getDynRecordsPage,
   createDynRecord,
   setFieldValue,
   getUsers,
@@ -493,6 +494,26 @@ app.get('/api/databases/:id/records', async (c) => {
   } catch (error) {
     console.error(error)
     return c.json({ error: 'Failed to fetch records' }, 500)
+  }
+})
+
+// GET /api/databases/:id/records/page — paginated records with cursor
+app.get('/api/databases/:id/records/page', async (c) => {
+  try {
+    const viewId = c.req.query('viewId') ?? undefined
+    const cursor = c.req.query('cursor') ?? undefined
+    const limitParam = c.req.query('limit')
+    const limit = limitParam ? Number.parseInt(limitParam, 10) : undefined
+
+    const page = await getDynRecordsPage(c.req.param('id'), viewId, {
+      cursor,
+      limit: Number.isFinite(limit) ? limit : undefined,
+    })
+
+    return c.json(page)
+  } catch (error) {
+    console.error(error)
+    return c.json({ error: 'Failed to fetch paginated records' }, 500)
   }
 })
 

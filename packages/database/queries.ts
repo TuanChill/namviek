@@ -6,6 +6,42 @@ import type { ViewFilter } from "./filter.js";
 import { buildSortOrderClause } from "./sort-sql.js";
 import type { ViewSort } from "./sort-sql.js";
 
+const DEFAULT_RECORDS_PAGE_SIZE = 100;
+const MAX_RECORDS_PAGE_SIZE = 200;
+
+export interface DynRecordsPage {
+    items: Awaited<ReturnType<typeof prisma.dynRecord.findMany>>;
+    hasMore: boolean;
+    nextCursor: string | null;
+    total: number;
+}
+
+interface DynRecordsPageInput {
+    limit?: number;
+    cursor?: string;
+}
+
+function normalizePageSize(limit?: number): number {
+    if (!Number.isFinite(limit)) return DEFAULT_RECORDS_PAGE_SIZE;
+    return Math.max(1, Math.min(MAX_RECORDS_PAGE_SIZE, Math.trunc(limit as number)));
+}
+
+function encodeOffsetCursor(offset: number): string {
+    return Buffer.from(JSON.stringify({ o: offset }), 'utf8').toString('base64url');
+}
+
+function decodeOffsetCursor(cursor?: string): number {
+    if (!cursor) return 0;
+    try {
+        const parsed = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8')) as { o?: unknown };
+        const offset = typeof parsed.o === 'number' ? parsed.o : Number(parsed.o);
+        if (!Number.isFinite(offset) || offset < 0) return 0;
+        return Math.trunc(offset);
+    } catch {
+        return 0;
+    }
+}
+
 function isPlainObject(value: unknown): value is Record<string, unknown> {
     return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -141,6 +177,46 @@ export async function getDynRecords(databaseId: string, viewId?: string) {
             },
         },
     });
+}
+
+export async function getDynRecordsPage(
+    databaseId: string,
+    viewId?: string,
+    pageInput: DynRecordsPageInput = {},
+): Promise<DynRecordsPage> {
+    if (viewId) {
+        const page = await getDynRecordsForViewPage(databaseId, viewId, pageInput);
+        if (page) return page;
+    }
+
+    const limit = normalizePageSize(pageInput.limit);
+    const offset = decodeOffsetCursor(pageInput.cursor);
+
+    const total = await prisma.dynRecord.count({
+        where: { databaseId, archivedAt: null },
+    });
+
+    const items = await prisma.dynRecord.findMany({
+        where: { databaseId, archivedAt: null },
+        orderBy: { rowNumber: 'asc' },
+        skip: offset,
+        take: limit,
+        include: {
+            fieldValues: {
+                include: { field: true },
+            },
+        },
+    });
+
+    const nextOffset = offset + items.length;
+    const hasMore = nextOffset < total;
+
+    return {
+        items,
+        hasMore,
+        nextCursor: hasMore ? encodeOffsetCursor(nextOffset) : null,
+        total,
+    };
 }
 
 /** Create an empty record in a database */
@@ -582,6 +658,84 @@ async function getDynRecordsForView(databaseId: string, viewId: string) {
     return recordIds
         .map((id) => recordById.get(id))
         .filter((record): record is NonNullable<typeof record> => Boolean(record));
+}
+
+async function getDynRecordsForViewPage(
+    databaseId: string,
+    viewId: string,
+    pageInput: DynRecordsPageInput = {},
+): Promise<DynRecordsPage | null> {
+    const view = await prisma.dynView.findUnique({
+        where: { id: viewId },
+        include: { filter: true },
+    });
+
+    if (!view || view.databaseId !== databaseId) {
+        return null;
+    }
+
+    const viewConfig = mergeViewAndFilterConfig(view.config, view.filter?.config);
+    const viewFilter = isPlainObject(viewConfig) && isPlainObject(viewConfig.filter)
+        ? (viewConfig.filter as unknown as ViewFilter)
+        : ({ id: 'root', type: 'group', conjunction: 'AND', children: [] } as ViewFilter);
+    const sort = extractSortConfig(viewConfig);
+
+    const fields = await prisma.field.findMany({
+        where: { databaseId },
+        orderBy: { position: 'asc' },
+        select: { id: true, type: true },
+    });
+
+    const orderClause = sort ? buildSortOrderClause(sort, fields) : undefined;
+    const query = buildFilteredRecordIdsQuery(databaseId, viewFilter, fields, orderClause);
+
+    const matchingRows = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
+        query.sql,
+        ...query.params,
+    );
+    const recordIds = matchingRows.map((row) => row.id);
+
+    const limit = normalizePageSize(pageInput.limit);
+    const offset = decodeOffsetCursor(pageInput.cursor);
+    const pagedIds = recordIds.slice(offset, offset + limit);
+
+    if (pagedIds.length === 0) {
+        return {
+            items: [],
+            hasMore: false,
+            nextCursor: null,
+            total: recordIds.length,
+        };
+    }
+
+    const items = await prisma.dynRecord.findMany({
+        where: {
+            databaseId,
+            archivedAt: null,
+            id: { in: pagedIds },
+        },
+        orderBy: { rowNumber: 'asc' },
+        include: {
+            fieldValues: {
+                include: { field: true },
+            },
+        },
+    });
+
+    const itemById = new Map(items.map((item) => [item.id, item]));
+    const orderedItems = pagedIds
+        .map((id) => itemById.get(id))
+        .filter((item): item is NonNullable<typeof item> => Boolean(item));
+
+    const nextOffset = offset + orderedItems.length;
+    const hasMore = nextOffset < recordIds.length;
+
+    return {
+        items: orderedItems,
+        hasMore,
+        nextCursor: hasMore ? encodeOffsetCursor(nextOffset) : null,
+        total: recordIds.length,
+    };
 }
 
 /** List all views for a database ordered by position */

@@ -17,6 +17,13 @@ export interface Template {
   fields: TemplateField[];
 }
 
+export interface RecordsPage {
+  items: DynRecord[];
+  hasMore: boolean;
+  nextCursor: string | null;
+  total: number;
+}
+
 const BASE = '/api';
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -55,6 +62,14 @@ export const api = {
   },
   records: {
     list: (dbId: string, viewId?: string) => apiFetch<DynRecord[]>(`/databases/${dbId}/records${viewId ? `?viewId=${encodeURIComponent(viewId)}` : ''}`),
+    listPage: (dbId: string, options?: { viewId?: string; cursor?: string | null; limit?: number }) => {
+      const params = new URLSearchParams();
+      if (options?.viewId) params.set('viewId', options.viewId);
+      if (options?.cursor) params.set('cursor', options.cursor);
+      if (options?.limit) params.set('limit', String(options.limit));
+      const qs = params.toString();
+      return apiFetch<RecordsPage>(`/databases/${dbId}/records/page${qs ? `?${qs}` : ''}`);
+    },
     listFiltered: (dbId: string, filter: any) => apiFetch<DynRecord[]>(`/databases/${dbId}/records/filter`, { method: 'POST', body: JSON.stringify({ filter }) }),
     create: (dbId: string) => apiFetch<DynRecord>(`/databases/${dbId}/records`, { method: 'POST' }),
     delete: (dbId: string, ids: string[]) => apiFetch(`/records`, { method: 'DELETE', body: JSON.stringify({ ids, databaseId: dbId }) }),

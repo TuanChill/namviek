@@ -11,6 +11,9 @@ interface KanbanViewProps {
   view: DynView;
   onSetValue: (record: DynRecord, field: Field, payload: FieldValuePayload) => void;
   onAddRecord: (initialValues?: Array<{ field: Field; payload: FieldValuePayload }>) => void;
+  hasMore: boolean;
+  loadingMore: boolean;
+  onLoadMore: () => void;
 }
 
 function getDateValueForColumn(
@@ -159,7 +162,7 @@ function buildColumns(
   return Array.from(columns.values());
 }
 
-export function KanbanView({ fields, records, loading, view, onSetValue, onAddRecord }: KanbanViewProps) {
+export function KanbanView({ fields, records, loading, view, onSetValue, onAddRecord, hasMore, loadingMore, onLoadMore }: KanbanViewProps) {
   const groupByConfig = view.config?.groupBy;
   const groupField = useMemo(() => {
     if (!groupByConfig?.fieldId) {
@@ -200,6 +203,9 @@ export function KanbanView({ fields, records, loading, view, onSetValue, onAddRe
           fields={fields}
           view={view}
           onSetValue={onSetValue}
+          hasMore={hasMore}
+          loadingMore={loadingMore}
+          onLoadMore={onLoadMore}
           onAddRecord={() => {
             const initialValues = getInitialValuesForColumn(groupField, col.key, groupByConfig?.granularity);
             onAddRecord(initialValues);

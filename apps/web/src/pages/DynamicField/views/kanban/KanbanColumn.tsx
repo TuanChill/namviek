@@ -1,6 +1,6 @@
-import { Plus } from 'lucide-react';
+import { Loader2, Plus } from 'lucide-react';
+import { Virtuoso } from 'react-virtuoso';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { KanbanCard } from './KanbanCard';
 import type { DynRecord, DynView, Field, FieldValuePayload } from '../../types';
 
@@ -17,9 +17,12 @@ interface KanbanColumnProps {
   view: DynView;
   onSetValue: (record: DynRecord, field: Field, payload: FieldValuePayload) => void;
   onAddRecord: () => void;
+  hasMore: boolean;
+  loadingMore: boolean;
+  onLoadMore: () => void;
 }
 
-export function KanbanColumn({ col, fields, view, onSetValue, onAddRecord }: KanbanColumnProps) {
+export function KanbanColumn({ col, fields, view, onSetValue, onAddRecord, hasMore, loadingMore, onLoadMore }: KanbanColumnProps) {
   return (
     <div className="flex h-full min-h-0 min-w-[300px] max-w-[300px] flex-col gap-2 bg-accent pt-3 rounded-lg">
       {/* Column header */}
@@ -37,19 +40,37 @@ export function KanbanColumn({ col, fields, view, onSetValue, onAddRecord }: Kan
       </div>
 
       {/* Cards */}
-      <ScrollArea className="min-h-0 h-full flex-1 px-1">
-        <div className="flex flex-col gap-2 pl-2 pr-2">
-          {col.records.map(record => (
-            <KanbanCard
-              key={record.id}
-              record={record}
-              fields={fields}
-              view={view}
-              onSetValue={onSetValue}
-            />
-          ))}
-        </div>
-      </ScrollArea>
+      <div className="min-h-0 h-full flex-1 px-1">
+        <Virtuoso
+          style={{ height: '100%' }}
+          totalCount={col.records.length}
+          endReached={() => {
+            if (hasMore && !loadingMore) onLoadMore();
+          }}
+          itemContent={(index) => {
+            const record = col.records[index];
+            if (!record) return null;
+            return (
+              <div className="pb-2 pl-2 pr-2">
+                <KanbanCard
+                  key={record.id}
+                  record={record}
+                  fields={fields}
+                  view={view}
+                  onSetValue={onSetValue}
+                />
+              </div>
+            );
+          }}
+          components={{
+            Footer: () => loadingMore ? (
+              <div className="px-3 py-2 text-xs text-muted-foreground flex items-center gap-2">
+                <Loader2 size={12} className="animate-spin" /> Loading more...
+              </div>
+            ) : null,
+          }}
+        />
+      </div>
 
       {/* Add record */}
       <Button
