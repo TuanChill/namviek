@@ -23,6 +23,10 @@ export function useRecords() {
     return [...prev, ...appended];
   }, []);
 
+  const mergeRecords = useCallback((incoming: DynRecord[]) => {
+    setRecords(prev => mergeUniqueRecords(prev, incoming));
+  }, [mergeUniqueRecords]);
+
   const loadRecords = useCallback(async (
     dbId: string,
     viewId?: string,
@@ -127,6 +131,7 @@ export function useRecords() {
   return {
     records,
     setRecords,
+    mergeRecords,
     totalRecords,
     setTotalRecords,
     hasMore,

@@ -21,6 +21,13 @@ interface DynRecordsPageInput {
     cursor?: string;
 }
 
+interface DynKanbanGroupPageInput extends DynRecordsPageInput {
+    groupFieldId: string;
+    groupKey: string;
+}
+
+type SupportedKanbanGroupFieldType = 'select' | 'multi_select' | 'date' | 'created_time' | 'updated_time';
+
 function normalizePageSize(limit?: number): number {
     if (!Number.isFinite(limit)) return DEFAULT_RECORDS_PAGE_SIZE;
     return Math.max(1, Math.min(MAX_RECORDS_PAGE_SIZE, Math.trunc(limit as number)));
@@ -40,6 +47,72 @@ function decodeOffsetCursor(cursor?: string): number {
     } catch {
         return 0;
     }
+}
+
+function normalizeDateGroupKey(
+    dateValue: Date | string | null | undefined,
+    granularity: 'day' | 'month' | 'quarter' | undefined,
+): string {
+    if (!dateValue) return '__none__';
+
+    const normalized = typeof dateValue === 'string'
+        ? dateValue.slice(0, 10)
+        : dateValue.toISOString().slice(0, 10);
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+        return '__none__';
+    }
+
+    const year = normalized.slice(0, 4);
+    const month = normalized.slice(5, 7);
+
+    if (granularity === 'month') {
+        return `${year}-${month}`;
+    }
+
+    if (granularity === 'quarter') {
+        const monthNumber = Number.parseInt(month, 10);
+        if (!Number.isFinite(monthNumber) || monthNumber < 1 || monthNumber > 12) {
+            return normalized;
+        }
+        const quarter = Math.floor((monthNumber - 1) / 3) + 1;
+        return `${year}-Q${quarter}`;
+    }
+
+    return normalized;
+}
+
+function matchesKanbanGroup(
+    record: {
+        createdAt: Date;
+        updatedAt: Date;
+        fieldValues: Array<{
+            selectValue: string | null;
+            multiSelectValue: string[];
+            dateValue: Date | null;
+        }>;
+    },
+    groupFieldType: SupportedKanbanGroupFieldType,
+    groupKey: string,
+    granularity: 'day' | 'month' | 'quarter' | undefined,
+): boolean {
+    const fieldValue = record.fieldValues[0];
+
+    if (groupFieldType === 'select') {
+        return (fieldValue?.selectValue ?? '__none__') === groupKey;
+    }
+
+    if (groupFieldType === 'multi_select') {
+        return (fieldValue?.multiSelectValue?.[0] ?? '__none__') === groupKey;
+    }
+
+    const dateValue = groupFieldType === 'created_time'
+        ? record.createdAt
+        : groupFieldType === 'updated_time'
+            ? record.updatedAt
+            : fieldValue?.dateValue;
+
+    return normalizeDateGroupKey(dateValue, granularity) === groupKey;
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -216,6 +289,176 @@ export async function getDynRecordsPage(
         hasMore,
         nextCursor: hasMore ? encodeOffsetCursor(nextOffset) : null,
         total,
+    };
+}
+
+export async function getDynKanbanGroupRecordsPage(
+    databaseId: string,
+    viewId: string | undefined,
+    pageInput: DynKanbanGroupPageInput,
+): Promise<DynRecordsPage> {
+    const groupField = await prisma.field.findUnique({
+        where: { id: pageInput.groupFieldId },
+        select: { id: true, databaseId: true, type: true },
+    });
+
+    if (!groupField || groupField.databaseId !== databaseId) {
+        return {
+            items: [],
+            hasMore: false,
+            nextCursor: null,
+            total: 0,
+        };
+    }
+
+    if (!['select', 'multi_select', 'date', 'created_time', 'updated_time'].includes(groupField.type)) {
+        return {
+            items: [],
+            hasMore: false,
+            nextCursor: null,
+            total: 0,
+        };
+    }
+
+    let orderedRecordIds: string[] = [];
+    let granularity: 'day' | 'month' | 'quarter' | undefined;
+
+    if (viewId) {
+        const view = await prisma.dynView.findUnique({
+            where: { id: viewId },
+            include: { filter: true },
+        });
+
+        if (!view || view.databaseId !== databaseId) {
+            return {
+                items: [],
+                hasMore: false,
+                nextCursor: null,
+                total: 0,
+            };
+        }
+
+        const viewConfig = mergeViewAndFilterConfig(view.config, view.filter?.config);
+        const viewFilter = isPlainObject(viewConfig) && isPlainObject(viewConfig.filter)
+            ? (viewConfig.filter as unknown as ViewFilter)
+            : ({ id: 'root', type: 'group', conjunction: 'AND', children: [] } as ViewFilter);
+        const sort = extractSortConfig(viewConfig);
+        const groupBy = isPlainObject(viewConfig) && isPlainObject(viewConfig.groupBy)
+            ? viewConfig.groupBy as { fieldId?: unknown; granularity?: unknown }
+            : undefined;
+
+        if (groupBy?.fieldId === pageInput.groupFieldId) {
+            granularity = groupBy.granularity === 'month' || groupBy.granularity === 'quarter' || groupBy.granularity === 'day'
+                ? groupBy.granularity
+                : undefined;
+        }
+
+        const fields = await prisma.field.findMany({
+            where: { databaseId },
+            orderBy: { position: 'asc' },
+            select: { id: true, type: true },
+        });
+
+        const orderClause = sort ? buildSortOrderClause(sort, fields) : undefined;
+        const query = buildFilteredRecordIdsQuery(databaseId, viewFilter, fields, orderClause);
+        const matchingRows = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
+            query.sql,
+            ...query.params,
+        );
+
+        orderedRecordIds = matchingRows.map((row) => row.id);
+    } else {
+        const rows = await prisma.dynRecord.findMany({
+            where: { databaseId, archivedAt: null },
+            orderBy: { rowNumber: 'asc' },
+            select: { id: true },
+        });
+        orderedRecordIds = rows.map((row) => row.id);
+    }
+
+    if (orderedRecordIds.length === 0) {
+        return {
+            items: [],
+            hasMore: false,
+            nextCursor: null,
+            total: 0,
+        };
+    }
+
+    const groupCandidates = await prisma.dynRecord.findMany({
+        where: {
+            databaseId,
+            archivedAt: null,
+            id: { in: orderedRecordIds },
+        },
+        select: {
+            id: true,
+            createdAt: true,
+            updatedAt: true,
+            fieldValues: {
+                where: { fieldId: pageInput.groupFieldId },
+                select: {
+                    selectValue: true,
+                    multiSelectValue: true,
+                    dateValue: true,
+                },
+                take: 1,
+            },
+        },
+    });
+
+    const groupCandidateById = new Map(groupCandidates.map((record) => [record.id, record]));
+    const matchingRecordIds = orderedRecordIds.filter((recordId) => {
+        const record = groupCandidateById.get(recordId);
+        if (!record) return false;
+        return matchesKanbanGroup(
+            record,
+            groupField.type as SupportedKanbanGroupFieldType,
+            pageInput.groupKey,
+            granularity,
+        );
+    });
+
+    const limit = normalizePageSize(pageInput.limit);
+    const offset = decodeOffsetCursor(pageInput.cursor);
+    const pagedIds = matchingRecordIds.slice(offset, offset + limit);
+
+    if (pagedIds.length === 0) {
+        return {
+            items: [],
+            hasMore: false,
+            nextCursor: null,
+            total: matchingRecordIds.length,
+        };
+    }
+
+    const items = await prisma.dynRecord.findMany({
+        where: {
+            databaseId,
+            archivedAt: null,
+            id: { in: pagedIds },
+        },
+        orderBy: { rowNumber: 'asc' },
+        include: {
+            fieldValues: {
+                include: { field: true },
+            },
+        },
+    });
+
+    const itemById = new Map(items.map((item) => [item.id, item]));
+    const orderedItems = pagedIds
+        .map((id) => itemById.get(id))
+        .filter((item): item is NonNullable<typeof item> => Boolean(item));
+
+    const nextOffset = offset + orderedItems.length;
+    const hasMore = nextOffset < matchingRecordIds.length;
+
+    return {
+        items: orderedItems,
+        hasMore,
+        nextCursor: hasMore ? encodeOffsetCursor(nextOffset) : null,
+        total: matchingRecordIds.length,
     };
 }
 
@@ -1022,4 +1265,108 @@ export async function getFilteredDynRecords(
     return recordIds
         .map((id) => recordById.get(id))
         .filter((record): record is NonNullable<typeof record> => Boolean(record));
+}
+
+/**
+ * Return full record totals for each kanban group key.
+ * Group key is option id for select/multi_select and '__none__' for empty value.
+ */
+export async function getDynRecordGroupCounts(
+    databaseId: string,
+    fieldId: string,
+    fieldType: 'select' | 'multi_select',
+    viewId?: string,
+): Promise<Record<string, number>> {
+    let filteredRecordIds: string[] | undefined;
+
+    if (viewId) {
+        const view = await prisma.dynView.findUnique({
+            where: { id: viewId },
+            include: { filter: true },
+        });
+
+        if (!view || view.databaseId !== databaseId) {
+            return {};
+        }
+
+        const viewConfig = mergeViewAndFilterConfig(view.config, view.filter?.config);
+        const viewFilter = isPlainObject(viewConfig) && isPlainObject(viewConfig.filter)
+            ? (viewConfig.filter as unknown as ViewFilter)
+            : ({ id: 'root', type: 'group', conjunction: 'AND', children: [] } as ViewFilter);
+        const sort = extractSortConfig(viewConfig);
+
+        const fields = await prisma.field.findMany({
+            where: { databaseId },
+            orderBy: { position: 'asc' },
+            select: { id: true, type: true },
+        });
+
+        const orderClause = sort ? buildSortOrderClause(sort, fields) : undefined;
+        const query = buildFilteredRecordIdsQuery(databaseId, viewFilter, fields, orderClause);
+        const matchingRows = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
+            query.sql,
+            ...query.params,
+        );
+
+        filteredRecordIds = matchingRows.map((row) => row.id);
+        if (filteredRecordIds.length === 0) {
+            return {};
+        }
+    }
+
+    if (fieldType === 'select') {
+        type SelectCountRow = { group_key: string | null; cnt: bigint };
+        const rows = await prisma.$queryRawUnsafe<SelectCountRow[]>(
+            `SELECT
+                COALESCE(fv."selectValue", '__none__') AS group_key,
+                COUNT(r.id)::bigint AS cnt
+            FROM dyn_records r
+            LEFT JOIN dyn_field_values fv
+                ON fv."recordId" = r.id AND fv."fieldId" = $1
+            WHERE r."databaseId" = $2
+              AND r."archivedAt" IS NULL
+                            ${filteredRecordIds ? `AND r.id::text = ANY($3::text[])` : ''}
+            GROUP BY group_key`,
+            fieldId,
+            databaseId,
+            ...(filteredRecordIds ? [filteredRecordIds] : []),
+        );
+
+        const result: Record<string, number> = {};
+        for (const row of rows) {
+            const key = row.group_key ?? '__none__';
+            result[key] = Number(row.cnt);
+        }
+
+        return result;
+    }
+
+    type MultiSelectCountRow = { group_key: string | null; cnt: bigint };
+    const rows = await prisma.$queryRawUnsafe<MultiSelectCountRow[]>(
+        `SELECT
+            CASE
+                WHEN array_length(fv."multiSelectValue", 1) > 0
+                THEN fv."multiSelectValue"[1]
+                ELSE NULL
+            END AS group_key,
+            COUNT(r.id)::bigint AS cnt
+        FROM dyn_records r
+        LEFT JOIN dyn_field_values fv
+            ON fv."recordId" = r.id AND fv."fieldId" = $1
+        WHERE r."databaseId" = $2
+          AND r."archivedAt" IS NULL
+                    ${filteredRecordIds ? `AND r.id::text = ANY($3::text[])` : ''}
+        GROUP BY group_key`,
+        fieldId,
+        databaseId,
+        ...(filteredRecordIds ? [filteredRecordIds] : []),
+    );
+
+    const result: Record<string, number> = {};
+    for (const row of rows) {
+        const key = row.group_key ?? '__none__';
+        result[key] = Number(row.cnt);
+    }
+
+    return result;
 }

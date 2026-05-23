@@ -30,6 +30,7 @@ import { useFields } from './DynamicField/hooks/useFields';
 import { useRecords } from './DynamicField/hooks/useRecords';
 import { useDatabaseStream } from './DynamicField/hooks/useDatabaseStream';
 import { useViews } from './DynamicField/hooks/useViews';
+import { api } from './DynamicField/api';
 
 import { SpreadsheetView } from './DynamicField/views/spreadsheet/SpreadsheetView';
 import { KanbanView } from './DynamicField/views/kanban/KanbanView';
@@ -47,6 +48,7 @@ export default function DynamicFieldPage() {
   const {
     records,
     setRecords,
+    mergeRecords,
     totalRecords,
     setTotalRecords,
     hasMore,
@@ -66,6 +68,7 @@ export default function DynamicFieldPage() {
 
   const [loading, setLoading] = useState(false);
   const [selectedRecords, setSelectedRecords] = useState<Set<string>>(new Set());
+  const [kanbanGroupCounts, setKanbanGroupCounts] = useState<Record<string, number>>({});
 
   // DB creation & deletion
   const [showCreateDbDialog, setShowCreateDbDialog] = useState(false);
@@ -330,6 +333,31 @@ export default function DynamicFieldPage() {
     });
   }, [selectedDb?.id, activeView?.id, activeView?.updatedAt, loadRecords]);
 
+  useEffect(() => {
+    if (!selectedDb?.id || activeView?.type !== 'kanban') {
+      setKanbanGroupCounts({});
+      return;
+    }
+
+    const groupByConfig = activeView.config?.groupBy;
+    const groupField = groupByConfig?.fieldId
+      ? fields.find(f => f.id === groupByConfig.fieldId)
+      : fields.find(f => f.type === 'select' || f.type === 'multi_select');
+
+    if (!groupField || (groupField.type !== 'select' && groupField.type !== 'multi_select')) {
+      setKanbanGroupCounts({});
+      return;
+    }
+
+    const dbId = selectedDb.id;
+    const viewId = activeView.id;
+
+    api.records
+      .groupCounts(dbId, groupField.id, groupField.type, viewId)
+      .then(setKanbanGroupCounts)
+      .catch(() => setKanbanGroupCounts({}));
+  }, [selectedDb?.id, activeView?.id, activeView?.type, activeView?.updatedAt, fields]);
+
   // Render the correct view component for the active view type
   const renderViewContent = () => {
     const viewType = activeView?.type ?? 'spreadsheet';
@@ -337,15 +365,15 @@ export default function DynamicFieldPage() {
       case 'kanban':
         return (
           <KanbanView
+            databaseId={selectedDb!.id}
             fields={fields}
             records={records}
             loading={loading}
             view={activeView!}
+            onHydrateRecords={mergeRecords}
             onSetValue={handleSetValue}
             onAddRecord={handleAddRecord}
-            hasMore={hasMore}
-            loadingMore={loadingMore}
-            onLoadMore={loadMoreRecords}
+            groupCounts={kanbanGroupCounts}
           />
         );
       case 'calendar':

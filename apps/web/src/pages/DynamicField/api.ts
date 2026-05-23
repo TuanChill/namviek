@@ -70,6 +70,21 @@ export const api = {
       const qs = params.toString();
       return apiFetch<RecordsPage>(`/databases/${dbId}/records/page${qs ? `?${qs}` : ''}`);
     },
+    listKanbanGroupPage: (dbId: string, options: { viewId?: string; groupFieldId: string; groupKey: string; cursor?: string | null; limit?: number }) => {
+      const params = new URLSearchParams({
+        groupFieldId: options.groupFieldId,
+        groupKey: options.groupKey,
+      });
+      if (options.viewId) params.set('viewId', options.viewId);
+      if (options.cursor) params.set('cursor', options.cursor);
+      if (options.limit) params.set('limit', String(options.limit));
+      return apiFetch<RecordsPage>(`/databases/${dbId}/records/kanban-page?${params.toString()}`);
+    },
+    groupCounts: (dbId: string, fieldId: string, fieldType: 'select' | 'multi_select', viewId?: string) => {
+      const params = new URLSearchParams({ fieldId, fieldType });
+      if (viewId) params.set('viewId', viewId);
+      return apiFetch<Record<string, number>>(`/databases/${dbId}/records/group-counts?${params.toString()}`);
+    },
     listFiltered: (dbId: string, filter: any) => apiFetch<DynRecord[]>(`/databases/${dbId}/records/filter`, { method: 'POST', body: JSON.stringify({ filter }) }),
     create: (dbId: string) => apiFetch<DynRecord>(`/databases/${dbId}/records`, { method: 'POST' }),
     delete: (dbId: string, ids: string[]) => apiFetch(`/records`, { method: 'DELETE', body: JSON.stringify({ ids, databaseId: dbId }) }),

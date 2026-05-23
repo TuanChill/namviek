@@ -1,19 +1,30 @@
-import { useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
+import { api } from '../../api';
 import { KanbanColumn } from './KanbanColumn';
 import type { KanbanColumnData } from './KanbanColumn';
 import type { DynRecord, DynView, Field, FieldValuePayload, ViewGroupByConfig } from '../../types';
 
+const KANBAN_PAGE_SIZE = 100;
+
 interface KanbanViewProps {
+  databaseId: string;
   fields: Field[];
   records: DynRecord[];
   loading: boolean;
   view: DynView;
+  onHydrateRecords: (records: DynRecord[]) => void;
   onSetValue: (record: DynRecord, field: Field, payload: FieldValuePayload) => void;
   onAddRecord: (initialValues?: Array<{ field: Field; payload: FieldValuePayload }>) => void;
+  groupCounts?: Record<string, number>;
+}
+
+interface ColumnPagingState {
+  recordIds: string[];
+  cursor: string | null;
   hasMore: boolean;
-  loadingMore: boolean;
-  onLoadMore: () => void;
+  loading: boolean;
+  initialized: boolean;
 }
 
 function getDateValueForColumn(
@@ -162,8 +173,16 @@ function buildColumns(
   return Array.from(columns.values());
 }
 
-export function KanbanView({ fields, records, loading, view, onSetValue, onAddRecord, hasMore, loadingMore, onLoadMore }: KanbanViewProps) {
+export function KanbanView({ databaseId, fields, records, loading, view, onHydrateRecords, onSetValue, onAddRecord, groupCounts }: KanbanViewProps) {
+  const [columnPaging, setColumnPaging] = useState<Record<string, ColumnPagingState>>({});
+  const columnPagingRef = useRef<Record<string, ColumnPagingState>>({});
+  const requestVersionRef = useRef(0);
   const groupByConfig = view.config?.groupBy;
+
+  useEffect(() => {
+    columnPagingRef.current = columnPaging;
+  }, [columnPaging]);
+
   const groupField = useMemo(() => {
     if (!groupByConfig?.fieldId) {
       // Default to first select/multi_select field
@@ -176,6 +195,126 @@ export function KanbanView({ fields, records, loading, view, onSetValue, onAddRe
     if (!groupField) return [];
     return buildColumns(records, groupField, groupByConfig?.granularity);
   }, [records, groupField, groupByConfig?.granularity]);
+
+  const recordMap = useMemo(() => new Map(records.map(record => [record.id, record])), [records]);
+
+  useEffect(() => {
+    requestVersionRef.current += 1;
+    setColumnPaging({});
+  }, [databaseId, view.id, groupField?.id, groupByConfig?.granularity]);
+
+  useEffect(() => {
+    setColumnPaging(prev => {
+      const next: Record<string, ColumnPagingState> = {};
+
+      for (const column of columns) {
+        const seededIds = column.records.map(record => record.id);
+        const existing = prev[column.key];
+        next[column.key] = existing
+          ? {
+              ...existing,
+              recordIds: Array.from(new Set([...existing.recordIds, ...seededIds])),
+            }
+          : {
+              recordIds: seededIds,
+              cursor: null,
+              hasMore: seededIds.length > 0,
+              loading: false,
+              initialized: false,
+            };
+      }
+
+      return next;
+    });
+  }, [columns]);
+
+  const loadColumnPage = useCallback(async (columnKey: string, reset = false) => {
+    if (!groupField) {
+      return;
+    }
+
+    const current = columnPagingRef.current[columnKey];
+    if (current?.loading) {
+      return;
+    }
+    if (!reset && (!current?.hasMore || !current.cursor)) {
+      return;
+    }
+
+    const requestVersion = requestVersionRef.current;
+
+    setColumnPaging(prev => ({
+      ...prev,
+      [columnKey]: {
+        recordIds: reset ? [] : (prev[columnKey]?.recordIds ?? []),
+        cursor: reset ? null : (prev[columnKey]?.cursor ?? null),
+        hasMore: reset ? true : (prev[columnKey]?.hasMore ?? true),
+        loading: true,
+        initialized: prev[columnKey]?.initialized ?? false,
+      },
+    }));
+
+    try {
+      const page = await api.records.listKanbanGroupPage(databaseId, {
+        viewId: view.id,
+        groupFieldId: groupField.id,
+        groupKey: columnKey,
+        cursor: reset ? null : current?.cursor,
+        limit: KANBAN_PAGE_SIZE,
+      });
+
+      if (requestVersionRef.current !== requestVersion) {
+        return;
+      }
+
+      onHydrateRecords(page.items);
+      const nextIds = page.items.map(record => record.id);
+
+      setColumnPaging(prev => ({
+        ...prev,
+        [columnKey]: {
+          recordIds: reset
+            ? nextIds
+            : Array.from(new Set([...(prev[columnKey]?.recordIds ?? []), ...nextIds])),
+          cursor: page.nextCursor,
+          hasMore: page.hasMore,
+          loading: false,
+          initialized: true,
+        },
+      }));
+    } catch (error) {
+      if (requestVersionRef.current !== requestVersion) {
+        return;
+      }
+
+      console.error('Failed to load Kanban column page:', error);
+      setColumnPaging(prev => ({
+        ...prev,
+        [columnKey]: {
+          recordIds: reset ? [] : (prev[columnKey]?.recordIds ?? []),
+          cursor: reset ? null : (prev[columnKey]?.cursor ?? null),
+          hasMore: reset ? true : (prev[columnKey]?.hasMore ?? true),
+          loading: false,
+          initialized: prev[columnKey]?.initialized ?? false,
+        },
+      }));
+    }
+  }, [databaseId, groupField, onHydrateRecords, view.id]);
+
+  useEffect(() => {
+    if (loading || !groupField) {
+      return;
+    }
+
+    for (const column of columns) {
+      const state = columnPagingRef.current[column.key];
+      if (!state || state.initialized || state.loading) {
+        continue;
+      }
+
+      void loadColumnPage(column.key, true);
+    }
+  }, [columns, groupField, loadColumnPage, loading]);
 
   if (loading) {
     return (
@@ -196,22 +335,38 @@ export function KanbanView({ fields, records, loading, view, onSetValue, onAddRe
 
   return (
     <div className="flex h-full min-h-0 flex-1 items-stretch gap-1 overflow-x-auto overflow-y-hidden p-4">
-      {columns.map(col => (
-        <KanbanColumn
-          key={col.key}
-          col={col}
-          fields={fields}
-          view={view}
-          onSetValue={onSetValue}
-          hasMore={hasMore}
-          loadingMore={loadingMore}
-          onLoadMore={onLoadMore}
-          onAddRecord={() => {
-            const initialValues = getInitialValuesForColumn(groupField, col.key, groupByConfig?.granularity);
-            onAddRecord(initialValues);
-          }}
-        />
-      ))}
+      {columns.map(col => {
+        const pagingState = columnPaging[col.key];
+        const persistedIds = (pagingState?.recordIds ?? []).filter(recordId => {
+          const record = recordMap.get(recordId);
+          return Boolean(record) && getRecordGroupKey(record!, groupField, groupByConfig?.granularity) === col.key;
+        });
+        const seededIds = col.records.map(record => record.id);
+        const mergedIds = Array.from(new Set([...persistedIds, ...seededIds]));
+        const columnRecords = mergedIds
+          .map(recordId => recordMap.get(recordId))
+          .filter((record): record is DynRecord => Boolean(record));
+
+        return (
+          <KanbanColumn
+            key={col.key}
+            col={{ ...col, records: columnRecords }}
+            fields={fields}
+            view={view}
+            onSetValue={onSetValue}
+            hasMore={pagingState?.hasMore ?? false}
+            loadingMore={pagingState?.loading ?? false}
+            onLoadMore={(columnKey) => {
+              void loadColumnPage(columnKey);
+            }}
+            totalCount={groupCounts ? (groupCounts[col.key] ?? 0) : columnRecords.length}
+            onAddRecord={() => {
+              const initialValues = getInitialValuesForColumn(groupField, col.key, groupByConfig?.granularity);
+              onAddRecord(initialValues);
+            }}
+          />
+        );
+      })}
     </div>
   );
 }

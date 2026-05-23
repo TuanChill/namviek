@@ -1,6 +1,7 @@
 import {
   Plus, ChevronLeft, ChevronRight, Copy, Trash2, Pencil, Smile, Settings2, Loader2
 } from 'lucide-react';
+import { useCallback, useEffect, useRef } from 'react';
 import { TableVirtuoso } from 'react-virtuoso';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -73,6 +74,56 @@ export function SpreadsheetView({
   loadingMore,
   onLoadMore,
 }: SpreadsheetViewProps) {
+  const scrollerRef = useRef<HTMLElement | null>(null);
+  const scrollListenerRef = useRef<(() => void) | null>(null);
+  const loadTriggeredRef = useRef(false);
+
+  useEffect(() => {
+    if (!loadingMore) {
+      loadTriggeredRef.current = false;
+    }
+  }, [loadingMore]);
+
+  const checkLoadThreshold = useCallback((element: HTMLElement) => {
+    if (!hasMore || loadingMore || loadTriggeredRef.current) {
+      return;
+    }
+
+    const threshold = element.scrollHeight * 0.8;
+    const currentPosition = element.scrollTop + element.clientHeight;
+
+    if (currentPosition >= threshold) {
+      loadTriggeredRef.current = true;
+      onLoadMore();
+    }
+  }, [hasMore, loadingMore, onLoadMore]);
+
+  const handleScrollerRef = useCallback((element: HTMLElement | Window | null) => {
+    if (scrollerRef.current && scrollListenerRef.current) {
+      scrollerRef.current.removeEventListener('scroll', scrollListenerRef.current);
+    }
+
+    if (!(element instanceof HTMLElement)) {
+      scrollerRef.current = null;
+      scrollListenerRef.current = null;
+      return;
+    }
+
+    scrollerRef.current = element;
+
+    const listener = () => checkLoadThreshold(element);
+    scrollListenerRef.current = listener;
+    element.addEventListener('scroll', listener, { passive: true });
+  }, [checkLoadThreshold]);
+
+  useEffect(() => {
+    return () => {
+      if (scrollerRef.current && scrollListenerRef.current) {
+        scrollerRef.current.removeEventListener('scroll', scrollListenerRef.current);
+      }
+    };
+  }, []);
+
   if (loading) {
     return (
       <div className="flex flex-1 items-center justify-center">
@@ -103,9 +154,7 @@ export function SpreadsheetView({
           <TableVirtuoso
             style={{ height: '100%', minWidth: `${48 + INDEX_COL_WIDTH + fields.length * COL_WIDTH}px` }}
             data={records}
-            endReached={() => {
-              if (hasMore && !loadingMore) onLoadMore();
-            }}
+            scrollerRef={handleScrollerRef}
             fixedHeaderContent={() => (
               <tr>
                 <th className="px-3 py-2 text-center text-xs font-medium text-muted-foreground border-b border-r border-border/80 bg-muted/80 backdrop-blur-sm">
