@@ -370,6 +370,7 @@ export default function DynamicFieldPage() {
             records={records}
             loading={loading}
             view={activeView!}
+            onSetRecords={setRecords}
             onHydrateRecords={mergeRecords}
             onSetValue={handleSetValue}
             onAddRecord={handleAddRecord}

@@ -8,6 +8,7 @@ import type { ViewSort } from "./sort-sql.js";
 
 const DEFAULT_RECORDS_PAGE_SIZE = 100;
 const MAX_RECORDS_PAGE_SIZE = 200;
+const ORDER_STEP = 1024;
 
 export interface DynRecordsPage {
     items: Awaited<ReturnType<typeof prisma.dynRecord.findMany>>;
@@ -320,7 +321,7 @@ export async function getDynKanbanGroupRecordsPage(
         };
     }
 
-    let orderedRecordIds: string[] = [];
+    let filteredRecordIds: string[] | undefined;
     let granularity: 'day' | 'month' | 'quarter' | undefined;
 
     if (viewId) {
@@ -342,7 +343,6 @@ export async function getDynKanbanGroupRecordsPage(
         const viewFilter = isPlainObject(viewConfig) && isPlainObject(viewConfig.filter)
             ? (viewConfig.filter as unknown as ViewFilter)
             : ({ id: 'root', type: 'group', conjunction: 'AND', children: [] } as ViewFilter);
-        const sort = extractSortConfig(viewConfig);
         const groupBy = isPlainObject(viewConfig) && isPlainObject(viewConfig.groupBy)
             ? viewConfig.groupBy as { fieldId?: unknown; granularity?: unknown }
             : undefined;
@@ -359,40 +359,32 @@ export async function getDynKanbanGroupRecordsPage(
             select: { id: true, type: true },
         });
 
-        const orderClause = sort ? buildSortOrderClause(sort, fields) : undefined;
-        const query = buildFilteredRecordIdsQuery(databaseId, viewFilter, fields, orderClause);
+        const query = buildFilteredRecordIdsQuery(databaseId, viewFilter, fields);
         const matchingRows = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
             query.sql,
             ...query.params,
         );
 
-        orderedRecordIds = matchingRows.map((row) => row.id);
-    } else {
-        const rows = await prisma.dynRecord.findMany({
-            where: { databaseId, archivedAt: null },
-            orderBy: { rowNumber: 'asc' },
-            select: { id: true },
-        });
-        orderedRecordIds = rows.map((row) => row.id);
-    }
-
-    if (orderedRecordIds.length === 0) {
-        return {
-            items: [],
-            hasMore: false,
-            nextCursor: null,
-            total: 0,
-        };
+        filteredRecordIds = matchingRows.map((row) => row.id);
+        if (filteredRecordIds.length === 0) {
+            return {
+                items: [],
+                hasMore: false,
+                nextCursor: null,
+                total: 0,
+            };
+        }
     }
 
     const groupCandidates = await prisma.dynRecord.findMany({
         where: {
             databaseId,
             archivedAt: null,
-            id: { in: orderedRecordIds },
+            ...(filteredRecordIds ? { id: { in: filteredRecordIds } } : {}),
         },
         select: {
             id: true,
+            order: true,
             createdAt: true,
             updatedAt: true,
             fieldValues: {
@@ -407,17 +399,18 @@ export async function getDynKanbanGroupRecordsPage(
         },
     });
 
-    const groupCandidateById = new Map(groupCandidates.map((record) => [record.id, record]));
-    const matchingRecordIds = orderedRecordIds.filter((recordId) => {
-        const record = groupCandidateById.get(recordId);
-        if (!record) return false;
-        return matchesKanbanGroup(
+    const matchingRecordIds = groupCandidates
+        .filter((record) => matchesKanbanGroup(
             record,
             groupField.type as SupportedKanbanGroupFieldType,
             pageInput.groupKey,
             granularity,
-        );
-    });
+        ))
+        .sort((a, b) => {
+            if (a.order !== b.order) return a.order - b.order;
+            return a.id.localeCompare(b.id);
+        })
+        .map((record) => record.id);
 
     const limit = normalizePageSize(pageInput.limit);
     const offset = decodeOffsetCursor(pageInput.cursor);
@@ -465,15 +458,18 @@ export async function getDynKanbanGroupRecordsPage(
 /** Create an empty record in a database */
 export async function createDynRecord(databaseId: string) {
     for (let attempt = 0; attempt < 5; attempt += 1) {
-        const maxRow = await prisma.dynRecord.aggregate({
+        const aggregates = await prisma.dynRecord.aggregate({
             where: { databaseId },
-            _max: { rowNumber: true },
+            _max: { rowNumber: true, order: true },
         });
-        const rowNumber = (maxRow._max.rowNumber ?? 0) + 1;
+        const rowNumber = (aggregates._max.rowNumber ?? 0) + 1;
+        const order = aggregates._max.order == null
+            ? 0
+            : Number(aggregates._max.order) + ORDER_STEP;
 
         try {
             return await prisma.dynRecord.create({
-                data: { databaseId, rowNumber },
+                data: { databaseId, rowNumber, order },
                 include: { fieldValues: true },
             });
         } catch (error) {
@@ -489,6 +485,8 @@ export async function createDynRecord(databaseId: string) {
 
     throw new Error(`Failed to create record for database ${databaseId}`);
 }
+
+export { moveDynRecordKanban } from './repositories/reorder.record.repository.js';
 
 /** Delete one or more records */
 export async function deleteDynRecords(recordIds: string[]) {

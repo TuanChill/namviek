@@ -167,6 +167,7 @@ export function buildKanbanPreviewRecord(fields: Field[], options?: PreviewRecor
   return {
     id: 'preview-record',
     rowNumber: 101,
+    order: 0,
     createdAt: '2026-05-01T09:00:00.000Z',
     updatedAt: '2026-05-03T15:30:00.000Z',
     fieldValues,

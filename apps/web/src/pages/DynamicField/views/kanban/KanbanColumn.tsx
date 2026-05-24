@@ -1,9 +1,13 @@
 import { Loader2, Plus } from 'lucide-react';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, type DragEvent } from 'react';
 import { Virtuoso } from 'react-virtuoso';
 import { Button } from '@/components/ui/button';
 import { KanbanCard } from './KanbanCard';
+import { KanbanCardDraggable } from './KanbanCardDraggable';
+import { KanbanDropIndicator } from './KanbanDropIndicator';
 import type { DynRecord, DynView, Field, FieldValuePayload } from '../../types';
+import type { KanbanHoverState } from './kanban-dnd.types';
+import { resolveKanbanDropTarget } from './kanban-dnd.utils';
 
 export interface KanbanColumnData {
   key: string;
@@ -22,10 +26,33 @@ interface KanbanColumnProps {
   loadingMore: boolean;
   onLoadMore: (columnKey: string) => void;
   totalCount: number;
+  draggingRecordId: string | null;
+  hoverState: KanbanHoverState | null;
+  onDragStartCard: (groupKey: string, recordId: string, event: DragEvent<HTMLDivElement>) => void;
+  onDragOverCard: (groupKey: string, recordId: string | null, event: DragEvent<HTMLDivElement>) => void;
+  onDropCard: (groupKey: string, recordId: string | null, event: DragEvent<HTMLDivElement>) => void;
+  onDragEndCard: () => void;
 }
 
-export function KanbanColumn({ col, fields, view, onSetValue, onAddRecord, hasMore, loadingMore, onLoadMore, totalCount }: KanbanColumnProps) {
+export function KanbanColumn({
+  col,
+  fields,
+  view,
+  onSetValue,
+  onAddRecord,
+  hasMore,
+  loadingMore,
+  onLoadMore,
+  totalCount,
+  draggingRecordId,
+  hoverState,
+  onDragStartCard,
+  onDragOverCard,
+  onDropCard,
+  onDragEndCard,
+}: KanbanColumnProps) {
   const scrollerRef = useRef<HTMLElement | null>(null);
+  const dropZoneRef = useRef<HTMLDivElement | null>(null);
   const scrollListenerRef = useRef<(() => void) | null>(null);
   const loadTriggeredRef = useRef(false);
 
@@ -93,7 +120,22 @@ export function KanbanColumn({ col, fields, view, onSetValue, onAddRecord, hasMo
       </div>
 
       {/* Cards */}
-      <div className="min-h-0 h-full flex-1 px-1">
+      <div
+        ref={dropZoneRef}
+        className="min-h-0 h-full flex-1 px-1"
+        onDragOver={(event) => {
+          event.preventDefault();
+          const draggedRecordId = event.dataTransfer.getData('text/plain');
+          const targetRecordId = resolveKanbanDropTarget(event.currentTarget as HTMLDivElement, event.clientY, draggedRecordId);
+          onDragOverCard(col.key, targetRecordId, event);
+        }}
+        onDrop={(event) => {
+          event.preventDefault();
+          const draggedRecordId = event.dataTransfer.getData('text/plain');
+          const targetRecordId = resolveKanbanDropTarget(event.currentTarget as HTMLDivElement, event.clientY, draggedRecordId);
+          onDropCard(col.key, targetRecordId, event);
+        }}
+      >
         <Virtuoso
           style={{ height: '100%' }}
           totalCount={col.records.length}
@@ -101,15 +143,26 @@ export function KanbanColumn({ col, fields, view, onSetValue, onAddRecord, hasMo
           itemContent={(index) => {
             const record = col.records[index];
             if (!record) return null;
+            const showDropIndicator = hoverState?.toGroupKey === col.key && hoverState.targetRecordId === record.id;
             return (
               <div className="pb-2 pl-2 pr-2">
-                <KanbanCard
-                  key={record.id}
-                  record={record}
-                  fields={fields}
-                  view={view}
-                  onSetValue={onSetValue}
-                />
+                {showDropIndicator ? <KanbanDropIndicator /> : null}
+                <KanbanCardDraggable
+                  recordId={record.id}
+                  isDragging={draggingRecordId === record.id}
+                  onDragStart={(recordId, event) => onDragStartCard(col.key, recordId, event)}
+                  onDragEnd={onDragEndCard}
+                  onDragOver={(recordId, event) => onDragOverCard(col.key, recordId, event)}
+                  onDrop={(recordId, event) => onDropCard(col.key, recordId, event)}
+                >
+                  <KanbanCard
+                    key={record.id}
+                    record={record}
+                    fields={fields}
+                    view={view}
+                    onSetValue={onSetValue}
+                  />
+                </KanbanCardDraggable>
               </div>
             );
           }}

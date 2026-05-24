@@ -28,16 +28,19 @@ export type AggregateDynRecord = {
 
 export type DynRecordAvgAggregateOutputType = {
   rowNumber: number | null
+  order: number | null
 }
 
 export type DynRecordSumAggregateOutputType = {
   rowNumber: number | null
+  order: number | null
 }
 
 export type DynRecordMinAggregateOutputType = {
   id: string | null
   databaseId: string | null
   rowNumber: number | null
+  order: number | null
   createdAt: Date | null
   updatedAt: Date | null
   archivedAt: Date | null
@@ -47,6 +50,7 @@ export type DynRecordMaxAggregateOutputType = {
   id: string | null
   databaseId: string | null
   rowNumber: number | null
+  order: number | null
   createdAt: Date | null
   updatedAt: Date | null
   archivedAt: Date | null
@@ -56,6 +60,7 @@ export type DynRecordCountAggregateOutputType = {
   id: number
   databaseId: number
   rowNumber: number
+  order: number
   createdAt: number
   updatedAt: number
   archivedAt: number
@@ -65,16 +70,19 @@ export type DynRecordCountAggregateOutputType = {
 
 export type DynRecordAvgAggregateInputType = {
   rowNumber?: true
+  order?: true
 }
 
 export type DynRecordSumAggregateInputType = {
   rowNumber?: true
+  order?: true
 }
 
 export type DynRecordMinAggregateInputType = {
   id?: true
   databaseId?: true
   rowNumber?: true
+  order?: true
   createdAt?: true
   updatedAt?: true
   archivedAt?: true
@@ -84,6 +92,7 @@ export type DynRecordMaxAggregateInputType = {
   id?: true
   databaseId?: true
   rowNumber?: true
+  order?: true
   createdAt?: true
   updatedAt?: true
   archivedAt?: true
@@ -93,6 +102,7 @@ export type DynRecordCountAggregateInputType = {
   id?: true
   databaseId?: true
   rowNumber?: true
+  order?: true
   createdAt?: true
   updatedAt?: true
   archivedAt?: true
@@ -189,6 +199,7 @@ export type DynRecordGroupByOutputType = {
   id: string
   databaseId: string
   rowNumber: number
+  order: number
   createdAt: Date
   updatedAt: Date
   archivedAt: Date | null
@@ -221,6 +232,7 @@ export type DynRecordWhereInput = {
   id?: Prisma.StringFilter<"DynRecord"> | string
   databaseId?: Prisma.StringFilter<"DynRecord"> | string
   rowNumber?: Prisma.IntFilter<"DynRecord"> | number
+  order?: Prisma.FloatFilter<"DynRecord"> | number
   createdAt?: Prisma.DateTimeFilter<"DynRecord"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"DynRecord"> | Date | string
   archivedAt?: Prisma.DateTimeNullableFilter<"DynRecord"> | Date | string | null
@@ -232,6 +244,7 @@ export type DynRecordOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   databaseId?: Prisma.SortOrder
   rowNumber?: Prisma.SortOrder
+  order?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   archivedAt?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -247,6 +260,7 @@ export type DynRecordWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.DynRecordWhereInput | Prisma.DynRecordWhereInput[]
   databaseId?: Prisma.StringFilter<"DynRecord"> | string
   rowNumber?: Prisma.IntFilter<"DynRecord"> | number
+  order?: Prisma.FloatFilter<"DynRecord"> | number
   createdAt?: Prisma.DateTimeFilter<"DynRecord"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"DynRecord"> | Date | string
   archivedAt?: Prisma.DateTimeNullableFilter<"DynRecord"> | Date | string | null
@@ -258,6 +272,7 @@ export type DynRecordOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   databaseId?: Prisma.SortOrder
   rowNumber?: Prisma.SortOrder
+  order?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   archivedAt?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -275,6 +290,7 @@ export type DynRecordScalarWhereWithAggregatesInput = {
   id?: Prisma.StringWithAggregatesFilter<"DynRecord"> | string
   databaseId?: Prisma.StringWithAggregatesFilter<"DynRecord"> | string
   rowNumber?: Prisma.IntWithAggregatesFilter<"DynRecord"> | number
+  order?: Prisma.FloatWithAggregatesFilter<"DynRecord"> | number
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"DynRecord"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"DynRecord"> | Date | string
   archivedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"DynRecord"> | Date | string | null
@@ -283,6 +299,7 @@ export type DynRecordScalarWhereWithAggregatesInput = {
 export type DynRecordCreateInput = {
   id?: string
   rowNumber: number
+  order?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   archivedAt?: Date | string | null
@@ -294,6 +311,7 @@ export type DynRecordUncheckedCreateInput = {
   id?: string
   databaseId: string
   rowNumber: number
+  order?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   archivedAt?: Date | string | null
@@ -303,6 +321,7 @@ export type DynRecordUncheckedCreateInput = {
 export type DynRecordUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   rowNumber?: Prisma.IntFieldUpdateOperationsInput | number
+  order?: Prisma.FloatFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -314,6 +333,7 @@ export type DynRecordUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   databaseId?: Prisma.StringFieldUpdateOperationsInput | string
   rowNumber?: Prisma.IntFieldUpdateOperationsInput | number
+  order?: Prisma.FloatFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -324,6 +344,7 @@ export type DynRecordCreateManyInput = {
   id?: string
   databaseId: string
   rowNumber: number
+  order?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   archivedAt?: Date | string | null
@@ -332,6 +353,7 @@ export type DynRecordCreateManyInput = {
 export type DynRecordUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   rowNumber?: Prisma.IntFieldUpdateOperationsInput | number
+  order?: Prisma.FloatFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -341,6 +363,7 @@ export type DynRecordUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   databaseId?: Prisma.StringFieldUpdateOperationsInput | string
   rowNumber?: Prisma.IntFieldUpdateOperationsInput | number
+  order?: Prisma.FloatFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -365,6 +388,7 @@ export type DynRecordCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   databaseId?: Prisma.SortOrder
   rowNumber?: Prisma.SortOrder
+  order?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   archivedAt?: Prisma.SortOrder
@@ -372,12 +396,14 @@ export type DynRecordCountOrderByAggregateInput = {
 
 export type DynRecordAvgOrderByAggregateInput = {
   rowNumber?: Prisma.SortOrder
+  order?: Prisma.SortOrder
 }
 
 export type DynRecordMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   databaseId?: Prisma.SortOrder
   rowNumber?: Prisma.SortOrder
+  order?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   archivedAt?: Prisma.SortOrder
@@ -387,6 +413,7 @@ export type DynRecordMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   databaseId?: Prisma.SortOrder
   rowNumber?: Prisma.SortOrder
+  order?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   archivedAt?: Prisma.SortOrder
@@ -394,6 +421,7 @@ export type DynRecordMinOrderByAggregateInput = {
 
 export type DynRecordSumOrderByAggregateInput = {
   rowNumber?: Prisma.SortOrder
+  order?: Prisma.SortOrder
 }
 
 export type DynRecordScalarRelationFilter = {
@@ -464,6 +492,7 @@ export type DynRecordUpdateOneRequiredWithoutFieldValuesNestedInput = {
 export type DynRecordCreateWithoutDatabaseInput = {
   id?: string
   rowNumber: number
+  order?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   archivedAt?: Date | string | null
@@ -473,6 +502,7 @@ export type DynRecordCreateWithoutDatabaseInput = {
 export type DynRecordUncheckedCreateWithoutDatabaseInput = {
   id?: string
   rowNumber: number
+  order?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   archivedAt?: Date | string | null
@@ -512,6 +542,7 @@ export type DynRecordScalarWhereInput = {
   id?: Prisma.StringFilter<"DynRecord"> | string
   databaseId?: Prisma.StringFilter<"DynRecord"> | string
   rowNumber?: Prisma.IntFilter<"DynRecord"> | number
+  order?: Prisma.FloatFilter<"DynRecord"> | number
   createdAt?: Prisma.DateTimeFilter<"DynRecord"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"DynRecord"> | Date | string
   archivedAt?: Prisma.DateTimeNullableFilter<"DynRecord"> | Date | string | null
@@ -520,6 +551,7 @@ export type DynRecordScalarWhereInput = {
 export type DynRecordCreateWithoutFieldValuesInput = {
   id?: string
   rowNumber: number
+  order?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   archivedAt?: Date | string | null
@@ -530,6 +562,7 @@ export type DynRecordUncheckedCreateWithoutFieldValuesInput = {
   id?: string
   databaseId: string
   rowNumber: number
+  order?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   archivedAt?: Date | string | null
@@ -554,6 +587,7 @@ export type DynRecordUpdateToOneWithWhereWithoutFieldValuesInput = {
 export type DynRecordUpdateWithoutFieldValuesInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   rowNumber?: Prisma.IntFieldUpdateOperationsInput | number
+  order?: Prisma.FloatFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -564,6 +598,7 @@ export type DynRecordUncheckedUpdateWithoutFieldValuesInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   databaseId?: Prisma.StringFieldUpdateOperationsInput | string
   rowNumber?: Prisma.IntFieldUpdateOperationsInput | number
+  order?: Prisma.FloatFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -572,6 +607,7 @@ export type DynRecordUncheckedUpdateWithoutFieldValuesInput = {
 export type DynRecordCreateManyDatabaseInput = {
   id?: string
   rowNumber: number
+  order?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   archivedAt?: Date | string | null
@@ -580,6 +616,7 @@ export type DynRecordCreateManyDatabaseInput = {
 export type DynRecordUpdateWithoutDatabaseInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   rowNumber?: Prisma.IntFieldUpdateOperationsInput | number
+  order?: Prisma.FloatFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -589,6 +626,7 @@ export type DynRecordUpdateWithoutDatabaseInput = {
 export type DynRecordUncheckedUpdateWithoutDatabaseInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   rowNumber?: Prisma.IntFieldUpdateOperationsInput | number
+  order?: Prisma.FloatFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -598,6 +636,7 @@ export type DynRecordUncheckedUpdateWithoutDatabaseInput = {
 export type DynRecordUncheckedUpdateManyWithoutDatabaseInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   rowNumber?: Prisma.IntFieldUpdateOperationsInput | number
+  order?: Prisma.FloatFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -638,6 +677,7 @@ export type DynRecordSelect<ExtArgs extends runtime.Types.Extensions.InternalArg
   id?: boolean
   databaseId?: boolean
   rowNumber?: boolean
+  order?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   archivedAt?: boolean
@@ -650,6 +690,7 @@ export type DynRecordSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Ext
   id?: boolean
   databaseId?: boolean
   rowNumber?: boolean
+  order?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   archivedAt?: boolean
@@ -660,6 +701,7 @@ export type DynRecordSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Ext
   id?: boolean
   databaseId?: boolean
   rowNumber?: boolean
+  order?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   archivedAt?: boolean
@@ -670,12 +712,13 @@ export type DynRecordSelectScalar = {
   id?: boolean
   databaseId?: boolean
   rowNumber?: boolean
+  order?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   archivedAt?: boolean
 }
 
-export type DynRecordOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "databaseId" | "rowNumber" | "createdAt" | "updatedAt" | "archivedAt", ExtArgs["result"]["dynRecord"]>
+export type DynRecordOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "databaseId" | "rowNumber" | "order" | "createdAt" | "updatedAt" | "archivedAt", ExtArgs["result"]["dynRecord"]>
 export type DynRecordInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   database?: boolean | Prisma.DynDatabaseDefaultArgs<ExtArgs>
   fieldValues?: boolean | Prisma.DynRecord$fieldValuesArgs<ExtArgs>
@@ -698,6 +741,7 @@ export type $DynRecordPayload<ExtArgs extends runtime.Types.Extensions.InternalA
     id: string
     databaseId: string
     rowNumber: number
+    order: number
     createdAt: Date
     updatedAt: Date
     archivedAt: Date | null
@@ -1129,6 +1173,7 @@ export interface DynRecordFieldRefs {
   readonly id: Prisma.FieldRef<"DynRecord", 'String'>
   readonly databaseId: Prisma.FieldRef<"DynRecord", 'String'>
   readonly rowNumber: Prisma.FieldRef<"DynRecord", 'Int'>
+  readonly order: Prisma.FieldRef<"DynRecord", 'Float'>
   readonly createdAt: Prisma.FieldRef<"DynRecord", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"DynRecord", 'DateTime'>
   readonly archivedAt: Prisma.FieldRef<"DynRecord", 'DateTime'>

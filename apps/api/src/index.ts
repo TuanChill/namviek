@@ -37,6 +37,7 @@ import crypto from 'crypto'
 import { TEMPLATES } from './config/templates.js'
 import { createDatabaseFromTemplate } from './services/template.service.js'
 import { registerFieldRoutes } from './services/field.service.js'
+import { registerRecordRoutes } from './services/record.service.js'
 
 const app = new Hono()
 const GLOBAL_DATABASE_STREAM_ID = '__GLOBAL_DATABASES__'
@@ -287,6 +288,7 @@ app.get('/api/databases/:id/stats', async (c) => {
 
 // /api/fields routes are handled in field.service.ts to keep things organized
 registerFieldRoutes(app, dbEvents)
+registerRecordRoutes(app, dbEvents)
 
 // ─── View routes ───────────────────────────────────────────────────────────────
 
