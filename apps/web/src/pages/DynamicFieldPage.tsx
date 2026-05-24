@@ -30,13 +30,13 @@ import { useFields } from './DynamicField/hooks/useFields';
 import { useRecords } from './DynamicField/hooks/useRecords';
 import { useDatabaseStream } from './DynamicField/hooks/useDatabaseStream';
 import { useViews } from './DynamicField/hooks/useViews';
+import { api } from './DynamicField/api';
 
 import { SpreadsheetView } from './DynamicField/views/spreadsheet/SpreadsheetView';
 import { KanbanView } from './DynamicField/views/kanban/KanbanView';
 import { CalendarView } from './DynamicField/views/calendar/CalendarView';
 import { TimelineView } from './DynamicField/views/timeline/TimelineView';
 import { ViewManagerTabBar } from './DynamicField/views/components/ViewManagerTabBar';
-import { api } from './DynamicField/api';
 
 import type { DynDatabase, DynViewType, Field, FieldConfig, FieldType, FieldValuePayload } from './DynamicField/types';
 
@@ -45,40 +45,30 @@ const DEFAULT_DB_ICON = 'Database';
 export default function DynamicFieldPage() {
   const { databases, selectedDb, setSelectedDb, createDatabase, deleteDatabase, upsertDatabase, removeDatabase } = useDatabase();
   const { fields, setFields, loadFields, addField, renameField, deleteField, moveField, duplicateField, changeIcon, updateField } = useFields();
-  const { records, setRecords, loadRecords, addRecord, setValue, removeFieldValues, reloadRecords, deleteRecords } = useRecords();
+  const {
+    records,
+    setRecords,
+    mergeRecords,
+    totalRecords,
+    setTotalRecords,
+    hasMore,
+    loadingMore,
+    loadRecords,
+    loadMoreRecords,
+    addRecord,
+    setValue,
+    removeFieldValues,
+    reloadRecords,
+    deleteRecords,
+  } = useRecords();
   const { views, setViews, activeView, setActiveView, loadViews, createView, updateView, deleteView, setDefaultView, moveView } = useViews();
-
-  // Server-side filtered records
-  const [filteredRecords, setFilteredRecords] = useState<typeof records>([]);
-
-  // When the active view changes or is updated, fetch view-ordered records from the backend.
-  useEffect(() => {
-    if (!selectedDb?.id || !records.length) {
-      setFilteredRecords(records);
-      return;
-    }
-
-    let cancelled = false;
-
-    api.records.list(selectedDb.id, activeView?.id)
-      .then(viewRecords => {
-        if (!cancelled) setFilteredRecords(viewRecords);
-      })
-      .catch(err => {
-        console.error('Failed to fetch view records:', err);
-        if (!cancelled) setFilteredRecords(records);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedDb?.id, activeView?.id, activeView?.updatedAt, records]);
 
   const { databaseId } = useParams();
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(false);
   const [selectedRecords, setSelectedRecords] = useState<Set<string>>(new Set());
+  const [kanbanGroupCounts, setKanbanGroupCounts] = useState<Record<string, number>>({});
 
   // DB creation & deletion
   const [showCreateDbDialog, setShowCreateDbDialog] = useState(false);
@@ -88,6 +78,7 @@ export default function DynamicFieldPage() {
   // Track in-flight load requests so a stale response from a previous database
   // cannot overwrite data from the currently selected one.
   const loadRequestIdRef = useRef(0);
+  const recordsRequestIdRef = useRef(0);
   // Track which databaseId we have already triggered a load for, so the
   // URL-watching effect does not fire a duplicate load when selectedDb state
   // updates mid-flight (which would otherwise cause the old DB to reload).
@@ -118,9 +109,11 @@ export default function DynamicFieldPage() {
         if (prev.some(r => r.id === record.id)) return prev;
         return [...prev, record];
       });
+      setTotalRecords(prev => prev + 1);
     },
     onRecordsDeleted: (ids) => {
       setRecords((prev) => prev.filter(r => !ids.includes(r.id)));
+      setTotalRecords(prev => Math.max(0, prev - ids.length));
       setSelectedRecords(prev => {
         const newSet = new Set(prev);
         ids.forEach(id => newSet.delete(id));
@@ -188,6 +181,7 @@ export default function DynamicFieldPage() {
     // the new database is loading.
     setFields([]);
     setRecords([]);
+    setTotalRecords(0);
     setViews([]);
     setActiveView(null);
 
@@ -195,7 +189,7 @@ export default function DynamicFieldPage() {
       const shouldApply = () => loadRequestIdRef.current === requestId;
       await Promise.all([
         loadFields(db.id, shouldApply),
-        loadRecords(db.id, shouldApply),
+        loadRecords(db.id, undefined, shouldApply),
         loadViews(db.id, shouldApply),
       ]);
       if (!shouldApply()) return;
@@ -205,7 +199,7 @@ export default function DynamicFieldPage() {
         setLoading(false);
       }
     }
-  }, [setSelectedDb, setFields, setRecords, setViews, setActiveView, loadFields, loadRecords, loadViews, navigate]);
+  }, [setSelectedDb, setFields, setRecords, setTotalRecords, setViews, setActiveView, loadFields, loadRecords, loadViews, navigate]);
 
   // Initial load from URL (also handles browser back/forward).
   // Intentionally does NOT depend on selectedDb — that state changes during
@@ -237,7 +231,7 @@ export default function DynamicFieldPage() {
     if (!selectedDb) return;
     await addField(selectedDb.id, name, type, config, pendingOptions);
     // If id-type, reload records so backfilled values show up
-    if (type === 'id') await reloadRecords(selectedDb.id);
+    if (type === 'id') await reloadRecords(selectedDb.id, activeView?.id);
   };
 
   const commitRename = async () => {
@@ -330,6 +324,40 @@ export default function DynamicFieldPage() {
     await setDefaultView(selectedDb.id, viewId);
   };
 
+  useEffect(() => {
+    if (!selectedDb?.id) return;
+    const requestId = ++recordsRequestIdRef.current;
+    const shouldApply = () => recordsRequestIdRef.current === requestId;
+    loadRecords(selectedDb.id, activeView?.id, shouldApply).catch((err) => {
+      console.error('Failed to fetch paginated records:', err);
+    });
+  }, [selectedDb?.id, activeView?.id, activeView?.updatedAt, loadRecords]);
+
+  useEffect(() => {
+    if (!selectedDb?.id || activeView?.type !== 'kanban') {
+      setKanbanGroupCounts({});
+      return;
+    }
+
+    const groupByConfig = activeView.config?.groupBy;
+    const groupField = groupByConfig?.fieldId
+      ? fields.find(f => f.id === groupByConfig.fieldId)
+      : fields.find(f => f.type === 'select' || f.type === 'multi_select');
+
+    if (!groupField || (groupField.type !== 'select' && groupField.type !== 'multi_select')) {
+      setKanbanGroupCounts({});
+      return;
+    }
+
+    const dbId = selectedDb.id;
+    const viewId = activeView.id;
+
+    api.records
+      .groupCounts(dbId, groupField.id, groupField.type, viewId)
+      .then(setKanbanGroupCounts)
+      .catch(() => setKanbanGroupCounts({}));
+  }, [selectedDb?.id, activeView?.id, activeView?.type, activeView?.updatedAt, fields]);
+
   // Render the correct view component for the active view type
   const renderViewContent = () => {
     const viewType = activeView?.type ?? 'spreadsheet';
@@ -337,19 +365,22 @@ export default function DynamicFieldPage() {
       case 'kanban':
         return (
           <KanbanView
+            databaseId={selectedDb!.id}
             fields={fields}
-            records={filteredRecords}
+            records={records}
             loading={loading}
             view={activeView!}
+            onHydrateRecords={mergeRecords}
             onSetValue={handleSetValue}
             onAddRecord={handleAddRecord}
+            groupCounts={kanbanGroupCounts}
           />
         );
       case 'calendar':
         return (
           <CalendarView
             fields={fields}
-            records={filteredRecords}
+            records={records}
             loading={loading}
             view={activeView!}
             onUpdateView={(viewId, patch) => { void updateView(viewId, patch); }}
@@ -361,7 +392,7 @@ export default function DynamicFieldPage() {
         return (
           <TimelineView
             fields={fields}
-            records={filteredRecords}
+            records={records}
             loading={loading}
             view={activeView!}
           />
@@ -371,7 +402,7 @@ export default function DynamicFieldPage() {
         return (
           <SpreadsheetView
             fields={fields}
-            records={filteredRecords}
+            records={records}
             loading={loading}
             selectedRecords={selectedRecords}
             activeCell={activeCell}
@@ -397,6 +428,9 @@ export default function DynamicFieldPage() {
             onDuplicateField={handleDuplicate}
             onDeleteField={setDeletingFieldId}
             onAddField={() => setShowAddField(true)}
+            hasMore={hasMore}
+            loadingMore={loadingMore}
+            onLoadMore={loadMoreRecords}
           />
         );
     }
@@ -431,7 +465,7 @@ export default function DynamicFieldPage() {
                 <span className="font-semibold">{selectedDb.name}</span>
                 <Separator orientation="vertical" className="!h-4 !self-center shrink-0" />
                 <span className="text-xs text-muted-foreground">
-                  {fields.length} fields · {records.length} records
+                  {fields.length} fields · {records.length}/{totalRecords} loaded
                 </span>
                 <div className="flex-1" />
                 <Button

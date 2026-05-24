@@ -10,6 +10,9 @@ import {
   getDynDatabases,
   createDynDatabase,
   getDynRecords,
+  getDynRecordsPage,
+  getDynKanbanGroupRecordsPage,
+  getDynRecordGroupCounts,
   createDynRecord,
   setFieldValue,
   getUsers,
@@ -493,6 +496,77 @@ app.get('/api/databases/:id/records', async (c) => {
   } catch (error) {
     console.error(error)
     return c.json({ error: 'Failed to fetch records' }, 500)
+  }
+})
+
+// GET /api/databases/:id/records/page — paginated records with cursor
+app.get('/api/databases/:id/records/page', async (c) => {
+  try {
+    const viewId = c.req.query('viewId') ?? undefined
+    const cursor = c.req.query('cursor') ?? undefined
+    const limitParam = c.req.query('limit')
+    const limit = limitParam ? Number.parseInt(limitParam, 10) : undefined
+
+    const page = await getDynRecordsPage(c.req.param('id'), viewId, {
+      cursor,
+      limit: Number.isFinite(limit) ? limit : undefined,
+    })
+
+    return c.json(page)
+  } catch (error) {
+    console.error(error)
+    return c.json({ error: 'Failed to fetch paginated records' }, 500)
+  }
+})
+
+// GET /api/databases/:id/records/kanban-page — paginated records for a single Kanban group
+app.get('/api/databases/:id/records/kanban-page', async (c) => {
+  try {
+    const viewId = c.req.query('viewId') ?? undefined
+    const groupFieldId = c.req.query('groupFieldId') ?? ''
+    const groupKey = c.req.query('groupKey') ?? ''
+    const cursor = c.req.query('cursor') ?? undefined
+    const limitParam = c.req.query('limit')
+    const limit = limitParam ? Number.parseInt(limitParam, 10) : undefined
+
+    if (!groupFieldId) {
+      return c.json({ error: 'groupFieldId is required' }, 400)
+    }
+
+    const page = await getDynKanbanGroupRecordsPage(c.req.param('id'), viewId, {
+      groupFieldId,
+      groupKey,
+      cursor,
+      limit: Number.isFinite(limit) ? limit : undefined,
+    })
+
+    return c.json(page)
+  } catch (error) {
+    console.error(error)
+    return c.json({ error: 'Failed to fetch Kanban page' }, 500)
+  }
+})
+
+// GET /api/databases/:id/records/group-counts — full total per group key
+app.get('/api/databases/:id/records/group-counts', async (c) => {
+  try {
+    const databaseId = c.req.param('id')
+    const viewId = c.req.query('viewId') ?? undefined
+    const fieldId = c.req.query('fieldId') ?? ''
+    const fieldType = c.req.query('fieldType')
+
+    if (!fieldId) {
+      return c.json({ error: 'fieldId is required' }, 400)
+    }
+    if (fieldType !== 'select' && fieldType !== 'multi_select') {
+      return c.json({ error: 'fieldType must be select or multi_select' }, 400)
+    }
+
+    const counts = await getDynRecordGroupCounts(databaseId, fieldId, fieldType, viewId)
+    return c.json(counts)
+  } catch (error) {
+    console.error(error)
+    return c.json({ error: 'Failed to fetch group counts' }, 500)
   }
 })
 
