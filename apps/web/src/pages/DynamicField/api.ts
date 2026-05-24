@@ -88,6 +88,14 @@ export const api = {
     listFiltered: (dbId: string, filter: any) => apiFetch<DynRecord[]>(`/databases/${dbId}/records/filter`, { method: 'POST', body: JSON.stringify({ filter }) }),
     create: (dbId: string) => apiFetch<DynRecord>(`/databases/${dbId}/records`, { method: 'POST' }),
     delete: (dbId: string, ids: string[]) => apiFetch(`/records`, { method: 'DELETE', body: JSON.stringify({ ids, databaseId: dbId }) }),
+    moveKanban: (recordId: string, payload: {
+      databaseId: string;
+      viewId: string;
+      groupFieldId: string;
+      toGroupKey: string;
+      beforeRecordId?: string | null;
+      afterRecordId?: string | null;
+    }) => apiFetch<DynRecord>(`/records/${recordId}/move-kanban`, { method: 'POST', body: JSON.stringify(payload) }),
   },
   values: {
     set: (dbId: string, recordId: string, fieldId: string, payload: FieldValuePayload) =>

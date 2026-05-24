@@ -1,9 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type DragEvent, type SetStateAction } from 'react';
 import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { api } from '../../api';
+import { moveKanbanRecord } from './kanban-move.api';
 import { KanbanColumn } from './KanbanColumn';
 import type { KanbanColumnData } from './KanbanColumn';
 import type { DynRecord, DynView, Field, FieldValuePayload, ViewGroupByConfig } from '../../types';
+import type { KanbanDragState, KanbanHoverState, KanbanMoveOutcome } from './kanban-dnd.types';
+import { applyGroupValueToRecord, computeOrderBetween } from './kanban-dnd.utils';
 
 const KANBAN_PAGE_SIZE = 100;
 
@@ -13,6 +17,7 @@ interface KanbanViewProps {
   records: DynRecord[];
   loading: boolean;
   view: DynView;
+  onSetRecords: Dispatch<SetStateAction<DynRecord[]>>;
   onHydrateRecords: (records: DynRecord[]) => void;
   onSetValue: (record: DynRecord, field: Field, payload: FieldValuePayload) => void;
   onAddRecord: (initialValues?: Array<{ field: Field; payload: FieldValuePayload }>) => void;
@@ -170,13 +175,79 @@ function buildColumns(
     }
   }
 
+  for (const column of columns.values()) {
+    column.records.sort((a, b) => {
+      if (a.order !== b.order) return a.order - b.order;
+      return a.id.localeCompare(b.id);
+    });
+  }
+
   return Array.from(columns.values());
 }
 
-export function KanbanView({ databaseId, fields, records, loading, view, onHydrateRecords, onSetValue, onAddRecord, groupCounts }: KanbanViewProps) {
+function buildOptimisticMove(
+  records: DynRecord[],
+  movedRecordId: string,
+  toGroupKey: string,
+  targetRecordId: string | null,
+  groupField: Field,
+  granularity: NonNullable<ViewGroupByConfig['granularity']> | undefined,
+): KanbanMoveOutcome | null {
+  const movedRecord = records.find(record => record.id === movedRecordId);
+  if (!movedRecord) return null;
+
+  const remaining = records.filter(record => record.id !== movedRecordId);
+  const destination = remaining
+    .filter(record => getRecordGroupKey(record, groupField, granularity) === toGroupKey)
+    .sort((a, b) => {
+      if (a.order !== b.order) return a.order - b.order;
+      return a.id.localeCompare(b.id);
+    });
+
+  const targetIndex = targetRecordId
+    ? destination.findIndex(record => record.id === targetRecordId)
+    : -1;
+
+  const insertIndex = targetIndex >= 0 ? targetIndex : destination.length;
+
+  const beforeRecord = destination[insertIndex] ?? null;
+  const afterRecord = insertIndex > 0 ? destination[insertIndex - 1] : null;
+  const nextOrder = beforeRecord?.order;
+  const prevOrder = afterRecord?.order;
+
+  const withGroup = applyGroupValueToRecord(movedRecord, groupField, toGroupKey, granularity);
+  const movedWithOrder: DynRecord = {
+    ...withGroup,
+    order: computeOrderBetween(prevOrder, nextOrder),
+  };
+
+  const nextRecords = [...remaining, movedWithOrder];
+  return {
+    records: nextRecords,
+    beforeRecordId: beforeRecord?.id ?? null,
+    afterRecordId: afterRecord?.id ?? null,
+  };
+}
+
+export function KanbanView({
+  databaseId,
+  fields,
+  records,
+  loading,
+  view,
+  onSetRecords,
+  onHydrateRecords,
+  onSetValue,
+  onAddRecord,
+  groupCounts,
+}: KanbanViewProps) {
   const [columnPaging, setColumnPaging] = useState<Record<string, ColumnPagingState>>({});
+  const [dragState, setDragState] = useState<KanbanDragState | null>(null);
+  const [hoverState, setHoverState] = useState<KanbanHoverState | null>(null);
   const columnPagingRef = useRef<Record<string, ColumnPagingState>>({});
   const requestVersionRef = useRef(0);
+  const moveRequestRef = useRef(0);
+  const rollbackSnapshotRef = useRef<DynRecord[] | null>(null);
   const groupByConfig = view.config?.groupBy;
 
   useEffect(() => {
@@ -196,11 +267,11 @@ export function KanbanView({ databaseId, fields, records, loading, view, onHydra
     return buildColumns(records, groupField, groupByConfig?.granularity);
   }, [records, groupField, groupByConfig?.granularity]);
 
-  const recordMap = useMemo(() => new Map(records.map(record => [record.id, record])), [records]);
-
   useEffect(() => {
     requestVersionRef.current += 1;
     setColumnPaging({});
+    setDragState(null);
+    setHoverState(null);
   }, [databaseId, view.id, groupField?.id, groupByConfig?.granularity]);
 
   useEffect(() => {
@@ -316,6 +387,80 @@ export function KanbanView({ databaseId, fields, records, loading, view, onHydra
     }
   }, [columns, groupField, loadColumnPage, loading]);
 
+  const handleDragStartCard = useCallback((groupKey: string, recordId: string, event: DragEvent<HTMLDivElement>) => {
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', recordId);
+    setDragState({ recordId, fromGroupKey: groupKey });
+    setHoverState({ toGroupKey: groupKey, targetRecordId: recordId });
+  }, []);
+
+  const handleDragOverCard = useCallback((groupKey: string, recordId: string | null, event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const draggedRecordId = dragState?.recordId || event.dataTransfer.getData('text/plain');
+    if (!draggedRecordId) return;
+    setHoverState({ toGroupKey: groupKey, targetRecordId: recordId });
+  }, [dragState]);
+
+  const handleDragEndCard = useCallback(() => {
+    window.setTimeout(() => {
+      setDragState(null);
+      setHoverState(null);
+    }, 0);
+  }, []);
+
+  const handleDropCard = useCallback(async (groupKey: string, recordId: string | null, event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const draggedRecordId = dragState?.recordId || event.dataTransfer.getData('text/plain');
+
+    if (!draggedRecordId || !groupField) {
+      setHoverState(null);
+      return;
+    }
+
+    const outcome = buildOptimisticMove(
+      records,
+      draggedRecordId,
+      groupKey,
+      recordId,
+      groupField,
+      groupByConfig?.granularity,
+    );
+
+    if (!outcome) {
+      setDragState(null);
+      setHoverState(null);
+      return;
+    }
+
+    rollbackSnapshotRef.current = records;
+    onSetRecords(outcome.records);
+
+    const requestId = ++moveRequestRef.current;
+
+    setDragState(null);
+    setHoverState(null);
+
+    try {
+      await moveKanbanRecord(draggedRecordId, {
+        databaseId,
+        viewId: view.id,
+        groupFieldId: groupField.id,
+        toGroupKey: groupKey,
+        beforeRecordId: outcome.beforeRecordId,
+        afterRecordId: outcome.afterRecordId,
+      });
+    } catch (error) {
+      if (moveRequestRef.current !== requestId) {
+        return;
+      }
+
+      if (rollbackSnapshotRef.current) {
+        onSetRecords(rollbackSnapshotRef.current);
+      }
+      toast.error('Failed to move card. Position has been restored.');
+    }
+  }, [databaseId, dragState, groupByConfig?.granularity, groupField, onSetRecords, records, view.id]);
+
   if (loading) {
     return (
       <div className="flex flex-1 items-center justify-center">
@@ -337,20 +482,12 @@ export function KanbanView({ databaseId, fields, records, loading, view, onHydra
     <div className="flex h-full min-h-0 flex-1 items-stretch gap-1 overflow-x-auto overflow-y-hidden p-4">
       {columns.map(col => {
         const pagingState = columnPaging[col.key];
-        const persistedIds = (pagingState?.recordIds ?? []).filter(recordId => {
-          const record = recordMap.get(recordId);
-          return Boolean(record) && getRecordGroupKey(record!, groupField, groupByConfig?.granularity) === col.key;
-        });
-        const seededIds = col.records.map(record => record.id);
-        const mergedIds = Array.from(new Set([...persistedIds, ...seededIds]));
-        const columnRecords = mergedIds
-          .map(recordId => recordMap.get(recordId))
-          .filter((record): record is DynRecord => Boolean(record));
+        const columnRecords = col.records;
 
         return (
           <KanbanColumn
             key={col.key}
-            col={{ ...col, records: columnRecords }}
+            col={col}
             fields={fields}
             view={view}
             onSetValue={onSetValue}
@@ -360,6 +497,12 @@ export function KanbanView({ databaseId, fields, records, loading, view, onHydra
               void loadColumnPage(columnKey);
             }}
             totalCount={groupCounts ? (groupCounts[col.key] ?? 0) : columnRecords.length}
+            draggingRecordId={dragState?.recordId ?? null}
+            hoverState={hoverState}
+            onDragStartCard={handleDragStartCard}
+            onDragOverCard={handleDragOverCard}
+            onDropCard={handleDropCard}
+            onDragEndCard={handleDragEndCard}
             onAddRecord={() => {
               const initialValues = getInitialValuesForColumn(groupField, col.key, groupByConfig?.granularity);
               onAddRecord(initialValues);

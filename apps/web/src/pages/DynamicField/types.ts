@@ -78,6 +78,7 @@ export interface DynUser {
 export interface DynRecord {
   id: string;
   rowNumber: number;
+  order: number;
   createdAt: string;
   updatedAt: string;
   fieldValues: FieldValue[];

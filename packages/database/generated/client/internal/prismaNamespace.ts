@@ -1209,6 +1209,7 @@ export const DynRecordScalarFieldEnum = {
   id: 'id',
   databaseId: 'databaseId',
   rowNumber: 'rowNumber',
+  order: 'order',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
   archivedAt: 'archivedAt'
