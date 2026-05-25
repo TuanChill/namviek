@@ -51,6 +51,7 @@ Add to `claude_desktop_config.json`:
 {
   "mcpServers": {
     "namviek": {
+      "type": "http",
       "url": "http://YOUR_SERVER:4002/mcp",
       "headers": { "x-api-key": "your-production-key" }
     }
@@ -66,6 +67,7 @@ Add to `.cursor/mcp.json`:
 {
   "mcpServers": {
     "namviek": {
+      "type": "http",
       "url": "http://YOUR_SERVER:4002/mcp",
       "headers": { "x-api-key": "your-production-key" }
     }
@@ -85,6 +87,7 @@ gemini --mcp-endpoint http://YOUR_SERVER:4002/mcp --mcp-header "x-api-key: your-
 {
   "mcpServers": {
     "namviek": {
+      "type": "http",
       "url": "http://YOUR_SERVER:4002/mcp",
       "headers": { "x-api-key": "your-production-key" }
     }

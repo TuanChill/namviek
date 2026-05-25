@@ -1,10 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import {
-  ArrowLeft, Check, Copy, Cable, Terminal, Code2,
-  Bot, AppWindow, Sparkles
+  Check, Copy, Cable, Terminal, Code2,
+  Bot, AppWindow, Sparkles, KeyRound
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
+import { DatabasesSidebar } from './DynamicField/components/DatabasesSidebar';
+import { logout } from '@/lib/auth-store';
+import { api } from './DynamicField/api';
+import type { DynDatabase } from './DynamicField/types';
 
 function getMcpUrl() {
   return window.location.origin.replace(/:\d+$/, ':4002') + '/mcp';
@@ -88,8 +93,8 @@ function ClientCard({ client }: { client: typeof CLIENTS[number] }) {
   const config = client.id === 'gemini'
     ? null
     : client.id === 'vscode'
-      ? { 'mcp.servers': { namviek: { url: mcpUrl, headers: { 'x-api-key': 'your-api-key' } } } }
-      : { mcpServers: { namviek: { url: mcpUrl, headers: { 'x-api-key': 'your-api-key' } } } };
+      ? { 'mcp.servers': { namviek: { type: 'http', url: mcpUrl, headers: { 'x-api-key': 'your-api-key' } } } }
+      : { mcpServers: { namviek: { type: 'http', url: mcpUrl, headers: { 'x-api-key': 'your-api-key' } } } };
 
   const configText = client.id === 'gemini'
     ? `gemini --mcp-endpoint ${mcpUrl} --mcp-header "x-api-key: your-api-key"`
@@ -130,22 +135,25 @@ function ClientCard({ client }: { client: typeof CLIENTS[number] }) {
 export default function McpSetupGuidePage() {
   const navigate = useNavigate();
   const mcpUrl = getMcpUrl();
+  const [databases, setDatabases] = useState<DynDatabase[]>([]);
+
+  useEffect(() => {
+    api.databases.list().then(setDatabases).catch(console.error);
+  }, []);
 
   return (
-    <div className="min-h-svh bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="mx-auto max-w-5xl flex h-14 items-center gap-4 px-6">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/test')} className="gap-1.5">
-            <ArrowLeft size={16} />
-            Back
-          </Button>
-          <div className="flex items-center gap-2">
-            <Cable size={18} className="text-primary" />
-            <span className="font-semibold">MCP Setup</span>
-          </div>
-        </div>
-      </header>
+    <SidebarProvider>
+      <DatabasesSidebar
+        databases={databases}
+        onSelectDatabase={(db) => { void db; navigate(`/test/${db.id}`); }}
+        onOpenCreateDatabase={() => navigate('/test')}
+        onLogout={() => { logout(); navigate('/login'); }}
+      />
+      <SidebarInset className="h-svh overflow-auto">
+        <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4">
+          <Cable size={16} className="text-primary" />
+          <span className="font-semibold text-sm">MCP Setup Guide</span>
+        </header>
 
       <main className="mx-auto max-w-5xl px-6 py-8 space-y-8">
         {/* Hero */}
@@ -178,7 +186,7 @@ export default function McpSetupGuidePage() {
         {/* Connection Info */}
         <div className="rounded-lg border bg-card p-4 space-y-3">
           <h2 className="text-sm font-semibold">Connection Info</h2>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-xs text-muted-foreground">MCP Server URL</label>
               <div className="flex items-center gap-2 rounded-md bg-muted/50 border px-3 py-2">
@@ -192,6 +200,10 @@ export default function McpSetupGuidePage() {
                 <code className="text-xs font-mono flex-1 truncate">your-api-key</code>
                 <CopyButton text="your-api-key" />
               </div>
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <KeyRound size={12} />
+                Get from your server <code className="bg-muted px-1 py-0.5 rounded">.env</code> file (<code className="bg-muted px-1 py-0.5 rounded">API_KEY</code>) or ask your admin
+              </p>
             </div>
           </div>
         </div>
@@ -215,6 +227,7 @@ export default function McpSetupGuidePage() {
           </p>
         </div>
       </main>
-    </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
