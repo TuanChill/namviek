@@ -72,9 +72,12 @@ router.post('/sign-in', async (req, res) => {
     res.setHeader('Authorization', token)
     res.setHeader('RefreshToken', refreshToken)
 
-    res.json({ status: 200, data: user })
-  } catch (error) {
-    res.json({ status: error.status, error })
+  } catch (error: any) {
+    const statusCode = error?.status || 400
+    res.json({
+      status: statusCode,
+      error: error?.message || error
+    })
   }
 })
 

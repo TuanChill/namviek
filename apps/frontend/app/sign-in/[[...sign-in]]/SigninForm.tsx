@@ -29,6 +29,7 @@ import IntroSection from '@/features/IntroSection'
 export default function SigninForm() {
   const { push } = useRouter()
   const [loading, setLoading] = useState(false)
+  const [googleLoading, setGoogleLoading] = useState(false)
   const [email, setEmail] = useState('')
   const [isUserInactive, setIsUserInactive] = useState(false)
   const { setUser } = useUser()
@@ -51,18 +52,27 @@ export default function SigninForm() {
   })
 
   const signInWithThirdParty = async () => {
+    if (loading || googleLoading) return
+    setGoogleLoading(true)
     try {
       const result = await signinWithGoogle()
-      const { user } = result
-      const idToken = await user.getIdToken()
+      const { user, idToken } = result
 
       submitHandler({
         email: user.email || '',
         password: idToken,
         provider: 'GOOGLE'
       })
-    } catch (error) {
-      console.log(error)
+    } catch (error: any) {
+      setGoogleLoading(false)
+      if (error?.message === 'POPUP_CLOSED') {
+        return
+      }
+      if (error?.message === 'FIREBASE_CONFIG_MISSING') {
+        messageError('Google sign-in is not configured. Please contact administrator.')
+        return
+      }
+      messageError('Failed to sign in with Google. Please try again.')
     }
   }
 
@@ -109,7 +119,6 @@ export default function SigninForm() {
         }
       })
       .catch(err => {
-
         if (err === 'NOT_ACTIVE') {
           messageError(
             "You haven't activated your account yet. Please check your email for the activation link."
@@ -118,10 +127,14 @@ export default function SigninForm() {
           return
         }
 
-        messageError('Your email or password are invalid')
+        const errMsg = typeof err === 'string' && err !== 'INVALID_INFORMATION'
+          ? err
+          : 'Your email or password are invalid'
+        messageError(errMsg)
       })
       .finally(() => {
         setLoading(false)
+        setGoogleLoading(false)
       })
   }
 
@@ -142,12 +155,18 @@ export default function SigninForm() {
             <p className="text-[16px] md:text-[19px] mt-4 md:mt-6 text-[#7A8799]">Select your preferred sign-in method to jump right back into your projects.</p>
 
             <div className="flex flex-col gap-4 mt-6 md:mt-7">
-              <button onClick={ev => {
-                ev.preventDefault()
-                signInWithThirdParty()
-              }} className='border bg-white hover:bg-zinc-50 shadow border-[#D0D5E1] rounded-lg text-base text-zinc-600 w-full flex items-center justify-center py-2.5 active:shadow-inner transition-all'>
-                <img src="/google.png" className="w-4 h-4 mr-2" />
-                Sign in with Google
+              <button
+                type="button"
+                disabled={loading || googleLoading}
+                onClick={ev => {
+                  ev.preventDefault()
+                  signInWithThirdParty()
+                }}
+                className={`border bg-white hover:bg-zinc-50 shadow border-[#D0D5E1] rounded-lg text-base text-zinc-600 w-full flex items-center justify-center py-2.5 active:shadow-inner transition-all ${
+                  loading || googleLoading ? 'opacity-60 cursor-not-allowed' : ''
+                }`}>
+                <img src="/google.png" className="w-4 h-4 mr-2" alt="Google" />
+                {googleLoading ? 'Signing in with Google...' : 'Sign in with Google'}
               </button>
 
               <div className="relative mt-2 pb-1">

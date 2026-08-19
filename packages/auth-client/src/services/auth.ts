@@ -35,7 +35,7 @@ export const signin = ({
       }
 
       if (status !== 200) {
-        return Promise.reject('INVALID_INFORMATION')
+        return Promise.reject(res.data.error || 'INVALID_INFORMATION')
       }
 
       const token = headers.authorization
